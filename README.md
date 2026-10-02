@@ -15,16 +15,18 @@ The development database is PostgreSQL with the PostGIS extension enabled; there
 
 ## API routes
 
-- `GET /api/v1/` — versioned API root
-- `GET /api/v1/health/live/` — process liveness
-- `GET /api/v1/health/ready/` — PostGIS and Redis readiness
-- `POST /api/v1/auth/register/` — phone account registration
-- `POST /api/v1/auth/login/` — phone/password login with lockout
-- `POST /api/v1/auth/token/refresh/` — JWT refresh
-- `GET /api/v1/auth/me/` — authenticated account profile
-- `POST /api/v1/auth/password/reset/` — request reset link/support direction
-- `POST /api/v1/auth/password/reset/confirm/` — set password with email token
-- `/api/schema/` and `/api/docs/` — OpenAPI schema and Swagger UI
+- `GET /api/v1/`: versioned API root
+- `GET /api/v1/health/live/`: process liveness
+- `GET /api/v1/health/ready/`: PostGIS and Redis readiness
+- `POST /api/v1/auth/register/`: registration (email, phone, full name, password, language; email and phone are both unique)
+- `POST /api/v1/auth/login/`: email/password login with lockout (email is case-insensitive)
+- `POST /api/v1/auth/token/refresh/`: JWT refresh
+- `GET /api/v1/auth/me/`: authenticated account profile
+- `POST /api/v1/auth/password/reset/`: request a reset link by email (non-enumerating)
+- `POST /api/v1/auth/password/reset/confirm/`: set password with email token
+- `/api/schema/` and `/api/docs/`: OpenAPI schema and Swagger UI
+
+The frontend lives in `frontend/` (see its README).
 
 Role and permission assignment is exposed as Python services and managed through the application layer; no public roles or audit mutation API is exposed. Audit model updates and deletes are rejected by model/queryset protections and, in PostgreSQL, a database trigger.
 
