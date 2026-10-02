@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Oweru brand kit: primary navy, gold and off-white, secondary tints.
+   Headings use Futura PT (licensed); Jost is the free stand-in until the
+   web font files are added. Body text uses Poppins. */
+@theme {
+  --color-navy: #0f172a;
+  --color-navy-soft: #2d3a58;
+  --color-gold: #c89128;
+  --color-gold-light: #e5b972;
+  --color-paper: #f8f8f9;
+  --color-mist: #dde1e8;
+  --color-muted: #55617a;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-success: #1f7a4d;
+  --color-success-soft: #e8f5ee;
+
+  --font-display: "Futura PT", "Jost", "Futura", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Gold text on off-white fails contrast, so links stay navy with a gold underline. */
+@utility text-link {
+  @apply rounded-sm font-medium text-navy underline decoration-gold decoration-2 underline-offset-4 transition-colors hover:decoration-navy;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-navy antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+}
