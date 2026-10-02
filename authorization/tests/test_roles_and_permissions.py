@@ -31,7 +31,7 @@ def test_expected_role_catalog_is_seeded():
 
 
 def test_role_permission_and_user_role_relationships_enforce_uniqueness():
-    user = User.objects.create_user(phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
     role = Role.objects.get(code="verifier")
     permission = Permission.objects.create(code="verification.review", name="Review verification")
     RolePermission.objects.create(role=role, permission=permission)
@@ -43,7 +43,7 @@ def test_role_permission_and_user_role_relationships_enforce_uniqueness():
 
 
 def test_server_side_role_and_database_permission_checks():
-    user = User.objects.create_user(phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
     role = Role.objects.get(code="verifier")
     permission = Permission.objects.create(code="verification.review", name="Review verification")
     RolePermission.objects.create(role=role, permission=permission)
@@ -61,7 +61,7 @@ def test_server_side_role_and_database_permission_checks():
 
 
 def test_management_permission_requires_management_role():
-    user = User.objects.create_user(phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
     raw_request = APIRequestFactory().get("/")
     force_authenticate(raw_request, user=user)
     request = Request(raw_request)
@@ -75,8 +75,8 @@ def test_management_permission_requires_management_role():
 
 
 def test_self_object_permission_denies_other_users():
-    user = User.objects.create_user(phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
-    other = User.objects.create_user(phone="+255700123457", full_name="Juma", password="Strong-pass-482!")
+    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+    other = User.objects.create_user(email="juma@example.test", phone="+255700123457", full_name="Juma", password="Strong-pass-482!")
     raw_request = APIRequestFactory().get("/")
     force_authenticate(raw_request, user=user)
     request = Request(raw_request)

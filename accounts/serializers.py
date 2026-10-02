@@ -2,6 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from .managers import normalize_email_address
 from .models import User
 
 
@@ -17,7 +18,16 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("phone", "full_name", "password", "email", "language")
+        fields = ("email", "phone", "full_name", "password", "language")
+        # The model's unique validator would compare the raw value; validate_email
+        # checks uniqueness after lowercasing instead.
+        extra_kwargs = {"email": {"validators": []}}
+
+    def validate_email(self, value):
+        value = normalize_email_address(value)
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
 
     def validate_phone(self, value):
         value = value.strip()
@@ -46,12 +56,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=30, trim_whitespace=True)
+    email = serializers.EmailField()
     password = serializers.CharField(trim_whitespace=False, write_only=True)
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=30, trim_whitespace=True)
+    email = serializers.EmailField()
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

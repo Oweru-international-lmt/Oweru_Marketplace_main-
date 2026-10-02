@@ -10,7 +10,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .auth_services import authenticate_phone_password, issue_jwt_pair
+from .auth_services import authenticate_email_password, issue_jwt_pair
+from .managers import normalize_email_address
 from .models import User
 from .reset_services import reset_password, send_reset_link
 from .serializers import LoginSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, RegistrationSerializer, UserPublicSerializer
@@ -42,9 +43,9 @@ class LoginView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = authenticate_phone_password(**serializer.validated_data)
+        user = authenticate_email_password(**serializer.validated_data)
         if user is None:
-            return Response({"detail": "Invalid phone or password."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({**issue_jwt_pair(user), "user": UserPublicSerializer(user).data})
 
 
@@ -65,14 +66,15 @@ class PasswordResetRequestView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = User.objects.filter(phone=serializer.validated_data["phone"], is_active=True).first()
-        if user and user.email:
+        email = normalize_email_address(serializer.validated_data["email"])
+        user = User.objects.filter(email=email, is_active=True).first()
+        if user:
             try:
                 send_reset_link(user)
             except Exception:
                 logger.exception("Password reset email delivery failed")
         return Response({
-            "detail": "If the account has an email address, password reset instructions have been sent. Accounts without email should contact Oweru support through WhatsApp."
+            "detail": "If an account exists for this email address, password reset instructions have been sent."
         })
 
 

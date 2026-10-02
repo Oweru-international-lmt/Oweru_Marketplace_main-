@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .managers import normalize_email_address
 from .models import User
 
 MAX_LOGIN_FAILURES = 5
@@ -12,12 +13,12 @@ LOCKOUT_DURATION = timedelta(minutes=15)
 _DUMMY_PASSWORD_HASH = make_password("not-a-real-user-password")
 
 
-def authenticate_phone_password(phone, password):
+def authenticate_email_password(email, password):
     """Validate credentials and apply a database-backed 5-attempt lockout."""
-    normalized_phone = phone.strip()
+    normalized_email = normalize_email_address(email)
     with transaction.atomic():
         try:
-            user = User.objects.select_for_update().get(phone=normalized_phone)
+            user = User.objects.select_for_update().get(email=normalized_email)
         except User.DoesNotExist:
             check_password(password, _DUMMY_PASSWORD_HASH)
             return None

@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from .managers import UserManager
+from .managers import UserManager, normalize_email_address
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -17,7 +17,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     phone = models.CharField(max_length=30, unique=True)
     full_name = models.CharField(max_length=255)
-    email = models.EmailField(blank=True, null=True)
+    # Sign-in identifier. Stored lowercased so uniqueness and lookups ignore case.
+    email = models.EmailField(unique=True)
     language = models.CharField(max_length=2, choices=Language.choices, default=Language.SWAHILI)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -29,19 +30,25 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
-    USERNAME_FIELD = "phone"
-    REQUIRED_FIELDS = ["full_name"]
+    USERNAME_FIELD = "email"
+    EMAIL_FIELD = "email"
+    REQUIRED_FIELDS = ["phone", "full_name"]
 
     class Meta:
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(condition=~Q(phone=""), name="user_phone_not_blank"),
+            models.CheckConstraint(condition=~Q(email=""), name="user_email_not_blank"),
             models.CheckConstraint(condition=Q(language__in=["en", "sw"]), name="user_language_supported"),
             models.CheckConstraint(condition=Q(failed_login_attempts__lte=5), name="login_failures_max_five"),
         ]
 
     def __str__(self):
-        return self.phone
+        return self.email
+
+    def save(self, *args, **kwargs):
+        self.email = normalize_email_address(self.email)
+        return super().save(*args, **kwargs)
 
     def has_role(self, code):
         return self.is_active and self.user_roles.filter(role__code=code, role__is_active=True, is_active=True).exists()

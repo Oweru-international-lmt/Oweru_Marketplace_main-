@@ -7,7 +7,7 @@ from .models import AuditEvent
 class AuditEventAdmin(admin.ModelAdmin):
     list_display = ("created_at", "actor", "action", "entity_type", "entity_id", "ip_address")
     list_filter = ("action", "entity_type", "created_at")
-    search_fields = ("entity_id", "actor__phone", "user_agent")
+    search_fields = ("entity_id", "actor__email", "actor__phone", "user_agent")
     readonly_fields = tuple(field.name for field in AuditEvent._meta.fields)
     actions = None
 
