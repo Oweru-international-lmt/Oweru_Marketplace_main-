@@ -11,6 +11,9 @@ class AuditEventAdmin(admin.ModelAdmin):
     readonly_fields = tuple(field.name for field in AuditEvent._meta.fields)
     actions = None
 
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) and request.user.has_role("management") and request.user.has_marketplace_permission("audit.view")
+
     def has_add_permission(self, request):
         return False
 

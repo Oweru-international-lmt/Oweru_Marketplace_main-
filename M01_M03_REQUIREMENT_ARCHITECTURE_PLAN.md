@@ -1,47 +1,33 @@
-# Oweru Marketplace M01–M03 Plan
+﻿# Oweru Marketplace M01-M03 status and next steps
 
-## Source and repository findings
+Updated 2 October 2026 against SRD v1.3 and Backend Guide v1.1. This supersedes the initial plan at commit 98999f6, which described missing specifications, phone sign-in and optional email. That historical description is no longer the current architecture.
 
-- The active checkout contained no tracked source files at the start of this work.
-- `D:\my codes\Oweru_Marketplace-main.zip` contains a separate, much larger Marketplace snapshot with Django backend and frontend code. Its backend already includes M04+ domain areas; it is being used only to understand the intended product context, not copied into this M01–M03 foundation.
-- The requested **Oweru Marketplace SRD v1.2** and **Oweru Marketplace Backend Development Master Guide** were not present in the checkout, sibling project archive, or searched `D:\my codes` tree. Business traceability therefore uses the detailed requirements provided in the task; document-section citations cannot be made until those files are supplied.
-- The archived backend currently configures Django 5.2, a phone-based identity app, parties/roles, audit, and later marketplace apps. It uses environment-backed settings in part, but has a development secret fallback and SQLite fallback. Existing functionality must not be assumed to be part of the empty active checkout.
+## M01 foundation
 
-## M01–M03 architecture
+Django environment-specific settings, PostgreSQL/PostGIS configuration, DRF v1 routing, custom UUID users, JWT, Redis/Celery configuration, CORS/security headers, JSON logging, base timestamps, OpenAPI, health endpoints and pytest infrastructure exist. Infrastructure configuration is not evidence that every production service is running.
 
-### M01 — Foundation
+## M02 accounts
 
-- Django project `config` with base/development/production/test settings.
-- PostGIS PostgreSQL as the application database; production requires explicit environment configuration. SQLite is reserved for unit/API test settings only.
-- Custom phone-based `accounts.User` is installed before the first migration.
-- DRF API rooted at `/api/v1/`, URL-path API versioning, SimpleJWT, schema/docs, CORS, cache/Redis, Celery, security headers, JSON logging, common timestamp base, health/readiness endpoints, pytest configuration.
-- No M04+ property, listing, enquiry, verification, deal, payment, or payout models/tasks.
+Email is required, unique, normalized and used for sign-in/reset; phone remains required and unique. Password validation/hashing, five-failure/fifteen-minute lockout, JWT refresh, own-profile retrieval, email reset and language preferences exist. Registration now atomically establishes Buyer and its authorization audit event. Persistent public/operational classification enforces SRD section 4.
 
-### M02 — Accounts and authentication
+Full ACC-06 account provisioning, first-sign-in password change, email verification, phone confirmation, profile editing/deletion workflow and support-assisted reset remain unfinished. The pre-existing sixty-minute reset timeout still differs from ACC-03's thirty-minute email rule; it was not changed during the Roles & Permissions milestone.
 
-- User fields: phone, full name, optional email, `en`/`sw` preference, active/staff/superuser lifecycle, failed-login counter and lock expiry.
-- Registration hashes passwords and relies on a database unique constraint for phone identity.
-- Phone/password login issues JWTs. Five consecutive failures lock a known account for 15 minutes; IP-based DRF throttling also limits anonymous auth requests.
-- Email reset is token-based and does not reveal whether an account/email exists. Accounts without email receive a support-assisted WhatsApp direction; no automated WhatsApp reset is created.
-- Sensitive confirmation foundation stores only a hash of a random confirmation token, purpose, subject reference, expiry, and consumption timestamp. It does not implement future workflows.
-- `account_type` is not added as an ambiguous duplicate of the explicit role system; confirm its intended meaning against the SRD before introducing it.
+## M03 roles and audit
 
-### M03 — Roles, permissions, and audit
+The original eight models' role codes and Role/Permission/UserRole/RolePermission architecture are preserved. The catalog has explicit SRD-derived action permissions and default grants. Management has no wildcard bypass. Governed services require active actors, category-compatible targets, explicit Management permissions and atomic audit writes. Self-assignment, public-to-operational promotion, premature partner onboarding and arbitrary matrix editing are denied.
 
-- Database-backed `Role`, `Permission`, role-permission and user-role relationships; only the eight roles listed in the task are seeded.
-- Reusable DRF permission classes check assigned role or permission codes; self-only account access is enforced by the current-user endpoint. No future marketplace object policies are fabricated before those objects exist.
-- Append-only audit events capture actor, action, entity reference, before/after JSON, IP, user agent, and timestamp. No public mutation API is provided; admin access is read-only. Sensitive access can use the same audit service.
+Management API: /api/v1/management/authorization/. Setup uses bootstrap_marketplace_management for existing active operational superusers. Only Verifier/Marketer assignments and non-Management operational revocations are exposed. Optional role-wide outbox.send grants for Verifier/Marketer can be toggled under Management control; this is the sole runtime matrix exception explicitly supported by the SRD.
 
-## Sequencing and verification
+See [the complete authorization contract](doc/BACKEND_AUTHORIZATION.md) for catalog, matrix, APIs, audit, migrations, tests and requirement traceability.
 
-1. Implement M01 models/settings/routing, generate the initial custom-user migration, and run checks plus foundation tests.
-2. Implement M02 auth services/serializers/endpoints and test registration, lockout, JWT, reset, and data exposure.
-3. Implement M03 role/permission and audit services/permissions and test enforcement and immutability.
-4. Run all tests and requirement traceability. PostgreSQL/PostGIS/Redis acceptance checks are reported separately if those services are unavailable locally; SQLite tests do not prove PostGIS readiness.
+## Migration and verification boundary
 
-## Requirements requiring source-document confirmation
+Existing migrations are unchanged. New forward migrations add and classify account_category, reject mixed historical categories, and seed a frozen permission catalog/default matrix with system audit events. Unknown existing grants require review instead of silent replacement. Historical roleless public accounts are not assigned guessed roles.
 
-- The exact public API route naming/response contract from the missing architecture guide.
-- Whether `account_type` has a distinct SRD meaning apart from roles.
-- Any constraints on phone normalization, reset-link lifetime/host, or confirmation token lifetime beyond the requirements in the task.
-- Whether specific audit data retention or sensitive-field redaction rules are defined in SRD v1.2.
+Default tests use in-memory SQLite. PostgreSQL test settings and raw audit-trigger tests are available, but local execution requires valid PostgreSQL credentials and test-database creation privileges. SQLite passes do not establish PostgreSQL row-lock behavior or trigger execution.
+
+## Next milestones
+
+Proceed to M04 Localities, then identity and property/listing modules. Add domain services, queryset/field filtering, object policies and acceptance tests alongside their actual models. Permission codes do not implement these workflows.
+
+Resolve the documented bank-access, anonymous-complaint and management-title contradictions before those domains. Keep all work within Oweru Marketplace; no PA System assumptions or permissions apply.

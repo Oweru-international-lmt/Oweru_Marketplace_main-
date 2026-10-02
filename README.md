@@ -28,8 +28,12 @@ The development database is PostgreSQL with the PostGIS extension enabled; there
 
 The frontend lives in `frontend/` (see its README).
 
-Role and permission assignment is exposed as Python services and managed through the application layer; no public roles or audit mutation API is exposed. Audit model updates and deletes are rejected by model/queryset protections and, in PostgreSQL, a database trigger.
+Roles and permissions extend the existing M03 foundation. Public registration assigns Buyer; public and operational accounts remain separate. JWT-protected Management APIs live under `/api/v1/management/authorization/`. The canonical permission matrix is fixed; only the SRD's optional Verifier/Marketer outbox-send grants can be toggled. Assignment and audit writes are atomic. Admin mutation remains disabled.
+
+See [Backend authorization](doc/BACKEND_AUTHORIZATION.md) for the full catalog/matrix, API contracts, setup command, migration preflight rules, security tests, SRD traceability and deferred object policies. No future Marketplace domain workflows are implemented by these permission codes.
 
 ## Tests
 
 Run `pytest`. Django's standard settings check can be run after `.env` is configured with `python manage.py check`. Migrations are kept in each app's `migrations/` directory.
+
+For isolated PostgreSQL integration tests, configure a local test-capable PostgreSQL account and run `pytest --ds=config.settings.test_postgresql`. The default suite remains in-memory SQLite; PostgreSQL-only audit-trigger cases are skipped there.

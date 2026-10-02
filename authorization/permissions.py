@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission
 
+from accounts.models import User
+
 
 class HasMarketplaceRole(BasePermission):
     """Views set `required_role` to a database-backed role code."""
@@ -28,13 +30,16 @@ class HasMarketplacePermission(BasePermission):
 
 class IsManagement(HasMarketplaceRole):
     def has_permission(self, request, view):
-        view.required_role = "management"
-        return super().has_permission(request, view)
+        return bool(request.user and request.user.is_authenticated and request.user.has_role("management"))
 
 
 class IsSelf(BasePermission):
     """Object check for account-owned resources exposing a `user_id`."""
 
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_active
+                    and User.objects.filter(pk=request.user.pk, is_active=True).exists())
+
     def has_object_permission(self, request, view, obj):
         owner_id = getattr(obj, "user_id", getattr(obj, "id", None))
-        return bool(request.user and request.user.is_authenticated and owner_id == request.user.id)
+        return bool(self.has_permission(request, view) and owner_id is not None and owner_id == request.user.id)

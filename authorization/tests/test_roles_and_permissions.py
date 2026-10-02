@@ -8,10 +8,17 @@ from rest_framework.views import APIView
 from accounts.models import User
 from authorization.models import Permission, Role, RolePermission, UserRole
 from authorization.permissions import HasMarketplacePermission, HasMarketplaceRole, IsManagement, IsSelf
-from authorization.services import assign_role
+from authorization.services import assign_role, bootstrap_management
 
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def management_actor():
+    actor = User.objects.create_superuser(email="manager@example.test", phone="+255700000001", full_name="Manager", password="Strong-pass-482!")
+    bootstrap_management(user=actor)
+    return actor
 
 
 class RoleView(APIView):
@@ -42,8 +49,8 @@ def test_role_permission_and_user_role_relationships_enforce_uniqueness():
         UserRole.objects.create(user=user, role=role)
 
 
-def test_server_side_role_and_database_permission_checks():
-    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+def test_server_side_role_and_database_permission_checks(management_actor):
+    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!", account_category="operational")
     role = Role.objects.get(code="verifier")
     permission = Permission.objects.create(code="verification.review", name="Review verification")
     RolePermission.objects.create(role=role, permission=permission)
@@ -52,7 +59,7 @@ def test_server_side_role_and_database_permission_checks():
     request = Request(raw_request)
     assert not HasMarketplaceRole().has_permission(request, RoleView())
     assert not HasMarketplacePermission().has_permission(request, PermissionView())
-    assign_role(user=user, role_code="verifier")
+    assign_role(user=user, role_code="verifier", assigned_by=management_actor)
     raw_request = APIRequestFactory().get("/")
     force_authenticate(raw_request, user=user)
     request = Request(raw_request)
@@ -61,13 +68,13 @@ def test_server_side_role_and_database_permission_checks():
 
 
 def test_management_permission_requires_management_role():
-    user = User.objects.create_user(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
+    user = User.objects.create_superuser(email="asha@example.test", phone="+255700123456", full_name="Asha", password="Strong-pass-482!")
     raw_request = APIRequestFactory().get("/")
     force_authenticate(raw_request, user=user)
     request = Request(raw_request)
     view = APIView()
     assert not IsManagement().has_permission(request, view)
-    assign_role(user=user, role_code="management")
+    bootstrap_management(user=user)
     raw_request = APIRequestFactory().get("/")
     force_authenticate(raw_request, user=user)
     request = Request(raw_request)

@@ -51,8 +51,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop("password")
-        return User.objects.create_user(password=password, **validated_data)
+        from authorization.services import register_public_user
+
+        return register_public_user(request=self.context.get("request"), **validated_data)
 
 
 class LoginSerializer(serializers.Serializer):

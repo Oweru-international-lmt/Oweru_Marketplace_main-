@@ -22,6 +22,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     language = models.CharField(max_length=2, choices=Language.choices, default=Language.SWAHILI)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    account_category = models.CharField(max_length=12, choices=[("public", "Public"), ("operational", "Operational")], default="public", editable=False)
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, editable=False)
     locked_until = models.DateTimeField(null=True, blank=True, editable=False)
     date_joined = models.DateTimeField(default=timezone.now, editable=False)
@@ -37,6 +38,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
+            models.CheckConstraint(condition=Q(account_category__in=["public", "operational"]), name="user_category_valid"),
             models.CheckConstraint(condition=~Q(phone=""), name="user_phone_not_blank"),
             models.CheckConstraint(condition=~Q(email=""), name="user_email_not_blank"),
             models.CheckConstraint(condition=Q(language__in=["en", "sw"]), name="user_language_supported"),
@@ -50,13 +52,19 @@ class User(AbstractBaseUser, PermissionsMixin):
         self.email = normalize_email_address(self.email)
         return super().save(*args, **kwargs)
 
+    def _effective_roles(self):
+        from authorization.catalog import OPERATIONAL_ROLES, PUBLIC_ROLES
+
+        return self.user_roles.filter(is_active=True, role__is_active=True, user__is_active=True).filter(
+            Q(user__account_category="public", role__code__in=PUBLIC_ROLES)
+            | Q(user__account_category="operational", role__code__in=OPERATIONAL_ROLES)
+        )
+
     def has_role(self, code):
-        return self.is_active and self.user_roles.filter(role__code=code, role__is_active=True, is_active=True).exists()
+        return self.is_active and self._effective_roles().filter(role__code=code).exists()
 
     def has_marketplace_permission(self, code):
-        return self.user_roles.filter(
-            is_active=True,
-            role__is_active=True,
+        return self.is_active and self._effective_roles().filter(
             role__role_permissions__permission__code=code,
         ).exists()
 

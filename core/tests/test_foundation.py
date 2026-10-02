@@ -31,7 +31,8 @@ def test_openapi_and_swagger_endpoints_are_available():
 
 def test_settings_include_security_cors_postgis_and_celery_foundation():
     assert base_settings.DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
-    assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
+    expected_test_engine = "django.db.backends.postgresql" if settings.SETTINGS_MODULE == "config.settings.test_postgresql" else "django.db.backends.sqlite3"
+    assert settings.DATABASES["default"]["ENGINE"] == expected_test_engine
     assert "corsheaders" in settings.INSTALLED_APPS
     assert settings.SECURE_CONTENT_TYPE_NOSNIFF
     assert settings.X_FRAME_OPTIONS == "DENY"
