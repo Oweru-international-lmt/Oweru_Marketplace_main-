@@ -1,8 +1,10 @@
 # Oweru Marketplace Backend Foundation
 
-This repository contains the Marketplace M01–M03 backend foundation. It is separate from Oweru PA System. Property/listing and transaction workflows are intentionally outside this stage.
+This folder contains the Marketplace M01–M03 backend foundation. The repository has two parts: `backend/` (this Django API) and `frontend/` (the React web app). It is separate from Oweru PA System. Property/listing and transaction workflows are intentionally outside this stage.
 
 ## Local setup
+
+Run every command below from the `backend/` folder.
 
 1. Create and activate a Python virtual environment.
 2. Install `requirements.txt`.
@@ -26,7 +28,7 @@ The development database is PostgreSQL with the PostGIS extension enabled; there
 - `POST /api/v1/auth/password/reset/confirm/`: set password with email token
 - `/api/schema/` and `/api/docs/`: OpenAPI schema and Swagger UI
 
-The frontend lives in `frontend/` (see its README).
+The frontend lives in [`../frontend/`](../frontend/README.md).
 
 Roles and permissions extend the existing M03 foundation. Public registration assigns Buyer; public and operational accounts remain separate. JWT-protected Management APIs live under `/api/v1/management/authorization/`. The canonical permission matrix is fixed; only the SRD's optional Verifier/Marketer outbox-send grants can be toggled. Assignment and audit writes are atomic. Admin mutation remains disabled.
 
