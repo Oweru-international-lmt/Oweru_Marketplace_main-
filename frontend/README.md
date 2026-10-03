@@ -1,6 +1,6 @@
 # Oweru Marketplace frontend
 
-React web app for the Oweru Marketplace backend in this repository. It currently covers the accounts module (M02): sign up, sign in, forgot password, reset password and a read-only account page.
+React web app for the Oweru Marketplace backend in [`../backend/`](../backend/README.md). It covers the accounts module (M02): sign up, sign in, forgot password, reset password and a read-only account page; and the Management screens for roles and permissions (M03).
 
 ## Stack
 
@@ -12,7 +12,7 @@ React web app for the Oweru Marketplace backend in this repository. It currently
 
 ## Run locally
 
-1. Start the Django API on `http://127.0.0.1:8000` (see the repository README).
+1. Start the Django API on `http://127.0.0.1:8000` (see [`backend/README.md`](../backend/README.md)).
 2. In this folder:
 
    ```bash
@@ -43,7 +43,11 @@ Copy `.env.example` to `.env.local` to override:
 | `/login` | Sign in with email and password | `POST /auth/login/` |
 | `/forgot-password` | Request a reset link by email, WhatsApp help for people who can't reach their inbox | `POST /auth/password/reset/` |
 | `/reset-password?uid=&token=` | Set new password from the emailed link | `POST /auth/password/reset/confirm/` |
-| `/account` | Account details (signed in only) | `GET /auth/me/` |
+| `/account` | Account details and roles (signed in only) | `GET /auth/me/` |
+| `/management/roles` | Roles × permissions matrix; WhatsApp outbox switches for Verifier and Marketer | `GET /management/authorization/roles/…/permissions/`, `PUT …/roles/{role}/outbox-send/` |
+| `/management/staff` | Find an account by email; give or remove Verifier and Marketer roles | `GET …/users/?email=`, `GET …/users/{id}/roles/`, `POST …/roles/assign/` and `…/revoke/` |
+
+Management pages need the `authorization.view` permission; buttons and switches also check `authorization.assign_role`, `authorization.revoke_role` and `authorization.manage_outbox`.
 
 ## How it works
 
@@ -52,6 +56,7 @@ Copy `.env.example` to `.env.local` to override:
 - **Tokens**: the access/refresh pair is kept in `localStorage`. A 401 triggers one shared refresh call; the rotated refresh token is saved (`src/lib/api.ts`).
 - **Errors**: DRF field errors appear under each field. Known English server messages are translated (`src/lib/errors.ts`).
 - **Language**: the UI starts in Swahili, remembers the visitor's choice, and switches to the account's saved language at sign-in.
+- **Access**: `/auth/me/` returns the user's effective `roles` and `permissions`. Navigation links and management pages appear only when they apply (`src/auth/access.ts`). This is UX only; the API enforces every permission.
 - **Motion**: all animation respects `prefers-reduced-motion`.
 
 ## Brand
@@ -65,4 +70,4 @@ Auth page photos are of Dar es Salaam, from Unsplash (free licence): Ali Mkumbwa
 - No logout endpoint: signing out clears tokens in the browser only; the refresh token stays valid until it expires (7 days).
 - No profile update or account deletion endpoint (ACC-08), so the account page is read-only.
 - No email confirmation (ACC-05) or WhatsApp phone confirmation page yet.
-- `/auth/me/` does not return roles, so role-based dashboards cannot be built yet.
+- No staff account creation (ACC-06): operational accounts are created by the technical team, so the staff page can only manage roles on existing accounts.

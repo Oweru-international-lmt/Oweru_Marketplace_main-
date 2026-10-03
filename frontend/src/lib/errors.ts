@@ -13,6 +13,10 @@ const KNOWN_MESSAGES: [RegExp, string][] = [
   [/invalid email or password/i, 'server.invalidCredentials'],
   [/invalid or expired/i, 'server.resetInvalid'],
   [/valid email/i, 'validation.emailInvalid'],
+  [/separate accounts/i, 'server.separateAccounts'],
+  [/self-(assignment|revocation)/i, 'server.selfChange'],
+  [/inactive account/i, 'server.inactiveTarget'],
+  [/not have permission|required permission|required role/i, 'server.forbidden'],
   [/required|may not be blank/i, 'validation.required'],
 ]
 

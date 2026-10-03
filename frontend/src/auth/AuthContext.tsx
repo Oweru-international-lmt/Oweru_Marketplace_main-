@@ -8,6 +8,7 @@ import { AuthContext, type AuthStatus } from './useAuth'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [status, setStatus] = useState<AuthStatus>(() => (getTokens() ? 'loading' : 'anonymous'))
+  const [signedOut, setSignedOut] = useState(false)
 
   useEffect(() => {
     if (status !== 'loading') return
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens({ access, refresh })
     setUser(signedIn)
     setStatus('authenticated')
+    setSignedOut(false)
     // ACC-07: the account's language preference applies from sign-in.
     void i18n.changeLanguage(signedIn.language)
     return signedIn
@@ -48,11 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokens()
     setUser(null)
     setStatus('anonymous')
+    setSignedOut(true)
   }, [])
 
   const value = useMemo(
-    () => ({ status, user, signIn, register, signOut }),
-    [status, user, signIn, register, signOut],
+    () => ({ status, user, signedOut, signIn, register, signOut }),
+    [status, user, signedOut, signIn, register, signOut],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

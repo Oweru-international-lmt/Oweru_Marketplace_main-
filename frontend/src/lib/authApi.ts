@@ -2,13 +2,19 @@ import type { Language } from '../i18n'
 import { request } from './api'
 import type { Tokens } from './tokens'
 
-// Mirrors accounts.serializers.UserPublicSerializer.
+export type AccountCategory = 'public' | 'operational'
+
+// Mirrors accounts.serializers.UserPublicSerializer. `roles` and `permissions`
+// list effective access only; the API still checks every request.
 export type User = {
   id: string
   phone: string
   full_name: string
   email: string
   language: Language
+  account_category: AccountCategory
+  roles: string[]
+  permissions: string[]
   created_at: string
 }
 

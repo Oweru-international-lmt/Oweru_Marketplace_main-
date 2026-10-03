@@ -1,14 +1,26 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { FullPageLoader } from '../components/FullPageLoader'
+import { ForbiddenPage } from '../pages/ForbiddenPage'
+import { can } from './access'
 import { useAuth } from './useAuth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
+  const { status, signedOut } = useAuth()
   const location = useLocation()
   if (status === 'loading') return <FullPageLoader />
-  if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  // Remember the page only when the session ended on its own; after a
+  // deliberate sign-out the next person must not land on the previous user's page.
+  if (status === 'anonymous') {
+    return signedOut ? <Navigate to="/login" replace /> : <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
   return children
+}
+
+// Use inside RequireAuth. Hiding the page is UX only; the API enforces access.
+export function RequirePermission({ permission, children }: { permission: string; children: ReactNode }) {
+  const { user } = useAuth()
+  return can(user, permission) ? children : <ForbiddenPage />
 }
 
 // Sign-in, sign-up and forgot-password make no sense once signed in.

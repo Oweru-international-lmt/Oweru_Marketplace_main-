@@ -6,6 +6,8 @@ export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 export type AuthContextValue = {
   status: AuthStatus
   user: User | null
+  // True after the user pressed sign out (as opposed to an expired session).
+  signedOut: boolean
   signIn: (email: string, password: string) => Promise<User>
   register: (input: RegistrationInput) => Promise<User>
   signOut: () => void
