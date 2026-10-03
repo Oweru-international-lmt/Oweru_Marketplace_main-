@@ -43,9 +43,13 @@ Copy `.env.example` to `.env.local` to override:
 | `/login` | Sign in with email and password | `POST /auth/login/` |
 | `/forgot-password` | Request a reset link by email, WhatsApp help for people who can't reach their inbox | `POST /auth/password/reset/` |
 | `/reset-password?uid=&token=` | Set new password from the emailed link | `POST /auth/password/reset/confirm/` |
-| `/account` | Account details and roles (signed in only) | `GET /auth/me/` |
+| `/account` | Profile (edit name, phone, language), roles, email/phone confirmation status with resend, password change, deletion request | `GET`/`PATCH /auth/me/`, `POST /auth/email/resend/`, `POST /auth/password/change/`, `/auth/me/deletion-request/` |
+| `/change-password` | Forced first sign-in password change for accounts with a temporary password (ACC-06) | `POST /auth/password/change/` |
+| `/confirm-email?id=&token=` | Opened from the confirmation email (ACC-05) | `POST /auth/email/confirm/` |
+| `/confirm?id=&token=` | WhatsApp confirmation page: shows what is confirmed, Confirm or Decline (SRD 20.3) | `GET`/`POST /auth/confirmations/{id}/` |
 | `/management/roles` | Roles × permissions matrix; WhatsApp outbox switches for Verifier and Marketer | `GET /management/authorization/roles/…/permissions/`, `PUT …/roles/{role}/outbox-send/` |
-| `/management/staff` | Find an account by email; give or remove Verifier and Marketer roles | `GET …/users/?email=`, `GET …/users/{id}/roles/`, `POST …/roles/assign/` and `…/revoke/` |
+| `/management/staff` | Create staff accounts (temporary password shown once, sent by WhatsApp); find an account by email; give or remove Verifier and Marketer roles; edit, issue a new temporary password, deactivate or reactivate | `…/users/?email=`, `…/users/{id}/roles/…`, `/management/accounts/…` |
+| `/management/deletion-requests` | Pending, completed, declined and cancelled deletion requests; complete or decline with a note | `GET /management/accounts/deletion-requests/`, `POST …/{id}/resolve/` |
 
 Management pages need the `authorization.view` permission; buttons and switches also check `authorization.assign_role`, `authorization.revoke_role` and `authorization.manage_outbox`.
 
@@ -68,7 +72,6 @@ Auth page photos are of Dar es Salaam, from Unsplash (free licence): Ali Mkumbwa
 
 ## Known gaps (waiting on the backend)
 
-- No logout endpoint: signing out clears tokens in the browser only; the refresh token stays valid until it expires (7 days).
-- No profile update or account deletion endpoint (ACC-08), so the account page is read-only.
-- No email confirmation (ACC-05) or WhatsApp phone confirmation page yet.
-- No staff account creation (ACC-06): operational accounts are created by the technical team, so the staff page can only manage roles on existing accounts.
+- Phone confirmation links are produced by `python manage.py issue_phone_confirmation` until identity submission (M05) and the staff WhatsApp outbox (M21) send them.
+- The email address (sign-in identifier) cannot be changed yet.
+- Partner accounts (local officials, professionals) are created through their own onboarding, not on the staff page.

@@ -133,6 +133,14 @@ export function LockIcon(props: IconProps) {
   )
 }
 
+export function TrashIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12M10 11v6M14 11v6" />
+    </Icon>
+  )
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <Icon {...props}>

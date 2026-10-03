@@ -6,6 +6,8 @@ type ButtonProps = Omit<HTMLMotionProps<'button'>, 'children'> & {
   loading?: boolean
   loadingLabel?: string
   variant?: 'primary' | 'secondary'
+  // Forms use full-width buttons; toolbars and inline actions pass false.
+  fullWidth?: boolean
 }
 
 const VARIANTS = {
@@ -18,6 +20,7 @@ export function Button({
   loading = false,
   loadingLabel,
   variant = 'primary',
+  fullWidth = true,
   disabled,
   children,
   className = '',
@@ -28,7 +31,7 @@ export function Button({
       whileTap={loading || disabled ? undefined : { scale: 0.98 }}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl px-6 font-display text-[15px] font-semibold tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex h-12 ${fullWidth ? 'w-full' : ''} items-center justify-center gap-2.5 rounded-xl px-6 font-display text-[15px] font-semibold tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${VARIANTS[variant]} ${className}`}
       {...props}
     >
       {loading && (

@@ -15,12 +15,15 @@ import { initials } from '../lib/initials'
 import { managementApi, type AccountSummary, type RoleAssignment } from '../lib/managementApi'
 import { ASSIGNABLE_ROLES, REVOCABLE_ROLES } from '../lib/roles'
 import { emailError } from '../lib/validation'
+import { CreateStaffCard } from './staff/CreateStaffCard'
+import { ManageAccountCard } from './staff/ManageAccountCard'
 
 type Found = { account: AccountSummary; roles: RoleAssignment[] }
 type Message = { tone: 'error' | 'success'; text: string }
 
 export function ManagementStaffPage() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [fieldError, setFieldError] = useState<string>()
   const [searchError, setSearchError] = useState<string | null>(null)
@@ -55,6 +58,9 @@ export function ManagementStaffPage() {
       <PageHeader eyebrow={t('staffPage.kicker')} title={t('staffPage.title')} description={t('staffPage.intro')} />
 
       <div className="space-y-6">
+        {can(user, 'account.manage') && (
+          <CreateStaffCard onCreated={(account) => setFound({ account, roles: [] })} />
+        )}
         <Card>
           <form noValidate onSubmit={handleSearch} className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
             <TextField
@@ -125,6 +131,9 @@ function AccountResult({ found, onChange }: { found: Found; onChange: (found: Fo
             <span className={`size-1.5 rounded-full ${account.is_active ? 'bg-success' : 'bg-danger'}`} aria-hidden="true" />
             {account.is_active ? t('staffPage.active') : t('staffPage.inactive')}
           </span>
+          {account.must_change_password && (
+            <span className="mt-2 text-xs font-medium text-muted">{t('staffAccount.pendingPassword')}</span>
+          )}
         </div>
         <div className="mt-6 border-t border-mist pt-5">
           <p className="text-xs font-medium tracking-wide text-muted uppercase">{t('staffPage.currentRoles')}</p>
@@ -148,7 +157,12 @@ function AccountResult({ found, onChange }: { found: Found; onChange: (found: Fo
           </p>
         </Card>
       ) : (
-        <StaffRolesCard found={found} onChange={onChange} />
+        <div className="min-w-0 space-y-6">
+          <StaffRolesCard found={found} onChange={onChange} />
+          {!roles.some((role) => role.role_code === 'management' && role.is_active) && (
+            <ManageAccountCard account={account} onChange={(updated) => onChange({ account: updated, roles })} />
+          )}
+        </div>
       )}
     </div>
   )
@@ -248,7 +262,8 @@ function StaffRolesCard({ found, onChange }: { found: Found; onChange: (found: F
                 ) : !active && assignable && canAssign && account.is_active ? (
                   <Button
                     type="button"
-                    className="h-9 w-auto rounded-lg px-4 text-sm"
+                    fullWidth={false}
+                    className="h-9 rounded-lg px-4 text-sm"
                     loading={busyRole === role}
                     disabled={busyRole !== null}
                     onClick={() => void run(role, 'assign')}

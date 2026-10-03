@@ -22,6 +22,8 @@ const SCENES: Record<Scene['id'], Scene> = {
 
 export function sceneFor(pathname: string): Scene {
   if (pathname.startsWith('/register')) return SCENES.register
-  if (pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) return SCENES.recovery
+  if (['/forgot-password', '/reset-password', '/change-password'].some((path) => pathname.startsWith(path))) {
+    return SCENES.recovery
+  }
   return SCENES.login
 }

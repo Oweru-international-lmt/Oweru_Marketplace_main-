@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import i18n from '../i18n'
 import { ApiError } from '../lib/api'
 import { authApi, type RegistrationInput, type User } from '../lib/authApi'
-import { clearTokens, getTokens, setTokens } from '../lib/tokens'
+import { clearTokens, getTokens, setTokens, type Tokens } from '../lib/tokens'
 import { AuthContext, type AuthStatus } from './useAuth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -31,22 +31,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [status])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { access, refresh, user: signedIn } = await authApi.login(email, password)
-    setTokens({ access, refresh })
+  const applySession = useCallback((tokens: Tokens, signedIn: User) => {
+    setTokens(tokens)
     setUser(signedIn)
     setStatus('authenticated')
     setSignedOut(false)
-    // ACC-07: the account's language preference applies from sign-in.
-    void i18n.changeLanguage(signedIn.language)
-    return signedIn
   }, [])
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const { access, refresh, user: signedIn } = await authApi.login(email, password)
+      applySession({ access, refresh }, signedIn)
+      // ACC-07: the account's language preference applies from sign-in.
+      void i18n.changeLanguage(signedIn.language)
+      return signedIn
+    },
+    [applySession],
+  )
 
   // The register endpoint returns the profile but no tokens; callers sign in next.
   const register = useCallback((input: RegistrationInput) => authApi.register(input), [])
 
-  // No logout endpoint exists yet, so signing out only forgets the tokens.
+  // Revoke the refresh token on the server (best effort), then forget it locally.
   const signOut = useCallback(() => {
+    const tokens = getTokens()
+    if (tokens) void authApi.logout(tokens.refresh).catch(() => undefined)
     clearTokens()
     setUser(null)
     setStatus('anonymous')
@@ -54,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ status, user, signedOut, signIn, register, signOut }),
-    [status, user, signedOut, signIn, register, signOut],
+    () => ({ status, user, signedOut, signIn, register, signOut, setUser, applySession }),
+    [status, user, signedOut, signIn, register, signOut, applySession],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

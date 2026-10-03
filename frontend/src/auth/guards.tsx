@@ -6,7 +6,7 @@ import { can } from './access'
 import { useAuth } from './useAuth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status, signedOut } = useAuth()
+  const { status, signedOut, user } = useAuth()
   const location = useLocation()
   if (status === 'loading') return <FullPageLoader />
   // Remember the page only when the session ended on its own; after a
@@ -14,6 +14,17 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (status === 'anonymous') {
     return signedOut ? <Navigate to="/login" replace /> : <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
+  // ACC-06: a temporary password must be replaced before anything else.
+  if (user?.must_change_password) return <Navigate to="/change-password" replace />
+  return children
+}
+
+// The forced first-sign-in password page. Only for accounts that still have a temporary password.
+export function RequirePasswordChange({ children }: { children: ReactNode }) {
+  const { status, user } = useAuth()
+  if (status === 'loading') return <FullPageLoader inline />
+  if (status === 'anonymous') return <Navigate to="/login" replace />
+  if (!user?.must_change_password) return <Navigate to="/account" replace />
   return children
 }
 
