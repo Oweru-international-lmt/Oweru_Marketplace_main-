@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.accounts.apps.AccountsConfig",
     "apps.audit.apps.AuditConfig",
     "apps.common.apps.CommonConfig",
+    "apps.localities.apps.LocalitiesConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
     "apps.audit.legacy_event_stream.apps.AuditConfig",
