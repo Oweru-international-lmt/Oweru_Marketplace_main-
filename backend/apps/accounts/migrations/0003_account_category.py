@@ -1,0 +1,41 @@
+from django.db import migrations, models
+
+
+def restore_language_column(apps, schema_editor):
+    """Handle databases that previously applied a removed language rename migration."""
+    table_name = "accounts_user"
+    with schema_editor.connection.cursor() as cursor:
+        columns = {
+            column.name
+            for column in schema_editor.connection.introspection.get_table_description(cursor, table_name)
+        }
+    if "language" not in columns and "preferred_language" in columns:
+        quote_name = schema_editor.quote_name
+        schema_editor.execute(
+            f"ALTER TABLE {quote_name(table_name)} "
+            f"RENAME COLUMN {quote_name('preferred_language')} TO {quote_name('language')}"
+        )
+
+
+def classify_accounts(apps, schema_editor):
+    alias = schema_editor.connection.alias
+    User = apps.get_model("accounts", "User")
+    UserRole = apps.get_model("authorization", "UserRole")
+    public = {"buyer", "owner", "agent"}
+    for user in User.objects.using(alias).only("id", "is_staff", "is_superuser").iterator():
+        # Include revoked history: revocation must not silently convert categories.
+        codes = set(UserRole.objects.using(alias).filter(user_id=user.pk).values_list("role__code", flat=True))
+        operational = bool(codes - public) or user.is_staff or user.is_superuser
+        if operational and codes & public:
+            raise RuntimeError(f"Mixed public/operational account requires review before migration: {user.pk}")
+        User.objects.using(alias).filter(pk=user.pk).update(account_category="operational" if operational else "public")
+
+
+class Migration(migrations.Migration):
+    dependencies = [("accounts", "0002_email_sign_in"), ("authorization", "0001_initial")]
+    operations = [
+        migrations.AddField(model_name="user", name="account_category", field=models.CharField(choices=[("public", "Public"), ("operational", "Operational")], default="public", editable=False, max_length=12)),
+        migrations.RunPython(restore_language_column, migrations.RunPython.noop),
+        migrations.RunPython(classify_accounts, migrations.RunPython.noop),
+        migrations.AddConstraint(model_name="user", constraint=models.CheckConstraint(condition=models.Q(account_category__in=["public", "operational"]), name="user_category_valid")),
+    ]

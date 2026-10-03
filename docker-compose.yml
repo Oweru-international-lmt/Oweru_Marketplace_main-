@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-oweru_marketplace}
       POSTGRES_USER: ${POSTGRES_USER:-oweru}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oweru}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
