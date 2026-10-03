@@ -12,3 +12,5 @@ staticfiles/
 media/
 .archive_review/
 ~$*
+dump.rdb
+*.rdb
