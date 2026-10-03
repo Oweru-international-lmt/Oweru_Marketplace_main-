@@ -1,30 +1,16 @@
-import { useGSAP } from '@gsap/react'
-import gsap from 'gsap'
-import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/useAuth'
 import { Card } from '../components/Card'
-import { PageBody, PageHero } from '../components/PageHero'
+import { PageHeader } from '../components/PageHeader'
 import { RoleBadge } from '../components/RoleBadge'
 import { isLanguage } from '../i18n'
+import { initials } from '../lib/initials'
 import { formatPhone } from '../lib/phone'
 
 // ACC-08 (edit profile, request deletion) has no endpoint yet, so this page is read-only.
 export function AccountPage() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
-  const list = useRef<HTMLDListElement>(null)
-
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia()
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        gsap.from('[data-row]', { y: 14, opacity: 0, duration: 0.5, stagger: 0.07, ease: 'power3.out', delay: 0.3 })
-      })
-    },
-    { scope: list },
-  )
-
   if (!user) return null
 
   const firstName = user.full_name.split(' ')[0] || user.full_name
@@ -32,46 +18,56 @@ export function AccountPage() {
     dateStyle: 'long',
   }).format(new Date(user.created_at))
 
-  const rows: { label: string; value: ReactNode }[] = [
+  const rows = [
     { label: t('fields.fullName'), value: user.full_name },
     { label: t('fields.email'), value: user.email },
     { label: t('fields.phone'), value: formatPhone(user.phone) },
-    {
-      label: t('account.roles'),
-      value: user.roles.length ? (
-        <span className="flex flex-wrap gap-2">
-          {user.roles.map((role) => (
-            <RoleBadge key={role} role={role} />
-          ))}
-        </span>
-      ) : (
-        <span className="text-muted">{t('account.noRoles')}</span>
-      ),
-    },
     { label: t('fields.language'), value: isLanguage(user.language) ? t(`common.languageNames.${user.language}`) : user.language },
     { label: t('account.memberSince'), value: memberSince },
   ]
 
   return (
     <>
-      <PageHero
-        kicker={t('account.title')}
+      <PageHeader
+        eyebrow={t('account.title')}
         title={t('account.greeting', { name: firstName })}
-        intro={t('account.intro')}
+        description={t('account.intro')}
         documentTitle={t('account.title')}
       />
-      <PageBody>
-        <Card title={t('account.details')} titleId="account-details" className="sm:p-10">
-          <dl ref={list} className="divide-y divide-mist">
+
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="self-start">
+          <div className="flex flex-col items-center text-center">
+            <span className="grid size-20 place-items-center rounded-3xl bg-navy font-display text-2xl font-semibold text-gold-light">
+              {initials(user.full_name)}
+            </span>
+            <p className="mt-4 font-display text-xl font-semibold text-navy">{user.full_name}</p>
+            <p className="mt-1 max-w-full truncate text-sm text-muted">{user.email}</p>
+            <p className="mt-1 text-xs text-muted">{t(`categories.${user.account_category}`)}</p>
+          </div>
+          <div className="mt-6 border-t border-mist pt-5">
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">{t('account.roles')}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {user.roles.length ? (
+                user.roles.map((role) => <RoleBadge key={role} role={role} />)
+              ) : (
+                <span className="text-sm text-muted">{t('account.noRoles')}</span>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <Card title={t('account.details')} titleId="account-details" delay={0.1}>
+          <dl className="divide-y divide-mist">
             {rows.map((row) => (
-              <div key={row.label} data-row className="grid gap-1 py-4 sm:grid-cols-[220px_1fr] sm:gap-6">
+              <div key={row.label} className="grid gap-1 py-4 first:pt-0 last:pb-0 sm:grid-cols-[200px_1fr] sm:gap-6">
                 <dt className="text-sm text-muted">{row.label}</dt>
                 <dd className="text-[15px] font-medium break-words text-navy">{row.value}</dd>
               </div>
             ))}
           </dl>
         </Card>
-      </PageBody>
+      </div>
     </>
   )
 }

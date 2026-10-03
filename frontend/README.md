@@ -56,6 +56,7 @@ Management pages need the `authorization.view` permission; buttons and switches 
 - **Tokens**: the access/refresh pair is kept in `localStorage`. A 401 triggers one shared refresh call; the rotated refresh token is saved (`src/lib/api.ts`).
 - **Errors**: DRF field errors appear under each field. Known English server messages are translated (`src/lib/errors.ts`).
 - **Language**: the UI starts in Swahili, remembers the visitor's choice, and switches to the account's saved language at sign-in.
+- **Layout**: signed-in pages use a navy sidebar (`src/layouts/Sidebar.tsx`, items in `navigation.ts`) that collapses to icons on desktop (remembered per browser) and becomes a slide-in drawer on phones, plus a top bar with breadcrumb, language switch and user menu. Pages are a `PageHeader` followed by cards.
 - **Access**: `/auth/me/` returns the user's effective `roles` and `permissions`. Navigation links and management pages appear only when they apply (`src/auth/access.ts`). This is UX only; the API enforces every permission.
 - **Motion**: all animation respects `prefers-reduced-motion`.
 

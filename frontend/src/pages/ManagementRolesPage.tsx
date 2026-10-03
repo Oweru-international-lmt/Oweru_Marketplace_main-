@@ -6,9 +6,10 @@ import { useAuth } from '../auth/useAuth'
 import { Alert } from '../components/Alert'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-import { LockIcon, TickIcon } from '../components/icons'
-import { PageBody, PageHero } from '../components/PageHero'
+import { LockIcon, ShieldIcon, TickIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
+import { PageHeader } from '../components/PageHeader'
 import { RoleBadge } from '../components/RoleBadge'
+import { StatTile } from '../components/StatTile'
 import { Switch } from '../components/Switch'
 import { errorMessage } from '../lib/errors'
 import { managementApi, type Permission } from '../lib/managementApi'
@@ -83,28 +84,40 @@ export function ManagementRolesPage() {
     })
   }
 
+  const outboxEnabled = data
+    ? OUTBOX_OPTIONAL_ROLES.filter((role) => data.grants[role]?.has(OUTBOX_PERMISSION)).length
+    : 0
+
   return (
     <>
-      <PageHero kicker={t('rolesPage.kicker')} title={t('rolesPage.title')} intro={t('rolesPage.intro')} />
-      <PageBody>
-        {loadError ? (
-          <Card>
-            <div className="space-y-4">
-              <Alert tone="error">{loadError}</Alert>
-              <Button type="button" variant="secondary" className="sm:w-auto" onClick={retry}>
-                {t('common.retry')}
-              </Button>
-            </div>
-          </Card>
-        ) : !data ? (
-          <MatrixSkeleton />
-        ) : (
-          <>
-            <OutboxCard grants={data.grants} canManage={can(user, 'authorization.manage_outbox')} onGranted={setGrant} />
-            <MatrixCard data={data} />
-          </>
-        )}
-      </PageBody>
+      <PageHeader eyebrow={t('rolesPage.kicker')} title={t('rolesPage.title')} description={t('rolesPage.intro')} />
+      {loadError ? (
+        <Card>
+          <div className="space-y-4">
+            <Alert tone="error">{loadError}</Alert>
+            <Button type="button" variant="secondary" className="sm:w-auto" onClick={retry}>
+              {t('common.retry')}
+            </Button>
+          </div>
+        </Card>
+      ) : !data ? (
+        <MatrixSkeleton />
+      ) : (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatTile label={t('rolesPage.statRoles')} value={String(ALL_ROLES.length)} icon={UsersIcon} />
+            <StatTile label={t('rolesPage.statPermissions')} value={String(data.permissions.length)} icon={ShieldIcon} delay={0.05} />
+            <StatTile
+              label={t('rolesPage.statOutbox')}
+              value={t('rolesPage.statOutboxValue', { count: outboxEnabled, total: OUTBOX_OPTIONAL_ROLES.length })}
+              icon={WhatsAppIcon}
+              delay={0.1}
+            />
+          </div>
+          <OutboxCard grants={data.grants} canManage={can(user, 'authorization.manage_outbox')} onGranted={setGrant} />
+          <MatrixCard data={data} />
+        </div>
+      )}
     </>
   )
 }
@@ -138,8 +151,7 @@ function OutboxCard({
   }
 
   return (
-    <Card title={t('rolesPage.outboxTitle')} titleId="outbox-grants">
-      <p className="-mt-3 mb-5 max-w-2xl text-sm leading-relaxed text-muted">{t('rolesPage.outboxBody')}</p>
+    <Card title={t('rolesPage.outboxTitle')} titleId="outbox-grants" description={t('rolesPage.outboxBody')} delay={0.1}>
       <ul className="grid gap-3 sm:grid-cols-2">
         {OUTBOX_OPTIONAL_ROLES.map((role) => {
           const enabled = grants[role]?.has(OUTBOX_PERMISSION) ?? false
@@ -189,17 +201,17 @@ function MatrixCard({ data }: { data: Data }) {
 
   return (
     // Edge-to-edge card so the table can scroll sideways; text keeps the card padding.
-    <Card delay={0.2} className="px-0 sm:px-0">
-      <h2 id="permission-matrix" className="mb-2 px-6 font-display text-xl font-semibold text-navy sm:px-8">
+    <Card delay={0.15} className="px-0">
+      <h2 id="permission-matrix" className="mb-2 px-6 font-display text-lg font-semibold text-navy">
         {t('rolesPage.matrixTitle')}
       </h2>
-      <p className="mb-4 px-6 text-xs text-muted sm:px-8 lg:hidden">{t('rolesPage.scrollHint')}</p>
+      <p className="mb-4 px-6 text-xs text-muted lg:hidden">{t('rolesPage.scrollHint')}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">{t('rolesPage.matrixTitle')}</caption>
           <thead>
             <tr>
-              <th rowSpan={2} scope="col" className="sticky left-0 z-20 bg-white px-6 pb-3 text-left align-bottom font-medium text-muted sm:px-8">
+              <th rowSpan={2} scope="col" className="sticky left-0 z-20 bg-white px-6 pb-3 text-left align-bottom font-medium text-muted">
                 {t('rolesPage.permission')}
               </th>
               {ROLE_GROUPS.map((group) => (
@@ -228,7 +240,7 @@ function MatrixCard({ data }: { data: Data }) {
                   <th
                     colSpan={ALL_ROLES.length + 1}
                     scope="colgroup"
-                    className="sticky left-0 bg-paper px-6 py-2 text-left font-display text-xs font-semibold tracking-wide text-navy sm:px-8"
+                    className="sticky left-0 bg-paper px-6 py-2 text-left font-display text-xs font-semibold tracking-wide text-navy"
                   >
                     {t(`permissionGroups.${group}`, { defaultValue: group })}
                   </th>
@@ -237,7 +249,7 @@ function MatrixCard({ data }: { data: Data }) {
                   <tr key={permission.code} className="group">
                     <th
                       scope="row"
-                      className="sticky left-0 z-10 border-b border-mist/70 bg-white px-6 py-3 text-left font-normal group-hover:bg-paper sm:px-8"
+                      className="sticky left-0 z-10 border-b border-mist/70 bg-white px-6 py-3 text-left font-normal group-hover:bg-paper"
                     >
                       <span className="block text-navy">{t(`permissionNames.${permission.code}`, { defaultValue: permission.name })}</span>
                       <code className="text-[11px] text-muted">{permission.code}</code>
@@ -279,8 +291,13 @@ function MatrixCard({ data }: { data: Data }) {
 function MatrixSkeleton() {
   return (
     <div className="space-y-6" aria-hidden="true">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((tile) => (
+          <div key={tile} className="h-[88px] animate-pulse rounded-2xl bg-white ring-1 ring-mist" />
+        ))}
+      </div>
       {[0, 1].map((card) => (
-        <div key={card} className="rounded-3xl bg-white p-6 ring-1 ring-mist sm:p-8">
+        <div key={card} className="rounded-2xl bg-white p-6 ring-1 ring-mist">
           <div className="h-5 w-48 animate-pulse rounded-full bg-mist" />
           <div className="mt-6 space-y-3">
             {Array.from({ length: card === 0 ? 2 : 6 }, (_, row) => (
