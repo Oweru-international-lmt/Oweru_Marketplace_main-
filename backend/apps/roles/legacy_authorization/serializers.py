@@ -1,7 +1,15 @@
 from rest_framework import serializers
 
+from apps.accounts.models import User
+
 from .models import Permission, Role, RoleCode, UserRole
 from . import services
+
+
+class AccountLookupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "full_name", "account_category", "is_active")
 
 
 class RoleSerializer(serializers.ModelSerializer):

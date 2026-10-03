@@ -367,6 +367,28 @@ def test_user_role_read_endpoint_is_protected_and_minimal(manager, target, publi
     assert client(manager).get(path).data == [{"role_code": "marketer", "is_active": True}]
 
 
+def test_account_lookup_endpoint_is_protected_exact_and_minimal(manager, target, public):
+    path = BASE + "users/"
+
+    assert client().get(path, {"email": target.email}).status_code == 401
+    assert client(public).get(path, {"email": target.email}).status_code == 403
+    assert client(manager).get(path).status_code == 400
+
+    response = client(manager).get(path, {"email": target.email.upper()})
+
+    assert response.status_code == 200
+    assert response.data == [
+        {
+            "id": str(target.pk),
+            "full_name": target.full_name,
+            "account_category": target.account_category,
+            "is_active": target.is_active,
+        }
+    ]
+    assert not {"email", "phone", "password", "locked_until"} & set(response.data[0])
+    assert client(manager).get(path, {"email": "missing@example.test"}).data == []
+
+
 def test_api_cannot_convert_public_account(manager, public):
     response = client(manager).post(BASE + f"users/{public.pk}/roles/assign/", {"role_code": "verifier"})
     assert response.status_code == 400
