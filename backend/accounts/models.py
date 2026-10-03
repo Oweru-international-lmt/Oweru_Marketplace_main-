@@ -68,6 +68,19 @@ class User(AbstractBaseUser, PermissionsMixin):
             role__role_permissions__permission__code=code,
         ).exists()
 
+    def effective_role_codes(self):
+        """Role codes that currently grant access, using the same rules as has_role."""
+        if not self.is_active:
+            return set()
+        return set(self._effective_roles().values_list("role__code", flat=True))
+
+    def effective_permission_codes(self):
+        """Permission codes that currently grant access, using the same rules as has_marketplace_permission."""
+        if not self.is_active:
+            return set()
+        codes = self._effective_roles().values_list("role__role_permissions__permission__code", flat=True)
+        return {code for code in codes if code}
+
 
 class SensitiveConfirmation(models.Model):
     """Single-use, purpose-bound confirmation token metadata."""

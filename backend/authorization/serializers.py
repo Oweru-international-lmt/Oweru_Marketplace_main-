@@ -1,7 +1,15 @@
 from rest_framework import serializers
 
+from accounts.models import User
 from .models import Permission, Role, RoleCode, UserRole
 from . import services
+
+
+class AccountLookupSerializer(serializers.ModelSerializer):
+    # No email or phone: Management API responses carry no contact details.
+    class Meta:
+        model = User
+        fields = ("id", "full_name", "account_category", "is_active")
 
 
 class RoleSerializer(serializers.ModelSerializer):

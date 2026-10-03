@@ -7,10 +7,21 @@ from .models import User
 
 
 class UserPublicSerializer(serializers.ModelSerializer):
+    # Effective access only, so clients can show the right screens. The API
+    # still enforces every permission; these lists are not authorization.
+    roles = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ("id", "phone", "full_name", "email", "language", "created_at")
+        fields = ("id", "phone", "full_name", "email", "language", "account_category", "roles", "permissions", "created_at")
         read_only_fields = fields
+
+    def get_roles(self, user):
+        return sorted(user.effective_role_codes())
+
+    def get_permissions(self, user):
+        return sorted(user.effective_permission_codes())
 
 
 class RegistrationSerializer(serializers.ModelSerializer):

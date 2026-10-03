@@ -1,13 +1,22 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from accounts.managers import normalize_email_address
 from accounts.models import User
 from .models import Permission, Role, UserRole
 from .permissions import HasMarketplacePermission, IsManagement
-from .serializers import OutboxGrantSerializer, PermissionSerializer, RoleMutationSerializer, RoleSerializer, UserRoleSerializer
+from .serializers import (
+    AccountLookupSerializer,
+    OutboxGrantSerializer,
+    PermissionSerializer,
+    RoleMutationSerializer,
+    RoleSerializer,
+    UserRoleSerializer,
+)
 
 
 class ManagementAuthorizationView(generics.GenericAPIView):
@@ -32,6 +41,22 @@ class RolePermissionListView(ManagementAuthorizationView, generics.ListAPIView):
     def get_queryset(self):
         role = get_object_or_404(Role, code=self.kwargs["role_code"])
         return Permission.objects.filter(role_permissions__role=role)
+
+
+class AccountLookupView(ManagementAuthorizationView, generics.ListAPIView):
+    """Find one account by exact email so Management can manage its roles.
+
+    Exact match only: there is no partial search or listing, so the user
+    table cannot be browsed or enumerated through this endpoint.
+    """
+
+    serializer_class = AccountLookupSerializer
+
+    def get_queryset(self):
+        email = normalize_email_address(self.request.query_params.get("email", ""))
+        if not email:
+            raise ValidationError({"email": "An email address is required."})
+        return User.objects.filter(email=email)
 
 
 class UserRoleListView(ManagementAuthorizationView, generics.ListAPIView):

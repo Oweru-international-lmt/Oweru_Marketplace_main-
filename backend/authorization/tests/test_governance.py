@@ -453,3 +453,46 @@ def test_management_api_never_uses_session_authentication(manager):
     c = APIClient()
     c.force_login(manager)
     assert c.get(BASE + "roles/").status_code == 401
+
+
+def test_account_lookup_is_exact_email_only_and_minimal(manager, target, public):
+    path = BASE + "users/"
+    assert client().get(path, {"email": target.email}).status_code == 401
+    assert client(public).get(path, {"email": target.email}).status_code == 403
+    c = client(manager)
+    assert c.get(path).status_code == 400
+    response = c.get(path, {"email": "  STAFF@test.test "})
+    assert response.status_code == 200
+    assert response.data == [{"id": str(target.pk), "full_name": "Staff", "account_category": "operational", "is_active": True}]
+    assert c.get(path, {"email": "staff@test"}).data == []
+    assert c.get(path, {"email": "nobody@test.test"}).data == []
+
+
+def test_account_lookup_needs_explicit_view_permission(manager, target):
+    RolePermission.objects.filter(role__code="management", permission__code="authorization.view").delete()
+    assert client(manager).get(BASE + "users/", {"email": target.email}).status_code == 403
+
+
+def test_me_reports_effective_roles_and_permissions(manager, target, public):
+    me = client(manager).get("/api/v1/auth/me/").data
+    assert me["account_category"] == "operational"
+    assert me["roles"] == ["management"]
+    assert me["permissions"] == sorted(DEFAULT_ROLE_PERMISSIONS["management"])
+
+    assign_role(user=target, role_code="verifier", assigned_by=manager)
+    assert client(target).get("/api/v1/auth/me/").data["roles"] == ["verifier"]
+    revoke_role(user=target, role_code="verifier", revoked_by=manager)
+    me = client(target).get("/api/v1/auth/me/").data
+    assert me["roles"] == [] and me["permissions"] == []
+
+    # An inconsistent assignment grants nothing, so it is not reported either.
+    UserRole.objects.create(user=public, role=Role.objects.get(code="management"))
+    assert client(public).get("/api/v1/auth/me/").data["roles"] == []
+
+
+def test_registration_and_login_return_buyer_access():
+    data = {"email": "new@test.test", "phone": "9", "full_name": "New", "password": "Strong-pass-482!"}
+    assert APIClient().post("/api/v1/auth/register/", data, format="json").data["roles"] == ["buyer"]
+    user = APIClient().post("/api/v1/auth/login/", {"email": data["email"], "password": data["password"]}, format="json").data["user"]
+    assert user["roles"] == ["buyer"]
+    assert user["permissions"] == sorted(DEFAULT_ROLE_PERMISSIONS["buyer"])

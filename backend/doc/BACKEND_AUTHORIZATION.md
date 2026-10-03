@@ -38,12 +38,17 @@ Prefix: /api/v1/management/authorization/
 | GET roles/ | authorization.view | Eight roles, code/name/active state |
 | GET permissions/ | authorization.view | Permission code/name/source metadata |
 | GET roles/{role_code}/permissions/ | authorization.view | Current role grants |
+| GET users/?email={email} | authorization.view | Exact (case-insensitive) email match only; returns id, full_name, account_category, is_active. No partial search or listing. 400 without email |
 | GET users/{user_id}/roles/ | authorization.view | Role codes and assignment active flags only |
 | POST users/{user_id}/roles/assign/ | authorization.assign_role | Body: role_code; Verifier/Marketer only; 200, including idempotent calls |
 | POST users/{user_id}/roles/revoke/ | authorization.revoke_role | Body: role_code; non-Management operational roles; 204, including no-op |
 | PUT roles/{role_code}/outbox-send/ | authorization.manage_outbox | Body: enabled boolean; Verifier/Marketer only; 200 |
 
 All require JWT, an active Management assignment, and the explicit permission. No Django session fallback. Anonymous returns 401; authenticated unauthorized returns 403; validation failures return 400; missing target resources return 404. No passwords, tokens, contacts, login counters, identity information or audit snapshots appear in responses. Serializers call the services; views do not implement governance rules.
+
+## Own access in the profile
+
+GET /api/v1/auth/me/ (and the user object returned by registration and login) includes account_category, roles and permissions. They list only effective access, computed by the same rules as has_role and has_marketplace_permission: inactive accounts, inactive roles or assignments, and category-inconsistent assignments are excluded. The frontend uses them to choose which screens to show; the API still enforces every permission on each request.
 
 ## Services and transactions
 
