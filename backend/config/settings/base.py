@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.audit.apps.AuditConfig",
     "apps.common.apps.CommonConfig",
     "apps.localities.apps.LocalitiesConfig",
+    "apps.lister_identity.apps.ListerIdentityConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
     "apps.audit.legacy_event_stream.apps.AuditConfig",
@@ -115,6 +116,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ACCOUNT_LOGIN_MAX_ATTEMPTS = env_int("ACCOUNT_LOGIN_MAX_ATTEMPTS", 5)
 ACCOUNT_LOGIN_LOCKOUT_MINUTES = env_int("ACCOUNT_LOGIN_LOCKOUT_MINUTES", 15)
 ACCOUNT_EMAIL_VERIFICATION_MINUTES = env_int("ACCOUNT_EMAIL_VERIFICATION_MINUTES", 60)
+LISTER_IDENTITY_VALIDITY_MONTHS = env_int("LISTER_IDENTITY_VALIDITY_MONTHS", 12)
+LISTER_IDENTITY_EXPIRY_REMINDER_DAYS = env_int("LISTER_IDENTITY_EXPIRY_REMINDER_DAYS", 30)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],

@@ -24,11 +24,13 @@ def create_audit_log(*, action, entity_type, entity_id="", actor=None, before=No
     )
 
 
-def record_sensitive_access(*, actor, entity_type, entity_id, request=None):
+def record_sensitive_access(*, actor, entity_type, entity_id, before=None, after=None, request=None):
     return create_audit_log(
         actor=actor,
         action="sensitive_data.accessed",
         entity_type=entity_type,
         entity_id=entity_id,
+        before=before,
+        after=after,
         request=request,
     )
