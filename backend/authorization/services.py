@@ -36,6 +36,11 @@ def _authorize(actor, permission):
         raise PermissionDenied("Active Management and the required permission are necessary.")
 
 
+def require_management_permission(actor, permission):
+    """Public form of the Management check for other apps' governed services."""
+    _authorize(actor, permission)
+
+
 def _category(user, role):
     expected = "public" if role.code in PUBLIC_ROLES else "operational"
     opposite = OPERATIONAL_ROLES if expected == "public" else PUBLIC_ROLES

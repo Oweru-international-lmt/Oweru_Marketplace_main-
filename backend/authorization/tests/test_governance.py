@@ -463,7 +463,7 @@ def test_account_lookup_is_exact_email_only_and_minimal(manager, target, public)
     assert c.get(path).status_code == 400
     response = c.get(path, {"email": "  STAFF@test.test "})
     assert response.status_code == 200
-    assert response.data == [{"id": str(target.pk), "full_name": "Staff", "account_category": "operational", "is_active": True}]
+    assert response.data == [{"id": str(target.pk), "full_name": "Staff", "account_category": "operational", "is_active": True, "must_change_password": False}]
     assert c.get(path, {"email": "staff@test"}).data == []
     assert c.get(path, {"email": "nobody@test.test"}).data == []
 

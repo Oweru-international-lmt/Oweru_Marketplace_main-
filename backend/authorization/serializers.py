@@ -9,7 +9,7 @@ class AccountLookupSerializer(serializers.ModelSerializer):
     # No email or phone: Management API responses carry no contact details.
     class Meta:
         model = User
-        fields = ("id", "full_name", "account_category", "is_active")
+        fields = ("id", "full_name", "account_category", "is_active", "must_change_password")
 
 
 class RoleSerializer(serializers.ModelSerializer):

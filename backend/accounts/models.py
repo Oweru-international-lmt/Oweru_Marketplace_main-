@@ -23,6 +23,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     account_category = models.CharField(max_length=12, choices=[("public", "Public"), ("operational", "Operational")], default="public", editable=False)
+    # ACC-05 / ACC-01: set when the person opens a confirmation link; cleared if the value changes.
+    email_verified_at = models.DateTimeField(null=True, blank=True, editable=False)
+    phone_verified_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # ACC-06: staff and partner accounts start with a temporary password.
+    must_change_password = models.BooleanField(default=False)
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, editable=False)
     locked_until = models.DateTimeField(null=True, blank=True, editable=False)
     date_joined = models.DateTimeField(default=timezone.now, editable=False)
@@ -83,17 +88,30 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class SensitiveConfirmation(models.Model):
-    """Single-use, purpose-bound confirmation token metadata."""
+    """Single-use, purpose-bound confirmation token metadata.
+
+    SRD 20.3: a link works once; the decision, time, recipient, IP address and
+    browser are stored when it is used.
+    """
+
+    class Decision(models.TextChoices):
+        CONFIRMED = "confirmed", "Confirmed"
+        DECLINED = "declined", "Declined"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sensitive_confirmations")
     purpose = models.CharField(max_length=64)
     subject_type = models.CharField(max_length=100, blank=True)
     subject_id = models.CharField(max_length=100, blank=True)
+    # Where the link was sent (phone number or email address).
+    recipient = models.CharField(max_length=255, blank=True)
     token_digest = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
+    decision = models.CharField(max_length=16, choices=Decision.choices, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
 
     class Meta:
         indexes = [
@@ -101,19 +119,46 @@ class SensitiveConfirmation(models.Model):
             models.Index(fields=("subject_type", "subject_id"), name="confirm_subject_idx"),
         ]
 
+    _IDENTITY_FIELDS = ("user_id", "purpose", "subject_type", "subject_id", "recipient", "token_digest", "expires_at")
+
     def save(self, *args, **kwargs):
         if not self._state.adding:
             persisted = type(self).objects.get(pk=self.pk)
+            # Only the one-time consumption (with its decision record) may change a stored row.
             allowed = (
                 persisted.consumed_at is None
                 and self.consumed_at is not None
-                and persisted.user_id == self.user_id
-                and persisted.purpose == self.purpose
-                and persisted.subject_type == self.subject_type
-                and persisted.subject_id == self.subject_id
-                and persisted.token_digest == self.token_digest
-                and persisted.expires_at == self.expires_at
+                and all(getattr(persisted, field) == getattr(self, field) for field in self._IDENTITY_FIELDS)
             )
             if not allowed:
                 raise ValueError("Sensitive confirmation records are immutable except for one-time consumption.")
         return super().save(*args, **kwargs)
+
+
+class AccountDeletionRequest(models.Model):
+    """ACC-08: a user asks for deletion; Management decides, keeping records the law requires."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        DECLINED = "declined", "Declined"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="deletion_requests")
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name="deletion_requests_resolved"
+    )
+    resolution_note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-requested_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user",), condition=Q(status="pending"), name="one_pending_deletion_request_per_user"
+            ),
+        ]

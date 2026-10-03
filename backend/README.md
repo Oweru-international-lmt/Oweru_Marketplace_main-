@@ -23,14 +23,24 @@ The development database is PostgreSQL with the PostGIS extension enabled; there
 - `POST /api/v1/auth/register/`: registration (email, phone, full name, password, language; email and phone are both unique)
 - `POST /api/v1/auth/login/`: email/password login with lockout (email is case-insensitive)
 - `POST /api/v1/auth/token/refresh/`: JWT refresh
-- `GET /api/v1/auth/me/`: authenticated account profile
-- `POST /api/v1/auth/password/reset/`: request a reset link by email (non-enumerating)
+- `POST /api/v1/auth/logout/`: revoke a refresh token (works with an expired access token)
+- `GET /api/v1/auth/me/`: own profile, effective roles/permissions, email/phone confirmation and temporary-password flags
+- `PATCH /api/v1/auth/me/`: edit own name, phone or language (`account.update`; a new phone needs re-confirming)
+- `POST /api/v1/auth/password/change/`: change own password; clears a temporary password and returns a fresh token pair
+- `POST /api/v1/auth/password/reset/`: request a reset link by email (non-enumerating; link lasts 30 minutes)
 - `POST /api/v1/auth/password/reset/confirm/`: set password with email token
+- `POST /api/v1/auth/email/confirm/` and `POST /api/v1/auth/email/resend/`: email confirmation (ACC-05; sent at registration)
+- `GET|POST /api/v1/auth/confirmations/{id}/`: public WhatsApp confirmation page data and Confirm/Decline (SRD 20.3; phone confirmation for now)
+- `GET|POST|DELETE /api/v1/auth/me/deletion-request/`: view, request or cancel deletion of own account (ACC-08)
 - `/api/schema/` and `/api/docs/`: OpenAPI schema and Swagger UI
 
 The frontend lives in [`../frontend/`](../frontend/README.md).
 
 Roles and permissions extend the existing M03 foundation. Public registration assigns Buyer; public and operational accounts remain separate. JWT-protected Management APIs live under `/api/v1/management/authorization/`. The canonical permission matrix is fixed; only the SRD's optional Verifier/Marketer outbox-send grants can be toggled. Assignment and audit writes are atomic. Admin mutation remains disabled.
+
+Management account administration lives under `/api/v1/management/accounts/`: create staff accounts with a one-time temporary password (`account.manage`), edit them, issue a new temporary password, deactivate or reactivate them with a reason (`account.suspend`), and review deletion requests (list, then complete or decline with a note). Completing a deletion deactivates the account and revokes its sessions; records are kept because some must be kept by law. Accounts with a temporary password can only read their profile, change the password and sign out until they set their own.
+
+`python manage.py issue_phone_confirmation --user-id <uuid>` prints a WhatsApp phone confirmation link. It stands in for the staff outbox (M21), which will send it when a lister submits identity (M05).
 
 See [Backend authorization](doc/BACKEND_AUTHORIZATION.md) for the full catalog/matrix, API contracts, setup command, migration preflight rules, security tests, SRD traceability and deferred object policies. No future Marketplace domain workflows are implemented by these permission codes.
 

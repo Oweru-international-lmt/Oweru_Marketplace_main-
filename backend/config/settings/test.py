@@ -14,3 +14,5 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 PASSWORD_RESET_URL = "https://example.test/reset-password"
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+EMAIL_CONFIRMATION_URL = "https://example.test/confirm-email"
+CONFIRMATION_URL = "https://example.test/confirm"

@@ -93,7 +93,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.MarketplaceJWTAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
     "DEFAULT_VERSION": "v1",
@@ -105,7 +105,14 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "120/hour",
+        "user": "1200/hour",
+        "auth_login": "10/minute",
+        "auth_register": "5/hour",
+        "confirmation": "20/hour",
+        "email_resend": "5/hour",
+    },
 }
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -152,7 +159,14 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@oweru.example")
 PASSWORD_RESET_URL = os.getenv("PASSWORD_RESET_URL", "")
-PASSWORD_RESET_TIMEOUT = 60 * 60
+# ACC-03: email reset links expire after 30 minutes.
+PASSWORD_RESET_TIMEOUT = 30 * 60
+# ACC-05 email confirmation link (frontend page that posts id and token back).
+EMAIL_CONFIRMATION_URL = os.getenv("EMAIL_CONFIRMATION_URL", "")
+EMAIL_CONFIRMATION_LIFETIME = timedelta(hours=int(os.getenv("EMAIL_CONFIRMATION_LIFETIME_HOURS", "72")))
+# SRD 20.3 WhatsApp confirmation page link; links expire after 7 days by default.
+CONFIRMATION_URL = os.getenv("CONFIRMATION_URL", "")
+PHONE_CONFIRMATION_LIFETIME = timedelta(days=int(os.getenv("PHONE_CONFIRMATION_LIFETIME_DAYS", "7")))
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

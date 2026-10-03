@@ -159,6 +159,7 @@ def test_jwt_refresh_works():
 
 def test_password_reset_emails_a_single_use_link_and_changes_password():
     register()
+    mail.outbox.clear()  # Drop the registration confirmation email.
     client = APIClient()
     response = client.post("/api/v1/auth/password/reset/", {"email": "Asha@example.test"}, format="json")
     assert response.status_code == 200
@@ -176,6 +177,7 @@ def test_password_reset_emails_a_single_use_link_and_changes_password():
 
 def test_password_reset_is_non_enumerating_for_unknown_email():
     register()
+    mail.outbox.clear()  # Drop the registration confirmation email.
     known = APIClient().post("/api/v1/auth/password/reset/", {"email": "asha@example.test"}, format="json")
     unknown = APIClient().post("/api/v1/auth/password/reset/", {"email": "nobody@example.test"}, format="json")
     assert unknown.status_code == known.status_code == 200

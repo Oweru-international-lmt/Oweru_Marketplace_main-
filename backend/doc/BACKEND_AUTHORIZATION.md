@@ -114,7 +114,7 @@ The catalog's source column traces every future-domain permission individually. 
 - Director-specific final review and Head of Operations approval responsibilities coexist with identical Management permissions. Do not use the shared Management role to silently resolve those future workflow distinctions.
 - Anonymous public search/free checks and complaint access require dedicated future endpoint policy; catalog entries do not mandate authentication for otherwise public resources.
 - Listing ownership, buyer participation, exact locality, professional coverage/type, assignments, consent, conflict of interest, adverse-report recipients, sensitive field filtering, and submitted-evidence immutability wait for their domain models.
-- Full ACC-06 provisioning/first-password-change, email verification, reset lifetime/support recovery, identity/phone confirmation and deletion requests are not implemented by this authorization milestone.
+- Implemented after this milestone (see backend/README.md, accounts.account_services): ACC-06 staff account creation with temporary passwords and forced change, edit, deactivate/reactivate; ACC-05 email confirmation; ACC-03 30-minute reset links; ACC-08 profile edit and deletion requests; logout token revocation; the phone confirmation link and page (SRD 20.3). Still deferred: partner (local official/professional) onboarding, support-assisted outbox resets (24-hour links), identity submission (M05) and the WhatsApp outbox (M21) that will send phone confirmation links.
 
 This foundation supports M04+ development after migrations and deployment validation. It does not certify future domain policies or production readiness.
 

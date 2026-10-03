@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path("api/<str:version>/management/authorization/", include("authorization.urls")),
+    path("api/<str:version>/management/accounts/", include("accounts.management_urls")),
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="api-docs"),

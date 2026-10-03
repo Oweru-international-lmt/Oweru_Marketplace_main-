@@ -3,8 +3,7 @@ from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
+from accounts.authentication import MarketplaceJWTAuthentication
 from accounts.managers import normalize_email_address
 from accounts.models import User
 from .models import Permission, Role, UserRole
@@ -20,7 +19,7 @@ from .serializers import (
 
 
 class ManagementAuthorizationView(generics.GenericAPIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [MarketplaceJWTAuthentication]
     permission_classes = [IsAuthenticated, IsManagement, HasMarketplacePermission]
     required_marketplace_permission = "authorization.view"
 
