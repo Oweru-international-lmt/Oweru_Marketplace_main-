@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.common.apps.CommonConfig",
     "apps.localities.apps.LocalitiesConfig",
     "apps.lister_identity.apps.ListerIdentityConfig",
+    "apps.listings.apps.ListingsConfig",
     "apps.properties.apps.PropertiesConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",

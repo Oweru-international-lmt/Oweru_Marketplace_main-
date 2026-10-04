@@ -353,9 +353,9 @@ def test_update_preserves_model_validation(field, value):
 def test_no_delete_service_listing_model_lister_gate_audit_or_legacy_imports():
     assert not hasattr(services, "delete_property_record")
     assert not hasattr(services, "archive_property_record")
-    assert "Listing" not in {model.__name__ for model in services.PropertyRecord._meta.apps.get_models()}
 
     imports = getattr(services, "__dict__", {})
+    assert "Listing" not in imports
     assert "legacy_authorization_services" not in imports
     assert "ListerIdentity" not in imports
 

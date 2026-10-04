@@ -65,7 +65,18 @@ class DeferredDomainPermission(BasePermission):
 
 
 class IsListingOwner(DeferredDomainPermission):
-    pass
+    message = "You must own this listing to perform this action."
+
+    def has_permission(self, request, view):
+        from apps.listings.policies import get_active_persisted_actor
+
+        return get_active_persisted_actor(request.user) is not None
+
+    def has_object_permission(self, request, view, obj):
+        from apps.listings.models import Listing
+        from apps.listings.policies import is_listing_lister
+
+        return isinstance(obj, Listing) and is_listing_lister(request.user, obj)
 
 
 class CanViewSensitiveOwnerData(DeferredDomainPermission):

@@ -174,10 +174,10 @@ def test_architecture_boundaries_for_m05b():
 
     model_names = {model.__name__ for model in apps.get_models()}
     assert "Property" not in model_names
-    assert "Listing" not in model_names
 
     identity_fields = {field.name for field in ListerIdentity._meta.get_fields()}
     assert {"email", "password", "phone", "full_name", "preferred_language", "is_email_verified"}.isdisjoint(
         identity_fields
     )
     assert {"region", "district", "ward", "locality", "areas_covered", "property_types"}.isdisjoint(identity_fields)
+    assert {"listing", "listings", "lister_kind", "selling_price", "owner_price"}.isdisjoint(identity_fields)

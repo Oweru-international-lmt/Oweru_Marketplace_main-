@@ -380,7 +380,6 @@ def test_client_supplied_role_cannot_override_active_assignment():
 @pytest.mark.parametrize(
     "permission",
     [
-        IsListingOwner(),
         CanViewSensitiveOwnerData(),
         CanManageLead(),
         CanConfirmPayment(),

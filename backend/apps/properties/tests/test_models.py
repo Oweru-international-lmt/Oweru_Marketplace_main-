@@ -256,7 +256,8 @@ def test_property_record_does_not_contain_listing_or_future_domain_fields():
     }.isdisjoint(fields)
 
 
-def test_no_listing_model_exists_in_m06b():
-    model_names = {model.__name__ for model in apps.get_models()}
+def test_property_record_remains_separate_from_listing_model():
+    listing_model = apps.get_model("listings", "Listing")
 
-    assert "Listing" not in model_names
+    assert listing_model._meta.get_field("property").remote_field.model is PropertyRecord
+    assert "listings" in {field.name for field in PropertyRecord._meta.get_fields()}
