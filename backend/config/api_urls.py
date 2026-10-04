@@ -8,6 +8,7 @@ urlpatterns = [
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("users/", include("apps.accounts.profile_urls")),
     path("localities/", include("apps.localities.urls")),
+    path("properties/", include("apps.properties.urls")),
     path("lister-identity/", include("apps.lister_identity.urls")),
     path("listers/", include("apps.lister_identity.public_urls")),
     path("management/lister-identities/", include("apps.lister_identity.management_urls")),

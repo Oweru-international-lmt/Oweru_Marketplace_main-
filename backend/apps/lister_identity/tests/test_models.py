@@ -174,7 +174,6 @@ def test_architecture_boundaries_for_m05b():
 
     model_names = {model.__name__ for model in apps.get_models()}
     assert "Property" not in model_names
-    assert "PropertyRecord" not in model_names
     assert "Listing" not in model_names
 
     identity_fields = {field.name for field in ListerIdentity._meta.get_fields()}

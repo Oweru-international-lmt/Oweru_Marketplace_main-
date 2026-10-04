@@ -49,7 +49,11 @@ def test_openapi_schema_and_documentation_are_versioned_and_available():
 def test_settings_include_security_cors_postgis_and_celery_foundation():
     assert base_settings.DATABASES["default"]["ENGINE"] == "django.contrib.gis.db.backends.postgis"
     assert "django.contrib.gis" in settings.INSTALLED_APPS
-    expected_test_engine = "django.contrib.gis.db.backends.postgis" if settings.SETTINGS_MODULE == "config.settings.test_postgresql" else "django.db.backends.sqlite3"
+    expected_test_engine = (
+        "django.contrib.gis.db.backends.postgis"
+        if settings.SETTINGS_MODULE == "config.settings.test_postgresql"
+        else "django.contrib.gis.db.backends.spatialite"
+    )
     assert settings.DATABASES["default"]["ENGINE"] == expected_test_engine
     assert "corsheaders" in settings.INSTALLED_APPS
     assert settings.SECURE_CONTENT_TYPE_NOSNIFF

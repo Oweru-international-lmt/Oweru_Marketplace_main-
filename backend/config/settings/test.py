@@ -7,7 +7,8 @@ from .base import *  # noqa: F403
 SECRET_KEY = "test-only-not-for-deployment-with-at-least-32-bytes"
 DEBUG = env_bool("DEBUG", False)  # noqa: F405
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["testserver", "localhost"])  # noqa: F405
-DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+SPATIALITE_LIBRARY_PATH = os.getenv("SPATIALITE_LIBRARY_PATH", "/opt/homebrew/lib/mod_spatialite.dylib")
+DATABASES = {"default": {"ENGINE": "django.contrib.gis.db.backends.spatialite", "NAME": ":memory:"}}
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
