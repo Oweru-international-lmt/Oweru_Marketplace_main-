@@ -2,9 +2,10 @@ from collections.abc import Mapping
 
 from rest_framework import serializers
 
+from apps.media.models import Media
 from apps.properties.models import PropertyRecord
 
-from .models import Listing
+from .models import Listing, ListingPhoto
 
 
 class RejectUnknownFieldsMixin:
@@ -60,3 +61,21 @@ class EmptyActionSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
 
 class ListingSuspendSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
     reason = serializers.CharField(trim_whitespace=True, allow_blank=False)
+
+
+class ListingPhotoSerializer(serializers.ModelSerializer):
+    media_id = serializers.CharField(source="media.media_id", read_only=True)
+
+    class Meta:
+        model = ListingPhoto
+        fields = ("id", "media_id", "position", "created_at")
+        read_only_fields = fields
+
+
+class ListingPhotoAddSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
+    media_id = serializers.SlugRelatedField(queryset=Media.objects.all(), slug_field="media_id")
+    position = serializers.IntegerField(required=False, min_value=0)
+
+
+class ListingPhotoReorderSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
+    photo_ids = serializers.ListField(child=serializers.UUIDField(), allow_empty=True)

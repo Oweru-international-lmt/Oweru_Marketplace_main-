@@ -245,13 +245,13 @@ def test_listing_does_not_duplicate_property_owner_contact_media_or_verification
         "phone_verified",
         "is_verified",
         "verification_status",
-        "photos",
         "images",
         "photo_urls",
         "media",
     }
 
     assert forbidden.isdisjoint(field_names)
+    assert "photos" in field_names
 
 
 def test_listing_model_has_no_services_serializers_urls_or_legacy_imports():

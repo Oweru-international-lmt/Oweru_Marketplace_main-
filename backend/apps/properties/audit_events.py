@@ -1,2 +1,5 @@
 PROPERTY_CREATED = "property.created"
 PROPERTY_UPDATED = "property.updated"
+PROPERTY_DUPLICATE_DETECTED = "property.duplicate_detected"
+PROPERTY_DUPLICATE_CONFIRMED = "property.duplicate_confirmed"
+PROPERTY_DUPLICATE_DISMISSED = "property.duplicate_dismissed"

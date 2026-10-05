@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -9,10 +10,12 @@ from apps.localities.models import Locality
 from apps.localities.services import create_pending_locality
 
 from .audit_events import PROPERTY_CREATED, PROPERTY_UPDATED
+from .duplicate_services import detect_property_duplicates
 from .models import PropertyRecord
 from .policies import can_create_property_record, can_update_property_record, can_view_property_record, get_active_persisted_actor
 
 
+logger = logging.getLogger(__name__)
 PROPERTY_ID_PREFIX = "OWR"
 PROPERTY_ID_TOKEN_BYTES = 8
 PROPERTY_ID_MAX_ATTEMPTS = 8
@@ -32,6 +35,7 @@ PROPERTY_RECORD_MUTABLE_FIELDS = frozenset({
 PROPERTY_LOCALITY_INPUT_FIELDS = frozenset({"locality_name", "locality_kind"})
 PROPERTY_RECORD_SERVER_FIELDS = frozenset({"id", "property_id", "created_by", "created_at", "updated_at"})
 PROPERTY_RECORD_AUDITED_FIELDS = PROPERTY_RECORD_MUTABLE_FIELDS
+PROPERTY_DUPLICATE_RELEVANT_FIELDS = frozenset({"pin", "stated_size"})
 
 
 def _property_id_token():
@@ -126,6 +130,17 @@ def _audit_property_updated(*, actor, property_record, changed_fields, request=N
         },
         request=request,
     )
+
+
+def _run_duplicate_detection(property_record, *, request=None):
+    try:
+        return detect_property_duplicates(property_record=property_record, request=request)
+    except ValidationError as exc:
+        logger.warning(
+            "Advisory property duplicate detection skipped.",
+            extra={"property_id": property_record.property_id, "error": str(exc.detail)},
+        )
+        return []
 
 
 def _field_value(property_record, field):
@@ -223,6 +238,7 @@ def create_property_record(*, actor, request=None, **attrs):
             with transaction.atomic():
                 property_record.save()
                 _audit_property_created(actor=actor, property_record=property_record, request=request)
+                _run_duplicate_detection(property_record, request=request)
             return property_record
         except IntegrityError as exc:
             if "property_id" not in str(exc).lower():
@@ -280,4 +296,6 @@ def update_property_record(*, actor, property_record, request=None, **attrs):
     if changed_fields:
         locked.save(update_fields=[*values.keys(), "updated_at"])
         _audit_property_updated(actor=actor, property_record=locked, changed_fields=changed_fields, request=request)
+        if changed_fields & PROPERTY_DUPLICATE_RELEVANT_FIELDS:
+            _run_duplicate_detection(locked, request=request)
     return locked

@@ -1,10 +1,15 @@
+import logging
 import secrets
 
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 from apps.audit.services import create_audit_log
+from apps.media.models import Media, MediaVariant
+from apps.properties.duplicate_services import detect_photo_duplicates_for_listing_photo
 from apps.properties.models import PropertyRecord
 
 from apps.lister_identity.models import ListerIdentity
@@ -23,13 +28,16 @@ from .audit_events import (
     LISTING_UPDATED,
     LISTING_WITHDRAWN,
 )
-from .models import Listing
+from .audit_photo_events import LISTING_PHOTO_ADDED, LISTING_PHOTO_REMOVED, LISTING_PHOTOS_REORDERED
+from .models import Listing, ListingPhoto
 from . import policies
 
 
 LISTING_ID_PREFIX = "LST"
 LISTING_ID_TOKEN_BYTES = 8
 LISTING_ID_MAX_ATTEMPTS = 8
+LISTING_MINIMUM_PHOTOS = 3
+logger = logging.getLogger(__name__)
 
 LISTING_MUTABLE_FIELDS = frozenset({"selling_price", "owner_price", "description", "features"})
 LISTING_SERVER_FIELDS = frozenset({
@@ -197,6 +205,12 @@ def _ensure_can_update_listing(actor, listing):
         raise PermissionDenied("You cannot update this listing.")
 
 
+def _ensure_can_manage_listing_photos(actor, listing):
+    _ensure_can_update_listing(actor, listing)
+    if listing.status != Listing.Status.DRAFT:
+        raise ValidationError({"status": "Listing photos can only be managed while the listing is in draft."})
+
+
 def _ensure_can_activate_listing(actor, listing):
     if not policies.can_activate_listing(actor, listing):
         raise PermissionDenied("You cannot activate this listing.")
@@ -251,11 +265,16 @@ def _verified_lister_identity_requirement(listing):
     return ActivationRequirement("lister_identity_verified", status)
 
 
+def _listing_media_requirement(listing):
+    status = "SATISFIED" if is_listing_media_ready(listing) else "UNSATISFIED"
+    return ActivationRequirement("listing_required_media", status)
+
+
 def check_listing_activation_eligibility(*, listing):
     return activation_eligibility_from_requirements((
         _verified_lister_identity_requirement(listing),
+        _listing_media_requirement(listing),
         ActivationRequirement("lister_phone_confirmed", "UNAVAILABLE"),
-        ActivationRequirement("listing_required_media", "UNAVAILABLE"),
     ))
 
 
@@ -361,6 +380,218 @@ def update_listing(*, actor, listing, request=None, **changes):
             request=request,
         )
     return locked
+
+
+def _listing_content_type():
+    return ContentType.objects.get_for_model(Listing)
+
+
+def _media_belongs_to_listing(media, listing):
+    return (
+        isinstance(media, Media)
+        and media.content_type_id == _listing_content_type().pk
+        and media.object_id == listing.pk
+    )
+
+
+def _media_has_required_variants(media):
+    existing_variants = set(media.variants.values_list("kind", flat=True))
+    return {MediaVariant.Kind.ORIGINAL, MediaVariant.Kind.DISPLAY}.issubset(existing_variants)
+
+
+def _is_valid_listing_photo(photo):
+    media = photo.media
+    return (
+        _media_belongs_to_listing(media, photo.listing)
+        and media.mime_type in set(settings.MEDIA_ALLOWED_IMAGE_MIME_TYPES)
+        and _media_has_required_variants(media)
+    )
+
+
+def is_listing_media_ready(listing):
+    listing_id = getattr(listing, "pk", listing)
+    if not listing_id:
+        return False
+    valid_count = 0
+    photos = ListingPhoto.objects.select_related("listing", "media", "media__content_type").filter(listing_id=listing_id)
+    seen_media_ids = set()
+    for photo in photos:
+        if photo.media_id in seen_media_ids:
+            continue
+        if _is_valid_listing_photo(photo):
+            seen_media_ids.add(photo.media_id)
+            valid_count += 1
+        if valid_count >= LISTING_MINIMUM_PHOTOS:
+            return True
+    return False
+
+
+def _resolve_media(media):
+    media_id = getattr(media, "pk", media)
+    try:
+        return Media.objects.select_related("content_type").prefetch_related("variants").get(pk=media_id)
+    except (TypeError, ValueError, DjangoValidationError, Media.DoesNotExist) as exc:
+        raise NotFound("Media was not found.") from exc
+
+
+def _validate_listing_photo_media(*, listing, media):
+    if not _media_belongs_to_listing(media, listing):
+        raise ValidationError({"media_id": "Media must belong to this listing."})
+    if media.mime_type not in set(settings.MEDIA_ALLOWED_IMAGE_MIME_TYPES):
+        raise ValidationError({"media_id": "Media must be a supported image."})
+    if not _media_has_required_variants(media):
+        raise ValidationError({"media_id": "Media must have original and display variants."})
+
+
+def _listing_photo_audit_state(listing_photo):
+    return {
+        "listing_id": listing_photo.listing.listing_id,
+        "media_id": listing_photo.media.media_id,
+        "position": listing_photo.position,
+    }
+
+
+def _audit_listing_photo_added(*, actor, listing_photo, request=None):
+    create_audit_log(
+        actor=actor,
+        action=LISTING_PHOTO_ADDED,
+        entity_type="ListingPhoto",
+        entity_id=listing_photo.pk,
+        before={},
+        after={
+            **_listing_photo_audit_state(listing_photo),
+            "photo_count": ListingPhoto.objects.filter(listing=listing_photo.listing).count(),
+        },
+        request=request,
+    )
+
+
+def _audit_listing_photo_removed(*, actor, listing, listing_photo_state, photo_count, request=None):
+    create_audit_log(
+        actor=actor,
+        action=LISTING_PHOTO_REMOVED,
+        entity_type="ListingPhoto",
+        entity_id=listing_photo_state["id"],
+        before=listing_photo_state,
+        after={
+            "listing_id": listing.listing_id,
+            "photo_count": photo_count,
+        },
+        request=request,
+    )
+
+
+def _audit_listing_photos_reordered(*, actor, listing, ordered_photo_ids, request=None):
+    create_audit_log(
+        actor=actor,
+        action=LISTING_PHOTOS_REORDERED,
+        entity_type="Listing",
+        entity_id=listing.pk,
+        before={},
+        after={
+            "listing_id": listing.listing_id,
+            "photo_count": len(ordered_photo_ids),
+            "ordered_photo_ids": [str(photo_id) for photo_id in ordered_photo_ids],
+        },
+        request=request,
+    )
+
+
+def _run_photo_duplicate_detection(listing_photo, *, request=None):
+    try:
+        return detect_photo_duplicates_for_listing_photo(listing_photo=listing_photo, request=request)
+    except ValidationError as exc:
+        logger.warning(
+            "Advisory listing photo duplicate detection skipped.",
+            extra={"listing_photo_id": str(listing_photo.pk), "error": str(exc.detail)},
+        )
+        return []
+
+
+@transaction.atomic
+def add_listing_photo(*, actor, listing, media, position=None, request=None):
+    actor = _active_persisted_actor(actor)
+    listing = _resolve_listing_for_update(listing)
+    _ensure_can_manage_listing_photos(actor, listing)
+    media = _resolve_media(media)
+    _validate_listing_photo_media(listing=listing, media=media)
+
+    if ListingPhoto.objects.filter(listing=listing, media=media).exists():
+        raise ValidationError({"media_id": "Media is already associated with this listing."})
+
+    locked_photos = list(ListingPhoto.objects.select_for_update().filter(listing=listing).order_by("position"))
+    if position is None:
+        position = (max((photo.position for photo in locked_photos), default=-1) + 1)
+    if position < 0:
+        raise ValidationError({"position": "Position must be non-negative."})
+    if any(photo.position == position for photo in locked_photos):
+        raise ValidationError({"position": "Position is already used for this listing."})
+
+    listing_photo = ListingPhoto(listing=listing, media=media, position=position)
+    try:
+        listing_photo.full_clean()
+        listing_photo.save()
+    except DjangoValidationError as exc:
+        raise ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages) from exc
+    except IntegrityError as exc:
+        raise ValidationError({"photo": "Listing photo association could not be created."}) from exc
+    _audit_listing_photo_added(actor=actor, listing_photo=listing_photo, request=request)
+    _run_photo_duplicate_detection(listing_photo, request=request)
+    return listing_photo
+
+
+@transaction.atomic
+def remove_listing_photo(*, actor, listing, listing_photo, request=None):
+    actor = _active_persisted_actor(actor)
+    listing = _resolve_listing_for_update(listing)
+    _ensure_can_manage_listing_photos(actor, listing)
+    photo_id = getattr(listing_photo, "pk", listing_photo)
+    try:
+        photo = ListingPhoto.objects.select_for_update().select_related("listing", "media").get(pk=photo_id, listing=listing)
+    except (TypeError, ValueError, DjangoValidationError, ListingPhoto.DoesNotExist) as exc:
+        raise NotFound("Listing photo was not found.") from exc
+
+    state = {**_listing_photo_audit_state(photo), "id": str(photo.pk)}
+    photo.delete()
+    _audit_listing_photo_removed(
+        actor=actor,
+        listing=listing,
+        listing_photo_state=state,
+        photo_count=ListingPhoto.objects.filter(listing=listing).count(),
+        request=request,
+    )
+
+
+@transaction.atomic
+def reorder_listing_photos(*, actor, listing, ordered_photo_ids, request=None):
+    actor = _active_persisted_actor(actor)
+    listing = _resolve_listing_for_update(listing)
+    _ensure_can_manage_listing_photos(actor, listing)
+    if not isinstance(ordered_photo_ids, (list, tuple)):
+        raise ValidationError({"photo_ids": "Photo IDs must be supplied as a list."})
+
+    requested = [str(photo_id) for photo_id in ordered_photo_ids]
+    if len(requested) != len(set(requested)):
+        raise ValidationError({"photo_ids": "Photo IDs must not contain duplicates."})
+
+    photos = list(ListingPhoto.objects.select_for_update().filter(listing=listing).order_by("position"))
+    existing_ids = {str(photo.pk) for photo in photos}
+    requested_ids = set(requested)
+    if requested_ids != existing_ids:
+        raise ValidationError({"photo_ids": "Photo IDs must exactly match current listing photos."})
+
+    photos_by_id = {str(photo.pk): photo for photo in photos}
+    offset = max((photo.position for photo in photos), default=-1) + len(photos) + 1000
+    for index, photo in enumerate(photos):
+        photo.position = offset + index
+        photo.save(update_fields=["position", "updated_at"])
+    for index, photo_id in enumerate(requested):
+        photo = photos_by_id[photo_id]
+        photo.position = index
+        photo.save(update_fields=["position", "updated_at"])
+
+    _audit_listing_photos_reordered(actor=actor, listing=listing, ordered_photo_ids=requested, request=request)
+    return list(ListingPhoto.objects.filter(listing=listing).order_by("position"))
 
 
 @transaction.atomic

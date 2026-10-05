@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.common.models import TimeStampedModel
+from apps.media.models import Media, MediaVariant
 from apps.properties.models import PropertyRecord
 
 
@@ -85,6 +86,44 @@ class Listing(TimeStampedModel):
         if self.lister_kind == self.ListerKind.AGENT and self.selling_price is not None and self.owner_price is not None:
             if self.selling_price < self.owner_price:
                 errors["selling_price"] = "Selling price must be greater than or equal to owner price."
+
+        if errors:
+            raise ValidationError(errors)
+
+
+class ListingPhoto(TimeStampedModel):
+    listing = models.ForeignKey(Listing, on_delete=models.PROTECT, related_name="photos")
+    media = models.ForeignKey(Media, on_delete=models.PROTECT, related_name="listing_photos")
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["listing", "media"], name="listing_photo_unique_media"),
+            models.UniqueConstraint(fields=["listing", "position"], name="listing_photo_unique_position"),
+            models.CheckConstraint(condition=models.Q(position__gte=0), name="listing_photo_position_non_negative"),
+        ]
+
+    def __str__(self):
+        return f"{self.listing.listing_id}:{self.media.media_id}@{self.position}"
+
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if self.media_id and self.listing_id:
+            if self.media.owner != self.listing:
+                errors["media"] = "Media must belong to this listing."
+            elif self.media.mime_type not in {"image/jpeg", "image/png", "image/webp"}:
+                errors["media"] = "Media must be a supported image."
+            else:
+                existing_variants = set(self.media.variants.values_list("kind", flat=True))
+                required_variants = {MediaVariant.Kind.ORIGINAL, MediaVariant.Kind.DISPLAY}
+                if not required_variants.issubset(existing_variants):
+                    errors["media"] = "Media must have original and display variants."
+
+        if self.position is not None and self.position < 0:
+            errors["position"] = "Position must be non-negative."
 
         if errors:
             raise ValidationError(errors)

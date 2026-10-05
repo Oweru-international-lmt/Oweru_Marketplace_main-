@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.localities.apps.LocalitiesConfig",
     "apps.lister_identity.apps.ListerIdentityConfig",
     "apps.listings.apps.ListingsConfig",
+    "apps.media.apps.MediaConfig",
     "apps.properties.apps.PropertiesConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
@@ -149,6 +150,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Versioned API foundation for the Oweru Marketplace.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -172,6 +174,19 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / "private_media"
 MEDIA_URL = "/media/"
+MEDIA_STORAGE_BACKEND = os.getenv("MEDIA_STORAGE_BACKEND", "unconfigured")
+MEDIA_STORAGE_BUCKET = os.getenv("MEDIA_STORAGE_BUCKET", "")
+MEDIA_STORAGE_ENDPOINT = os.getenv("MEDIA_STORAGE_ENDPOINT", "")
+MEDIA_SIGNED_URL_TTL_SECONDS = env_int("MEDIA_SIGNED_URL_TTL_SECONDS", 300)
+MEDIA_MAX_UPLOAD_BYTES = env_int("MEDIA_MAX_UPLOAD_BYTES", 5 * 1024 * 1024)
+MEDIA_ALLOWED_IMAGE_MIME_TYPES = env_list(
+    "MEDIA_ALLOWED_IMAGE_MIME_TYPES",
+    ["image/jpeg", "image/png", "image/webp"],
+)
+MEDIA_MAX_IMAGE_WIDTH = env_int("MEDIA_MAX_IMAGE_WIDTH", 2048)
+MEDIA_MAX_IMAGE_HEIGHT = env_int("MEDIA_MAX_IMAGE_HEIGHT", 2048)
+PROPERTY_DUPLICATE_DISTANCE_METERS = env_int("PROPERTY_DUPLICATE_DISTANCE_METERS", 50)
+PROPERTY_DUPLICATE_SIZE_DIFFERENCE_PERCENT = env_int("PROPERTY_DUPLICATE_SIZE_DIFFERENCE_PERCENT", 10)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")

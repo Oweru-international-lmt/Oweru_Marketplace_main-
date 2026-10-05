@@ -74,3 +74,108 @@ class PropertyRecord(TimeStampedModel):
 
         if errors:
             raise ValidationError(errors)
+
+
+class PermanentPossibleDuplicateQuerySet(models.QuerySet):
+    def delete(self):
+        raise RuntimeError("Possible duplicate records cannot be deleted.")
+
+
+class PossibleDuplicate(TimeStampedModel):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        CONFIRMED_DUPLICATE = "CONFIRMED_DUPLICATE", "Confirmed duplicate"
+        NOT_DUPLICATE = "NOT_DUPLICATE", "Not duplicate"
+
+    SIGNAL_PIN_PROXIMITY = "PIN_PROXIMITY"
+    SIGNAL_SIZE_SIMILARITY = "SIZE_SIMILARITY"
+    SIGNAL_PHOTO_SIMILARITY = "PHOTO_SIMILARITY"
+    SIGNAL_CHOICES = (
+        (SIGNAL_PIN_PROXIMITY, "Pin proximity"),
+        (SIGNAL_SIZE_SIMILARITY, "Size similarity"),
+        (SIGNAL_PHOTO_SIMILARITY, "Photo similarity"),
+    )
+    ALLOWED_SIGNALS = frozenset(code for code, _ in SIGNAL_CHOICES)
+
+    property_a = models.ForeignKey(PropertyRecord, on_delete=models.PROTECT, related_name="possible_duplicates_as_a")
+    property_b = models.ForeignKey(PropertyRecord, on_delete=models.PROTECT, related_name="possible_duplicates_as_b")
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING, db_index=True)
+    signals = models.JSONField(default=list)
+    distance_meters = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    size_difference_percent = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reviewed_possible_duplicates",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.CharField(max_length=1000, blank=True)
+
+    objects = PermanentPossibleDuplicateQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["property_a", "property_b"], name="possible_duplicate_unique_pair"),
+            models.CheckConstraint(
+                condition=~models.Q(property_a=models.F("property_b")),
+                name="possible_duplicate_no_self_pair",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(distance_meters__isnull=True) | models.Q(distance_meters__gte=0),
+                name="possible_duplicate_distance_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(size_difference_percent__isnull=True) | models.Q(size_difference_percent__gte=0),
+                name="possible_duplicate_size_diff_non_negative",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.property_a.property_id}<->{self.property_b.property_id}:{self.status}"
+
+    def _canonicalize_pair(self):
+        if self.property_a_id and self.property_b_id and str(self.property_a_id) > str(self.property_b_id):
+            self.property_a, self.property_b = self.property_b, self.property_a
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        self._canonicalize_pair()
+
+        if self.property_a_id and self.property_b_id and self.property_a_id == self.property_b_id:
+            errors["property_b"] = "A property cannot be a possible duplicate of itself."
+
+        if not isinstance(self.signals, list) or not self.signals:
+            errors["signals"] = "At least one duplicate signal is required."
+        else:
+            normalized = []
+            for signal in self.signals:
+                if signal not in self.ALLOWED_SIGNALS:
+                    errors["signals"] = "Signals must use known duplicate signal codes."
+                    break
+                if signal not in normalized:
+                    normalized.append(signal)
+            self.signals = sorted(normalized)
+
+        if self.distance_meters is not None and self.distance_meters < 0:
+            errors["distance_meters"] = "Distance must be non-negative."
+        if self.size_difference_percent is not None and self.size_difference_percent < 0:
+            errors["size_difference_percent"] = "Size difference must be non-negative."
+
+        if self.review_note:
+            self.review_note = " ".join(self.review_note.split())
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            return super().save(*args, **kwargs)
+        self._canonicalize_pair()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise RuntimeError("Possible duplicate records cannot be deleted.")

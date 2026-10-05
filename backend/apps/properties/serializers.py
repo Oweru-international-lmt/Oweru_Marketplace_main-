@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 from apps.localities.models import District, Locality, Region, Ward
 
-from .models import PropertyRecord
+from .models import PossibleDuplicate, PropertyRecord
 
 
 class RejectUnknownFieldsMixin:
@@ -157,3 +157,59 @@ class PropertyRecordPrivateSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+
+class EmptyDuplicateReviewActionSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
+    pass
+
+
+class DuplicatePropertySummarySerializer(serializers.ModelSerializer):
+    region = serializers.CharField(source="region.name", read_only=True)
+    district = serializers.CharField(source="district.name", read_only=True)
+    ward = serializers.CharField(source="ward.name", read_only=True)
+    locality = serializers.CharField(source="locality.name", read_only=True)
+    locality_kind = serializers.CharField(source="locality.kind", read_only=True)
+
+    class Meta:
+        model = PropertyRecord
+        fields = (
+            "property_id",
+            "category",
+            "region",
+            "district",
+            "ward",
+            "locality",
+            "locality_kind",
+            "stated_size",
+            "size_unit",
+            "title_type",
+        )
+        read_only_fields = fields
+
+
+class PossibleDuplicateReviewSerializer(serializers.ModelSerializer):
+    property_a = DuplicatePropertySummarySerializer(read_only=True)
+    property_b = DuplicatePropertySummarySerializer(read_only=True)
+    reviewed_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PossibleDuplicate
+        fields = (
+            "id",
+            "status",
+            "signals",
+            "distance_meters",
+            "size_difference_percent",
+            "created_at",
+            "reviewed_at",
+            "reviewed_by",
+            "property_a",
+            "property_b",
+        )
+        read_only_fields = fields
+
+    @extend_schema_field(OpenApiTypes.UUID)
+    def get_reviewed_by(self, obj):
+        if not obj.reviewed_by_id:
+            return None
+        return str(obj.reviewed_by_id)

@@ -47,7 +47,7 @@ def _require_persisted_management(user):
 
 
 def _identity_queryset():
-    return ListerIdentity.objects.select_for_update().select_related("user", "reviewed_by")
+    return ListerIdentity.objects.select_for_update(of=("self",)).select_related("user", "reviewed_by")
 
 
 def _own_identity_for_update(user):

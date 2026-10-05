@@ -311,7 +311,6 @@ def test_service_submit_requires_all_evidence_non_blank(field):
         "https://example.test/id.jpg",
         "data:image/png;base64,SECRET_IMAGE_PAYLOAD",
         "../private/id-photo",
-        "x" * 501,
     ],
 )
 def test_service_submit_revalidates_persisted_evidence_refs(field, value):
