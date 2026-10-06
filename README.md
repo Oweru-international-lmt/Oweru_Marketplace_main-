@@ -1,5 +1,10 @@
 # Oweru Marketplace Backend Foundation
 
+M10–M13 backend workflows and operational contracts are documented in
+[Leads, Deals, Commission, Payments and Payouts](docs/M10_M13_BACKEND.md).
+The current default test configuration is PostgreSQL/PostGIS; run it in a
+GIS-capable environment. Earlier foundation-only descriptions below are historical.
+
 This repository contains the Marketplace M01–M03 backend foundation. It is separate from Oweru PA System. Property/listing and transaction workflows are intentionally outside this stage.
 
 ## Local setup

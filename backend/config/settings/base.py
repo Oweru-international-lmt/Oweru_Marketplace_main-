@@ -52,6 +52,10 @@ INSTALLED_APPS = [
     "apps.lister_identity.apps.ListerIdentityConfig",
     "apps.listings.apps.ListingsConfig",
     "apps.media.apps.MediaConfig",
+    "apps.leads.apps.LeadsConfig",
+    "apps.deals.apps.DealsConfig",
+    "apps.commissions.apps.CommissionsConfig",
+    "apps.payments.apps.PaymentsConfig",
     "apps.properties.apps.PropertiesConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
@@ -121,6 +125,11 @@ ACCOUNT_LOGIN_LOCKOUT_MINUTES = env_int("ACCOUNT_LOGIN_LOCKOUT_MINUTES", 15)
 ACCOUNT_EMAIL_VERIFICATION_MINUTES = env_int("ACCOUNT_EMAIL_VERIFICATION_MINUTES", 60)
 LISTER_IDENTITY_VALIDITY_MONTHS = env_int("LISTER_IDENTITY_VALIDITY_MONTHS", 12)
 LISTER_IDENTITY_EXPIRY_REMINDER_DAYS = env_int("LISTER_IDENTITY_EXPIRY_REMINDER_DAYS", 30)
+LEAD_LOST_REVIEW_MONTHS = env_int("LEAD_LOST_REVIEW_MONTHS", 6)
+PAYOUT_WORKING_DAYS = env_int("PAYOUT_WORKING_DAYS", 3)
+PAYOUT_HOLIDAYS = env_list("PAYOUT_HOLIDAYS")
+OWNER_CONFIRMATION_DAYS = env_int("OWNER_CONFIRMATION_DAYS", 7)
+OWNER_CONFIRMATION_URL = os.getenv("OWNER_CONFIRMATION_URL", "")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
@@ -135,7 +144,7 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour"},
+    "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour", "confirmation": "20/hour"},
 }
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),

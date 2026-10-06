@@ -42,6 +42,7 @@ class Listing(TimeStampedModel):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
     description = models.TextField(blank=True)
     features = models.JSONField(default=list, blank=True)
+    rate_table = models.ForeignKey("commissions.RateTable", on_delete=models.PROTECT, null=True, blank=True, editable=False)
 
     objects = PermanentListingQuerySet.as_manager()
 

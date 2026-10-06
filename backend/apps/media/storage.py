@@ -87,6 +87,38 @@ class InMemoryPrivateMediaStorage:
         return BytesIO(self.objects[key]["bytes"])
 
 
+class S3PrivateMediaStorage:
+    """S3-compatible adapter; credentials come from boto3's environment/provider chain."""
+    def __init__(self, config):
+        import boto3
+        if not config.bucket:
+            raise RuntimeError("MEDIA_STORAGE_BUCKET must be configured.")
+        self.bucket = config.bucket
+        self.ttl = config.signed_url_ttl_seconds
+        self.client = boto3.client("s3", endpoint_url=config.endpoint or None)
+
+    def save_private_object(self, *, key, content, content_type=None):
+        content.seek(0)
+        self.client.put_object(Bucket=self.bucket, Key=key, Body=content, ContentType=content_type or "application/octet-stream")
+        return key
+
+    def generate_signed_read_url(self, *, key, expires_in=None):
+        return self.client.generate_presigned_url("get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=expires_in or self.ttl)
+
+    def delete_private_object(self, *, key):
+        self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def exists(self, *, key):
+        from botocore.exceptions import ClientError
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
+
+
 _in_memory_storage = InMemoryPrivateMediaStorage()
 
 
@@ -103,4 +135,6 @@ def get_private_media_storage() -> PrivateMediaStorage:
         return UnconfiguredPrivateMediaStorage()
     if config.backend in {"memory", "inmemory"}:
         return _in_memory_storage
+    if config.backend == "s3":
+        return S3PrivateMediaStorage(config)
     raise RuntimeError(f"Unsupported private media storage backend: {config.backend}")

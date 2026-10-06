@@ -265,16 +265,27 @@ def _verified_lister_identity_requirement(listing):
     return ActivationRequirement("lister_identity_verified", status)
 
 
+def _phone_confirmation_requirement(listing):
+    from apps.payments.models import PhoneConfirmation
+    confirmed = PhoneConfirmation.objects.filter(user_id=listing.lister_id, phone=listing.lister.phone).exists()
+    return ActivationRequirement("lister_phone_confirmed", "SATISFIED" if confirmed else "UNAVAILABLE")
+
+
 def _listing_media_requirement(listing):
     status = "SATISFIED" if is_listing_media_ready(listing) else "UNSATISFIED"
     return ActivationRequirement("listing_required_media", status)
 
 
 def check_listing_activation_eligibility(*, listing):
+    phone = _phone_confirmation_requirement(listing)
+    financial_requirements = ()
+    if phone.status == "SATISFIED":
+        financial_requirements = (ActivationRequirement("listing_frozen_rate_version", "SATISFIED" if listing.rate_table_id else "UNSATISFIED"),)
     return activation_eligibility_from_requirements((
         _verified_lister_identity_requirement(listing),
         _listing_media_requirement(listing),
-        ActivationRequirement("lister_phone_confirmed", "UNAVAILABLE"),
+        phone,
+        *financial_requirements,
     ))
 
 
@@ -302,6 +313,11 @@ def create_listing(
     _ensure_can_create_listing(actor, lister_kind)
     property_record = _resolve_property_record(property_record)
     _ensure_can_create_against_property(actor, property_record)
+    from apps.commissions.services import current_rate_table, lock_rate_publication
+    lock_rate_publication()
+    frozen_table = current_rate_table()
+    if actor.has_marketplace_permission("listing.create") and frozen_table is None:
+        raise ValidationError("Publish a commission rate table before creating a financial-workflow Listing.")
 
     values = _clean_create_attrs(attrs)
     values.update({
@@ -319,6 +335,7 @@ def create_listing(
             lister_kind=lister_kind,
             currency=Listing.Currency.TZS,
             status=Listing.Status.DRAFT,
+            rate_table=frozen_table,
             **values,
         )
         _validate_listing(listing)
