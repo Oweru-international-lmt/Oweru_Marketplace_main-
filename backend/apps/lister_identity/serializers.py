@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from .evidence import normalize_evidence_reference
 from .models import ListerIdentity
+from .services import get_public_verification_summary
 
 
 @extend_schema_field(OpenApiTypes.STR)
@@ -93,7 +94,7 @@ class PublicListerProfileSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_verified(self, obj):
-        return True
+        return get_public_verification_summary(identity=obj)["is_verified"]
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_lister_roles(self, obj):

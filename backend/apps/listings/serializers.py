@@ -1,10 +1,14 @@
 from collections.abc import Mapping
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.lister_identity.models import ListerIdentity
+from apps.lister_identity.services import get_public_verification_summary
 from apps.media.models import Media
 from apps.properties.models import PropertyRecord
 
+from . import services
 from .models import Listing, ListingPhoto
 
 
@@ -53,6 +57,82 @@ class ListingPrivateSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+
+class PublicLocalityHierarchySerializer(serializers.Serializer):
+    region = serializers.CharField(source="region.name", read_only=True)
+    district = serializers.CharField(source="district.name", read_only=True)
+    ward = serializers.CharField(source="ward.name", read_only=True)
+    locality = serializers.CharField(source="locality.name", read_only=True)
+    locality_kind = serializers.CharField(source="locality.kind", read_only=True)
+
+
+class PropertyRecordPublicSerializer(serializers.ModelSerializer):
+    location = PublicLocalityHierarchySerializer(source="*", read_only=True)
+
+    class Meta:
+        model = PropertyRecord
+        fields = (
+            "property_id",
+            "category",
+            "stated_size",
+            "size_unit",
+            "title_type",
+            "location",
+        )
+        read_only_fields = fields
+
+
+class ListingPublicVerificationSerializer(serializers.Serializer):
+    level = serializers.IntegerField()
+    label = serializers.CharField()
+    is_verified = serializers.BooleanField()
+
+
+class ListingPublicListerSerializer(serializers.Serializer):
+    display_name = serializers.CharField(source="lister.full_name", read_only=True)
+    lister_kind = serializers.CharField(read_only=True)
+    verification = serializers.SerializerMethodField()
+    member_since = serializers.DateTimeField(source="lister.date_joined", read_only=True)
+
+    @extend_schema_field(ListingPublicVerificationSerializer)
+    def get_verification(self, obj):
+        try:
+            identity = obj.lister.lister_identity
+        except ListerIdentity.DoesNotExist:
+            identity = None
+        return get_public_verification_summary(user=obj.lister, identity=identity)
+
+
+class ListingPublicPhotoSerializer(serializers.Serializer):
+    position = serializers.IntegerField()
+    url = serializers.CharField()
+
+
+class ListingPublicSerializer(serializers.ModelSerializer):
+    property = PropertyRecordPublicSerializer(read_only=True)
+    lister = ListingPublicListerSerializer(source="*", read_only=True)
+    photos = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = (
+            "listing_id",
+            "selling_price",
+            "currency",
+            "status",
+            "description",
+            "features",
+            "created_at",
+            "property",
+            "lister",
+            "photos",
+        )
+        read_only_fields = fields
+
+    @extend_schema_field(ListingPublicPhotoSerializer(many=True))
+    def get_photos(self, obj):
+        return services.get_public_listing_photo_display_accesses(listing=obj)
 
 
 class EmptyActionSerializer(RejectUnknownFieldsMixin, serializers.Serializer):

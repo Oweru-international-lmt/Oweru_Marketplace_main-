@@ -24,6 +24,10 @@ from .models import ListerIdentity
 
 WRITABLE_IDENTITY_FIELDS = frozenset({"national_id_number", "national_id_photo_ref", "live_selfie_ref"})
 LISTER_IDENTITY_AUDIT_ENTITY = "ListerIdentity"
+PUBLIC_VERIFICATION_LEVEL_0 = 0
+PUBLIC_VERIFICATION_LEVEL_1 = 1
+PUBLIC_VERIFICATION_UNVERIFIED_LABEL = "Not verified"
+PUBLIC_VERIFICATION_IDENTITY_LABEL = "Identity verified"
 
 
 def _require_persisted_lister(user):
@@ -339,6 +343,29 @@ def is_lister_identity_verified(identity, *, at=None):
         and identity.expires_at is not None
         and identity.expires_at > now
     )
+
+
+def get_public_verification_summary(*, user=None, identity=None, at=None):
+    persisted_identity = None
+    if isinstance(identity, ListerIdentity) and identity.pk:
+        persisted_identity = identity
+    elif user is not None and getattr(user, "pk", None):
+        try:
+            persisted_identity = ListerIdentity.objects.get(user_id=user.pk)
+        except ListerIdentity.DoesNotExist:
+            persisted_identity = None
+
+    if is_lister_identity_verified(persisted_identity, at=at):
+        return {
+            "level": PUBLIC_VERIFICATION_LEVEL_1,
+            "label": PUBLIC_VERIFICATION_IDENTITY_LABEL,
+            "is_verified": True,
+        }
+    return {
+        "level": PUBLIC_VERIFICATION_LEVEL_0,
+        "label": PUBLIC_VERIFICATION_UNVERIFIED_LABEL,
+        "is_verified": False,
+    }
 
 
 def get_public_lister_roles(user):

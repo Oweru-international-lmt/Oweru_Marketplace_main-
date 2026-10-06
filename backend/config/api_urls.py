@@ -22,6 +22,7 @@ urlpatterns = [
     path("payouts/", include((payout_urlpatterns, "payouts"))),
     path("management/finance/", include((finance_management_urlpatterns, "finance-management"))),
     path("lister-identity/", include("apps.lister_identity.urls")),
+    path("public/listings/", include("apps.listings.public_urls")),
     path("listers/", include("apps.lister_identity.public_urls")),
     path("management/lister-identities/", include("apps.lister_identity.management_urls")),
     path("management/listings/", include((listing_management_urlpatterns, "management-listings"))),

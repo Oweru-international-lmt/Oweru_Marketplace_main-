@@ -5,10 +5,12 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 from apps.audit.services import create_audit_log
 from apps.media.models import Media, MediaVariant
+from apps.media.storage import get_private_media_storage
 from apps.properties.duplicate_services import detect_photo_duplicates_for_listing_photo
 from apps.properties.models import PropertyRecord
 
@@ -37,6 +39,11 @@ LISTING_ID_PREFIX = "LST"
 LISTING_ID_TOKEN_BYTES = 8
 LISTING_ID_MAX_ATTEMPTS = 8
 LISTING_MINIMUM_PHOTOS = 3
+PUBLIC_LISTING_STATUSES = frozenset({
+    Listing.Status.ACTIVE,
+    Listing.Status.UNDER_OFFER,
+})
+PUBLIC_PHOTO_NOT_FOUND_MESSAGE = "Public photo was not found."
 logger = logging.getLogger(__name__)
 
 LISTING_MUTABLE_FIELDS = frozenset({"selling_price", "owner_price", "description", "features"})
@@ -662,3 +669,115 @@ def restore_listing(*, actor, listing, request=None):
 
 def get_accessible_listings(actor):
     return policies.get_accessible_listings(actor)
+
+
+def _public_display_variant_prefetch():
+    return Prefetch(
+        "media__variants",
+        queryset=MediaVariant.objects.filter(kind=MediaVariant.Kind.DISPLAY),
+        to_attr="public_display_variants",
+    )
+
+
+def _public_listing_photo_queryset():
+    return (
+        ListingPhoto.objects.select_related("media", "media__content_type")
+        .prefetch_related(_public_display_variant_prefetch())
+        .order_by("position", "created_at")
+    )
+
+
+def get_public_listings():
+    return (
+        Listing.objects.select_related(
+            "property",
+            "property__region",
+            "property__district",
+            "property__ward",
+            "property__locality",
+            "lister",
+            "lister__lister_identity",
+        )
+        .prefetch_related(Prefetch("photos", queryset=_public_listing_photo_queryset(), to_attr="public_photos"))
+        .filter(status__in=PUBLIC_LISTING_STATUSES)
+        .order_by("-created_at", "-id")
+    )
+
+
+def get_public_listing(*, listing_id):
+    try:
+        return get_public_listings().get(listing_id=listing_id)
+    except Listing.DoesNotExist as exc:
+        raise NotFound("Listing was not found.") from exc
+
+
+def _public_listing_or_404(listing):
+    if isinstance(listing, Listing):
+        if listing.status in PUBLIC_LISTING_STATUSES:
+            return listing
+        raise NotFound("Listing was not found.")
+    listing_id = getattr(listing, "listing_id", listing)
+    return get_public_listing(listing_id=listing_id)
+
+
+def _display_variant(media):
+    prefetched = getattr(media, "public_display_variants", None)
+    if prefetched is not None:
+        if not prefetched:
+            raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE)
+        return prefetched[0]
+    try:
+        return media.variants.get(kind=MediaVariant.Kind.DISPLAY)
+    except MediaVariant.DoesNotExist as exc:
+        raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE) from exc
+
+
+def _ensure_public_photo_association(*, listing, listing_photo):
+    if listing_photo.listing_id != listing.pk:
+        raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE)
+
+    media = listing_photo.media
+    listing_content_type = ContentType.objects.get_for_model(Listing)
+    if media.content_type_id != listing_content_type.pk or media.object_id != listing.pk:
+        raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE)
+
+
+def _public_display_access_for_photo(*, listing, listing_photo):
+    _ensure_public_photo_association(listing=listing, listing_photo=listing_photo)
+    variant = _display_variant(listing_photo.media)
+    try:
+        url = get_private_media_storage().generate_signed_read_url(
+            key=variant.file_key,
+            expires_in=settings.MEDIA_SIGNED_URL_TTL_SECONDS,
+        )
+    except Exception as exc:
+        raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE) from exc
+    return {
+        "position": listing_photo.position,
+        "url": url,
+    }
+
+
+def get_public_listing_photo_display_access(*, listing, listing_photo):
+    public_listing = _public_listing_or_404(listing)
+    photo_id = getattr(listing_photo, "pk", listing_photo)
+    try:
+        photo = _public_listing_photo_queryset().get(pk=photo_id)
+    except (TypeError, ValueError, DjangoValidationError, ListingPhoto.DoesNotExist) as exc:
+        raise NotFound(PUBLIC_PHOTO_NOT_FOUND_MESSAGE) from exc
+    return _public_display_access_for_photo(listing=public_listing, listing_photo=photo)
+
+
+def get_public_listing_photo_display_accesses(*, listing):
+    public_listing = _public_listing_or_404(listing)
+    photos = getattr(listing, "public_photos", None)
+    if photos is None:
+        photos = _public_listing_photo_queryset().filter(listing=public_listing)
+
+    accesses = []
+    for photo in photos:
+        try:
+            accesses.append(_public_display_access_for_photo(listing=public_listing, listing_photo=photo))
+        except NotFound:
+            continue
+    return accesses
