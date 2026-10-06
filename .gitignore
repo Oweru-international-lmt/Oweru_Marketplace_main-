@@ -9,7 +9,8 @@ venv/
 .coverage
 htmlcov/
 staticfiles/
-media/
+/media/
+/backend/private_media/
 .archive_review/
 ~$*
 dump.rdb
