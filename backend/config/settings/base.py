@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.commissions.apps.CommissionsConfig",
     "apps.payments.apps.PaymentsConfig",
     "apps.properties.apps.PropertiesConfig",
+    "apps.verification.apps.VerificationConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
     "apps.audit.legacy_event_stream.apps.AuditConfig",
@@ -125,6 +126,8 @@ ACCOUNT_LOGIN_LOCKOUT_MINUTES = env_int("ACCOUNT_LOGIN_LOCKOUT_MINUTES", 15)
 ACCOUNT_EMAIL_VERIFICATION_MINUTES = env_int("ACCOUNT_EMAIL_VERIFICATION_MINUTES", 60)
 LISTER_IDENTITY_VALIDITY_MONTHS = env_int("LISTER_IDENTITY_VALIDITY_MONTHS", 12)
 LISTER_IDENTITY_EXPIRY_REMINDER_DAYS = env_int("LISTER_IDENTITY_EXPIRY_REMINDER_DAYS", 30)
+PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS", 12)
+PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS", 12)
 LEAD_LOST_REVIEW_MONTHS = env_int("LEAD_LOST_REVIEW_MONTHS", 6)
 PAYOUT_WORKING_DAYS = env_int("PAYOUT_WORKING_DAYS", 3)
 PAYOUT_HOLIDAYS = env_list("PAYOUT_HOLIDAYS")

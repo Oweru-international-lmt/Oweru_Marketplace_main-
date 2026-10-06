@@ -8,6 +8,10 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from apps.audit.services import create_audit_log
 from apps.localities.models import Locality
 from apps.localities.services import create_pending_locality
+from apps.verification.services import (
+    PROPERTY_VERIFICATION_MATERIAL_FIELDS,
+    invalidate_property_verifications_for_material_change,
+)
 
 from .audit_events import PROPERTY_CREATED, PROPERTY_UPDATED
 from .duplicate_services import detect_property_duplicates
@@ -296,6 +300,12 @@ def update_property_record(*, actor, property_record, request=None, **attrs):
     if changed_fields:
         locked.save(update_fields=[*values.keys(), "updated_at"])
         _audit_property_updated(actor=actor, property_record=locked, changed_fields=changed_fields, request=request)
+        invalidate_property_verifications_for_material_change(
+            property_record=locked,
+            changed_fields=changed_fields & PROPERTY_VERIFICATION_MATERIAL_FIELDS,
+            actor=actor,
+            request=request,
+        )
         if changed_fields & PROPERTY_DUPLICATE_RELEVANT_FIELDS:
             _run_duplicate_detection(locked, request=request)
     return locked

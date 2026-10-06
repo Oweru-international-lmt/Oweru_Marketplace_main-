@@ -26,8 +26,18 @@ WRITABLE_IDENTITY_FIELDS = frozenset({"national_id_number", "national_id_photo_r
 LISTER_IDENTITY_AUDIT_ENTITY = "ListerIdentity"
 PUBLIC_VERIFICATION_LEVEL_0 = 0
 PUBLIC_VERIFICATION_LEVEL_1 = 1
+PUBLIC_VERIFICATION_LEVEL_2 = 2
+PUBLIC_VERIFICATION_LEVEL_3 = 3
 PUBLIC_VERIFICATION_UNVERIFIED_LABEL = "Not verified"
 PUBLIC_VERIFICATION_IDENTITY_LABEL = "Identity verified"
+PUBLIC_VERIFICATION_PROPERTY_LABEL = "Property verified"
+PUBLIC_VERIFICATION_FIELD_LABEL = "Field verified"
+PUBLIC_VERIFICATION_LABELS = {
+    PUBLIC_VERIFICATION_LEVEL_0: PUBLIC_VERIFICATION_UNVERIFIED_LABEL,
+    PUBLIC_VERIFICATION_LEVEL_1: PUBLIC_VERIFICATION_IDENTITY_LABEL,
+    PUBLIC_VERIFICATION_LEVEL_2: PUBLIC_VERIFICATION_PROPERTY_LABEL,
+    PUBLIC_VERIFICATION_LEVEL_3: PUBLIC_VERIFICATION_FIELD_LABEL,
+}
 
 
 def _require_persisted_lister(user):
@@ -345,26 +355,22 @@ def is_lister_identity_verified(identity, *, at=None):
     )
 
 
-def get_public_verification_summary(*, user=None, identity=None, at=None):
-    persisted_identity = None
-    if isinstance(identity, ListerIdentity) and identity.pk:
-        persisted_identity = identity
-    elif user is not None and getattr(user, "pk", None):
-        try:
-            persisted_identity = ListerIdentity.objects.get(user_id=user.pk)
-        except ListerIdentity.DoesNotExist:
-            persisted_identity = None
+def get_public_verification_summary(*, user=None, identity=None, property_record=None, listing=None, at=None):
+    """Compatibility presentation wrapper over the canonical verification engine."""
+    if listing is not None and hasattr(listing, "effective_verification_level"):
+        level = listing.effective_verification_level
+    else:
+        from apps.verification.services import get_effective_verification_level
 
-    if is_lister_identity_verified(persisted_identity, at=at):
-        return {
-            "level": PUBLIC_VERIFICATION_LEVEL_1,
-            "label": PUBLIC_VERIFICATION_IDENTITY_LABEL,
-            "is_verified": True,
-        }
+        if user is None and isinstance(identity, ListerIdentity) and identity.pk:
+            user = identity.user
+        level = get_effective_verification_level(user=user, property_record=property_record, at=at)
+    if level not in PUBLIC_VERIFICATION_LABELS:
+        raise ValueError("Verification level must be canonical.")
     return {
-        "level": PUBLIC_VERIFICATION_LEVEL_0,
-        "label": PUBLIC_VERIFICATION_UNVERIFIED_LABEL,
-        "is_verified": False,
+        "level": level,
+        "label": PUBLIC_VERIFICATION_LABELS[level],
+        "is_verified": level > PUBLIC_VERIFICATION_LEVEL_0,
     }
 
 

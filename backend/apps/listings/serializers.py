@@ -101,7 +101,12 @@ class ListingPublicListerSerializer(serializers.Serializer):
             identity = obj.lister.lister_identity
         except ListerIdentity.DoesNotExist:
             identity = None
-        return get_public_verification_summary(user=obj.lister, identity=identity)
+        return get_public_verification_summary(
+            user=obj.lister,
+            identity=identity,
+            property_record=obj.property,
+            listing=obj,
+        )
 
 
 class ListingPublicPhotoSerializer(serializers.Serializer):

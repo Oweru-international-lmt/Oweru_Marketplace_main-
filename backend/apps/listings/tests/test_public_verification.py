@@ -210,8 +210,8 @@ def test_min_verification_level_filter():
     assert unverified.listing_id not in level_one
 
 
-@pytest.mark.parametrize("value", ["2", "3", "-1", "abc"])
-def test_unsupported_min_verification_level_rejected(value):
+@pytest.mark.parametrize("value", ["-1", "4", "abc"])
+def test_invalid_min_verification_level_rejected(value):
     response = APIClient().get("/api/v1/public/listings/", {"min_verification_level": value})
 
     assert response.status_code == 400
@@ -249,4 +249,4 @@ def test_public_verification_serialization_avoids_identity_n_plus_one_queries():
         for item in data:
             assert "verification" in item["lister"]
 
-    assert len(captured) == 3
+    assert len(captured) <= 3

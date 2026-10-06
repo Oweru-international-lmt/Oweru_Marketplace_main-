@@ -3,12 +3,11 @@ from decimal import Decimal
 from math import ceil
 
 from django.conf import settings
-from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
-from apps.lister_identity.models import ListerIdentity
 from apps.properties.models import PropertyRecord
+from apps.verification.services import filter_listing_queryset_by_minimum_effective_verification_level
 
 from . import services
 
@@ -40,7 +39,12 @@ class PublicListingSearchParamsSerializer(RejectUnknownSearchFieldsMixin, serial
     min_size = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0"), required=False)
     max_size = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0"), required=False)
     title_type = serializers.ChoiceField(choices=PropertyRecord.TitleType.choices, required=False)
-    min_verification_level = serializers.IntegerField(min_value=0, max_value=1, required=False)
+    min_verification_level = serializers.IntegerField(
+        min_value=0,
+        max_value=3,
+        required=False,
+        help_text="Minimum derived verification level: 0, 1, 2, or 3.",
+    )
     sort = serializers.ChoiceField(choices=PUBLIC_LISTING_SORT_CHOICES, default=SORT_NEWEST, required=False)
     page = serializers.IntegerField(min_value=1, required=False)
     page_size = serializers.IntegerField(min_value=1, required=False)
@@ -83,10 +87,13 @@ def apply_public_listing_filters(queryset, params):
         filters["property__stated_size__lte"] = params["max_size"]
     if "title_type" in params:
         filters["property__title_type"] = params["title_type"]
-    if params.get("min_verification_level") == 1:
-        filters["lister__lister_identity__status"] = ListerIdentity.Status.APPROVED
-        filters["lister__lister_identity__expires_at__gt"] = timezone.now()
-    return queryset.filter(**filters)
+    queryset = queryset.filter(**filters)
+    if "min_verification_level" in params:
+        return filter_listing_queryset_by_minimum_effective_verification_level(
+            queryset,
+            minimum_level=params["min_verification_level"],
+        )
+    return queryset
 
 
 def apply_public_listing_sorting(queryset, sort):

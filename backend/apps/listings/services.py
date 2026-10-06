@@ -16,6 +16,7 @@ from apps.properties.models import PropertyRecord
 
 from apps.lister_identity.models import ListerIdentity
 from apps.lister_identity.services import is_lister_identity_verified
+from apps.verification.services import annotate_listing_queryset_with_effective_verification_level
 
 from .lifecycle import (
     ActivationRequirement,
@@ -688,7 +689,7 @@ def _public_listing_photo_queryset():
 
 
 def get_public_listings():
-    return (
+    queryset = (
         Listing.objects.select_related(
             "property",
             "property__region",
@@ -702,6 +703,7 @@ def get_public_listings():
         .filter(status__in=PUBLIC_LISTING_STATUSES)
         .order_by("-created_at", "-id")
     )
+    return annotate_listing_queryset_with_effective_verification_level(queryset)
 
 
 def get_public_listing(*, listing_id):

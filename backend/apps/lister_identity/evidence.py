@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 NATIONAL_ID_NUMBER_MAX_LENGTH = 100
 EVIDENCE_REFERENCE_MAX_LENGTH = 500
-EVIDENCE_REFERENCE_FIELDS = frozenset({"national_id_photo_ref", "live_selfie_ref"})
+EVIDENCE_REFERENCE_FIELDS = frozenset({"national_id_photo_ref", "live_selfie_ref", "evidence_ref"})
 
 _BASE64_IMAGE_PREFIXES = ("/9j/", "ivborw0kggo", "r0lgod", "uklgr", "phn2zy")
 _BASE64_RE = re.compile(r"^[A-Za-z0-9+/]+={0,2}$")

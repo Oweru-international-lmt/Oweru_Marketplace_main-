@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from apps.listings.urls import management_urlpatterns as listing_management_urlpatterns
 from apps.properties.urls import management_duplicate_urlpatterns as property_duplicate_management_urlpatterns
 from apps.payments.urls import deal_urlpatterns, payout_urlpatterns, management_urlpatterns as finance_management_urlpatterns
+from apps.verification.urls import management_urlpatterns as verification_management_urlpatterns
 
 urlpatterns = [
     path("", include("apps.common.urls")),
@@ -13,6 +14,7 @@ urlpatterns = [
     path("users/", include("apps.accounts.profile_urls")),
     path("localities/", include("apps.localities.urls")),
     path("properties/", include("apps.properties.urls")),
+    path("verifications/", include("apps.verification.urls")),
     path("listings/", include("apps.listings.urls")),
     path("media/", include("apps.media.urls")),
     path("leads/", include("apps.leads.urls")),
@@ -25,6 +27,7 @@ urlpatterns = [
     path("public/listings/", include("apps.listings.public_urls")),
     path("listers/", include("apps.lister_identity.public_urls")),
     path("management/lister-identities/", include("apps.lister_identity.management_urls")),
+    path("management/verifications/", include((verification_management_urlpatterns, "management-verifications"))),
     path("management/listings/", include((listing_management_urlpatterns, "management-listings"))),
     path(
         "management/property-duplicates/",
