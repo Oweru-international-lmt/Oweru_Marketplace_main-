@@ -14,6 +14,7 @@ urlpatterns = [
     path("users/", include("apps.accounts.profile_urls")),
     path("localities/", include("apps.localities.urls")),
     path("properties/", include("apps.properties.urls")),
+    path("site-captures/", include("apps.site_capture.urls")),
     path("verifications/", include("apps.verification.urls")),
     path("listings/", include("apps.listings.urls")),
     path("media/", include("apps.media.urls")),

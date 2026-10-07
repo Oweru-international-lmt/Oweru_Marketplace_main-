@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.commissions.apps.CommissionsConfig",
     "apps.payments.apps.PaymentsConfig",
     "apps.properties.apps.PropertiesConfig",
+    "apps.site_capture.apps.SiteCaptureConfig",
     "apps.verification.apps.VerificationConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",

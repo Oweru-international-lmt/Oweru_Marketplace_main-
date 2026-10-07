@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from math import isfinite
 
 from django.contrib.gis.geos import GEOSException, Point, Polygon
 from drf_spectacular.types import OpenApiTypes
@@ -33,6 +34,8 @@ def _validate_coordinate_pair(value):
         latitude = float(value[1])
     except (TypeError, ValueError) as exc:
         raise serializers.ValidationError("Coordinates must be numeric.") from exc
+    if not isfinite(longitude) or not isfinite(latitude):
+        raise serializers.ValidationError("Coordinates must be finite.")
     if not -180 <= longitude <= 180:
         raise serializers.ValidationError("Longitude must be between -180 and 180.")
     if not -90 <= latitude <= 90:

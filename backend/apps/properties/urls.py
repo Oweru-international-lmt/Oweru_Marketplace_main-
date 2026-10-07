@@ -8,9 +8,11 @@ from .views import (
     PropertyRecordCollectionView,
     PropertyRecordDetailView,
 )
+from apps.site_capture.urls import property_urlpatterns as site_capture_property_urlpatterns
 
 
 urlpatterns = [
+    *site_capture_property_urlpatterns,
     path("", PropertyRecordCollectionView.as_view(), name="property-record-list"),
     path("<str:property_id>/", PropertyRecordDetailView.as_view(), name="property-record-detail"),
 ]
