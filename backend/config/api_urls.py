@@ -12,6 +12,7 @@ urlpatterns = [
     path("auth/", include("apps.accounts.urls")),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("users/", include("apps.accounts.profile_urls")),
+    path("local-official/", include("apps.local_officials.urls")),
     path("localities/", include("apps.localities.urls")),
     path("properties/", include("apps.properties.urls")),
     path("site-captures/", include("apps.site_capture.urls")),
@@ -28,6 +29,7 @@ urlpatterns = [
     path("public/listings/", include("apps.listings.public_urls")),
     path("listers/", include("apps.lister_identity.public_urls")),
     path("management/lister-identities/", include("apps.lister_identity.management_urls")),
+    path("management/local-officials/", include("apps.local_officials.management_urls")),
     path("management/verifications/", include((verification_management_urlpatterns, "management-verifications"))),
     path("management/listings/", include((listing_management_urlpatterns, "management-listings"))),
     path(

@@ -10,9 +10,10 @@ from apps.audit.services import create_audit_log
 from apps.lister_identity.evidence import normalize_evidence_reference
 from apps.lister_identity.models import ListerIdentity
 from apps.lister_identity.services import add_calendar_months
+from apps.local_officials.policies import can_review_field_verification
 from apps.properties.models import PropertyRecord
 from apps.properties.policies import can_update_property_record, get_active_persisted_actor
-from apps.roles.catalog import ROLE_LOCAL_OFFICIAL, ROLE_VERIFIER
+from apps.roles.catalog import ROLE_VERIFIER
 from apps.roles.services import user_has_role
 
 from .audit_events import (
@@ -119,10 +120,10 @@ def _require_field_submitter(actor, property_record):
     return actor
 
 
-def _require_local_official(actor):
+def _require_field_reviewer(actor, field):
     actor = _active_persisted_actor(actor)
-    if not user_has_role(actor, ROLE_LOCAL_OFFICIAL):
-        raise PermissionDenied("An active Local Official role is required.")
+    if not can_review_field_verification(actor, field):
+        raise PermissionDenied("You do not have access to review this field verification.")
     return actor
 
 
@@ -454,8 +455,8 @@ def approve_document_verification(*, verification, reviewer, request=None):
 
 @transaction.atomic
 def approve_field_verification(*, verification, reviewer, request=None):
-    reviewer = _require_local_official(reviewer)
     field = _field_verification_for_update(verification)
+    reviewer = _require_field_reviewer(reviewer, field)
     if field.status != PropertyVerification.Status.PENDING:
         raise ValidationError("Only pending field verification can be approved.")
     if field.submitted_by_id == reviewer.pk:
@@ -522,8 +523,8 @@ def reject_document_verification(*, verification, reviewer, reason, request=None
 
 @transaction.atomic
 def reject_field_verification(*, verification, reviewer, reason, request=None):
-    reviewer = _require_local_official(reviewer)
     field = _field_verification_for_update(verification)
+    reviewer = _require_field_reviewer(reviewer, field)
     if field.status != PropertyVerification.Status.PENDING:
         raise ValidationError("Only pending field verification can be rejected.")
     if field.submitted_by_id == reviewer.pk:
@@ -572,8 +573,8 @@ def revoke_document_verification(*, verification, reviewer, request=None):
 
 @transaction.atomic
 def revoke_field_verification(*, verification, reviewer, request=None):
-    reviewer = _require_local_official(reviewer)
     field = _field_verification_for_update(verification)
+    reviewer = _require_field_reviewer(reviewer, field)
     if field.status != PropertyVerification.Status.APPROVED:
         raise ValidationError("Only approved field verification can be revoked.")
 

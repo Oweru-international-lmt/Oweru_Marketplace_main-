@@ -1,11 +1,13 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.local_officials.policies import can_access_field_review_queue, can_review_field_verification
+from apps.local_officials.queries import get_local_official_field_queue
 from apps.properties.services import get_property_record
-from apps.roles.permissions import IsLocalOfficial, IsVerifier
+from apps.roles.permissions import IsVerifier
 
 from .models import PropertyVerification
 from .pagination import VerificationReviewPagination
@@ -13,6 +15,7 @@ from .serializers import (
     DocumentVerificationSubmissionSerializer,
     EmptyVerificationActionSerializer,
     FieldVerificationSubmissionSerializer,
+    LocalOfficialFieldVerificationSerializer,
     PropertyVerificationPrivateSerializer,
     PropertyVerificationReviewSerializer,
     PropertyVerificationStatusSerializer,
@@ -182,20 +185,39 @@ class DocumentVerificationRevokeView(DocumentVerificationReviewDetailView):
         return Response(self.get_serializer(verification).data)
 
 
-class FieldVerificationReviewQueueView(VerificationReviewQueueView):
-    permission_classes = [IsAuthenticated, IsLocalOfficial]
+class LocalOfficialFieldVerificationReviewQueueView(VerificationReviewQueueView):
+    serializer_class = LocalOfficialFieldVerificationSerializer
     verification_kind = PropertyVerification.Kind.FIELD
 
+    def get_queryset(self):
+        return get_local_official_field_queue(user=self.request.user)
 
-class FieldVerificationReviewDetailView(VerificationReviewDetailView):
-    permission_classes = [IsAuthenticated, IsLocalOfficial]
+    @extend_schema(responses={200: LocalOfficialFieldVerificationSerializer(many=True)})
+    def get(self, request, *args, **kwargs):
+        if not can_access_field_review_queue(request.user):
+            raise PermissionDenied("You do not have access to field verification review.")
+        return super().get(request, *args, **kwargs)
+
+
+class LocalOfficialFieldVerificationReviewDetailView(VerificationReviewDetailView):
+    serializer_class = LocalOfficialFieldVerificationSerializer
     verification_kind = PropertyVerification.Kind.FIELD
 
+    def get_verification(self, verification_id):
+        verification = super().get_verification(verification_id)
+        if not can_review_field_verification(self.request.user, verification):
+            raise PermissionDenied("You do not have access to this field verification.")
+        return verification
 
-class FieldVerificationApproveView(FieldVerificationReviewDetailView):
+    @extend_schema(responses={200: LocalOfficialFieldVerificationSerializer})
+    def get(self, request, verification_id, *args, **kwargs):
+        return super().get(request, verification_id, *args, **kwargs)
+
+
+class LocalOfficialFieldVerificationApproveView(LocalOfficialFieldVerificationReviewDetailView):
     http_method_names = ["post", "options"]
 
-    @extend_schema(request=EmptyVerificationActionSerializer, responses={200: PropertyVerificationReviewSerializer})
+    @extend_schema(request=EmptyVerificationActionSerializer, responses={200: LocalOfficialFieldVerificationSerializer})
     def post(self, request, verification_id, *args, **kwargs):
         serializer = EmptyVerificationActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -207,10 +229,10 @@ class FieldVerificationApproveView(FieldVerificationReviewDetailView):
         return Response(self.get_serializer(verification).data)
 
 
-class FieldVerificationRejectView(FieldVerificationReviewDetailView):
+class LocalOfficialFieldVerificationRejectView(LocalOfficialFieldVerificationReviewDetailView):
     http_method_names = ["post", "options"]
 
-    @extend_schema(request=VerificationRejectSerializer, responses={200: PropertyVerificationReviewSerializer})
+    @extend_schema(request=VerificationRejectSerializer, responses={200: LocalOfficialFieldVerificationSerializer})
     def post(self, request, verification_id, *args, **kwargs):
         serializer = VerificationRejectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -221,6 +243,46 @@ class FieldVerificationRejectView(FieldVerificationReviewDetailView):
             request=request,
         )
         return Response(self.get_serializer(verification).data)
+
+
+class FieldVerificationReviewQueueView(LocalOfficialFieldVerificationReviewQueueView):
+    """Legacy management route using the canonical scoped FIELD queue."""
+
+    serializer_class = PropertyVerificationReviewSerializer
+
+    @extend_schema(responses={200: PropertyVerificationReviewSerializer(many=True)})
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class FieldVerificationReviewDetailView(LocalOfficialFieldVerificationReviewDetailView):
+    """Legacy management route using canonical object authorization."""
+
+    serializer_class = PropertyVerificationReviewSerializer
+
+    @extend_schema(responses={200: PropertyVerificationReviewSerializer})
+    def get(self, request, verification_id, *args, **kwargs):
+        return super().get(request, verification_id, *args, **kwargs)
+
+
+class FieldVerificationApproveView(LocalOfficialFieldVerificationApproveView):
+    """Legacy management route delegating to the canonical approval view."""
+
+    serializer_class = PropertyVerificationReviewSerializer
+
+    @extend_schema(request=EmptyVerificationActionSerializer, responses={200: PropertyVerificationReviewSerializer})
+    def post(self, request, verification_id, *args, **kwargs):
+        return super().post(request, verification_id, *args, **kwargs)
+
+
+class FieldVerificationRejectView(LocalOfficialFieldVerificationRejectView):
+    """Legacy management route delegating to the canonical rejection view."""
+
+    serializer_class = PropertyVerificationReviewSerializer
+
+    @extend_schema(request=VerificationRejectSerializer, responses={200: PropertyVerificationReviewSerializer})
+    def post(self, request, verification_id, *args, **kwargs):
+        return super().post(request, verification_id, *args, **kwargs)
 
 
 class FieldVerificationRevokeView(FieldVerificationReviewDetailView):

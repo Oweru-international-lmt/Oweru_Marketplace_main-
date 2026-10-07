@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.common.apps.CommonConfig",
     "apps.localities.apps.LocalitiesConfig",
     "apps.lister_identity.apps.ListerIdentityConfig",
+    "apps.local_officials.apps.LocalOfficialsConfig",
     "apps.listings.apps.ListingsConfig",
     "apps.media.apps.MediaConfig",
     "apps.leads.apps.LeadsConfig",

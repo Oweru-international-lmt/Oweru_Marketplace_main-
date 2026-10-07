@@ -71,3 +71,30 @@ class PropertyVerificationReviewSerializer(PropertyVerificationPrivateSerializer
     class Meta(PropertyVerificationPrivateSerializer.Meta):
         fields = ("id", "property_id", "kind", "status", "submitted_at", "reviewed_at", "expires_at")
         read_only_fields = fields
+
+
+class LocalOfficialJurisdictionSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(read_only=True)
+
+
+class LocalOfficialFieldVerificationSerializer(serializers.ModelSerializer):
+    verification_id = serializers.UUIDField(source="id", read_only=True)
+    property_id = serializers.CharField(source="property.property_id", read_only=True)
+    region = LocalOfficialJurisdictionSerializer(source="property.region", read_only=True)
+    district = LocalOfficialJurisdictionSerializer(source="property.district", read_only=True)
+    ward = LocalOfficialJurisdictionSerializer(source="property.ward", read_only=True)
+
+    class Meta:
+        model = PropertyVerification
+        fields = (
+            "verification_id",
+            "kind",
+            "status",
+            "submitted_at",
+            "property_id",
+            "region",
+            "district",
+            "ward",
+        )
+        read_only_fields = fields

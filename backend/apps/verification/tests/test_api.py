@@ -1,7 +1,12 @@
 import pytest
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.audit.models import AuditLog
+from apps.local_officials.models import OfficialJurisdictionAssignment
+from apps.local_officials.services import assign_jurisdiction, create_local_official_profile
+from apps.localities.models import Region
 from apps.roles.catalog import ROLE_LOCAL_OFFICIAL, ROLE_MANAGEMENT, ROLE_OWNER, ROLE_VERIFIER
 from apps.verification.models import PropertyVerification
 
@@ -297,6 +302,21 @@ def test_multiple_persisted_roles_grant_only_their_matching_review_surfaces():
     reviewer = create_user()
     grant_role(reviewer, ROLE_VERIFIER)
     grant_role(reviewer, ROLE_LOCAL_OFFICIAL)
+    manager = create_user()
+    grant_role(manager, ROLE_MANAGEMENT)
+    profile = create_local_official_profile(
+        actor=manager,
+        user=reviewer,
+        official_number=f"LO-{reviewer.pk.hex[:12].upper()}",
+    )
+    region = Region.objects.create(name=f"Review Region {reviewer.pk.hex[:8]}")
+    assign_jurisdiction(
+        actor=manager,
+        official=profile,
+        scope_type=OfficialJurisdictionAssignment.ScopeType.REGION,
+        region=region,
+        starts_at=timezone.now() - timedelta(minutes=1),
+    )
 
     assert api_client(reviewer).get("/api/v1/management/verifications/documents/").status_code == 200
     assert api_client(reviewer).get("/api/v1/management/verifications/field/").status_code == 200

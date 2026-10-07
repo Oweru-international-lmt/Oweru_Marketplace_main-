@@ -6,6 +6,9 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.audit.models import AuditLog
+from apps.local_officials.models import OfficialJurisdictionAssignment
+from apps.local_officials.services import assign_jurisdiction, create_local_official_profile
+from apps.localities.models import Region
 from apps.roles.catalog import ROLE_LOCAL_OFFICIAL, ROLE_MANAGEMENT, ROLE_VERIFIER
 from apps.verification.audit_events import (
     VERIFICATION_FIELD_APPROVED,
@@ -46,6 +49,22 @@ def field_evidence(reference=PRIVATE_FIELD_EVIDENCE):
 def local_official(*, active=True):
     user = create_user()
     grant_role(user, ROLE_LOCAL_OFFICIAL, active=active)
+    if active:
+        manager = create_user()
+        grant_role(manager, ROLE_MANAGEMENT)
+        profile = create_local_official_profile(
+            actor=manager,
+            user=user,
+            official_number=f"LO-{user.pk.hex[:12].upper()}",
+        )
+        for region in Region.objects.all():
+            assign_jurisdiction(
+                actor=manager,
+                official=profile,
+                scope_type=OfficialJurisdictionAssignment.ScopeType.REGION,
+                region=region,
+                starts_at=timezone.now() - timedelta(minutes=1),
+            )
     return user
 
 
