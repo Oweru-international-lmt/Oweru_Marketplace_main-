@@ -1,4 +1,5 @@
 from django.urls import path
+from .full_check_api import LocalityCoverageView, RevokeLocalityView
 
 from .views import (
     ManagementLocalOfficialJurisdictionCollectionView,
@@ -9,6 +10,8 @@ from .views import (
 
 
 urlpatterns = [
+    path("<str:official_id>/localities/", LocalityCoverageView.as_view()),
+    path("<str:official_id>/localities/<uuid:coverage_id>/revoke/", RevokeLocalityView.as_view()),
     path("", ManagementLocalOfficialProfileCollectionView.as_view(), name="management-local-official-list"),
     path("<str:official_id>/", ManagementLocalOfficialProfileDetailView.as_view(), name="management-local-official-detail"),
     path(

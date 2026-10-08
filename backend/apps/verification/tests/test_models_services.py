@@ -162,7 +162,7 @@ def test_field_requires_effective_document_and_invalid_field_falls_back_to_level
 
     create_verification(property_record, kind=PropertyVerification.Kind.DOCUMENT)
 
-    assert get_effective_verification_level(user=user, property_record=property_record) == 3
+    assert get_effective_verification_level(user=user, property_record=property_record) == 2
 
     property_record.verifications.filter(kind=PropertyVerification.Kind.FIELD).update(
         status=PropertyVerification.Status.REVOKED,
@@ -188,7 +188,7 @@ def test_expiry_collapses_the_ladder_to_the_last_effective_level():
         expires_at=now + timedelta(days=1),
     )
 
-    assert get_effective_verification_level(user=user, property_record=property_record, at=now) == 3
+    assert get_effective_verification_level(user=user, property_record=property_record, at=now) == 2
 
     field.expires_at = now - timedelta(seconds=1)
     field.save(update_fields=["expires_at", "updated_at"])

@@ -44,7 +44,7 @@ def test_property_geography_update_invalidates_m14_and_recalculates_m16_review_s
     owner, property_record, _, field = submitted_field()
     ward_a_official, _, _, _ = official_with_assignment(property_record)
     approve_field_verification(verification=field, reviewer=ward_a_official)
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
     region_b, district_b, ward_b, locality_b = locality_tree("m16-cross-domain")
     ward_b_official, manager_b, profile_b, _ = official_with_assignment()
@@ -90,4 +90,4 @@ def test_property_geography_update_invalidates_m14_and_recalculates_m16_review_s
     assert get_local_official_field_queue(user=ward_b_official).filter(pk=replacement.pk).exists()
 
     approve_field_verification(verification=replacement, reviewer=ward_b_official)
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2

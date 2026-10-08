@@ -104,7 +104,7 @@ def create_capture(owner, property_record_instance, *, boundary=None, submitted=
         property_record=property_record_instance,
         actor=owner,
         observed_point=Point(39.25, -6.79, srid=4326),
-        observed_boundary=boundary,
+        observed_boundary=boundary if boundary is not None else Polygon(((39.25, -6.79), (39.251, -6.79), (39.251, -6.789), (39.25, -6.79)), srid=4326),
     )
     return submit_site_capture(site_capture=capture, actor=owner) if submitted else capture
 

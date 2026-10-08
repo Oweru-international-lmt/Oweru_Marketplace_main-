@@ -477,6 +477,8 @@ def _listing_photo_audit_state(listing_photo):
 
 
 def _audit_listing_photo_added(*, actor, listing_photo, request=None):
+    from apps.verification.deadlines import invalidate_full_checks
+    invalidate_full_checks(property_record=listing_photo.listing.property, actor=actor, reason="Listing photos changed", request=request)
     create_audit_log(
         actor=actor,
         action=LISTING_PHOTO_ADDED,
@@ -492,6 +494,8 @@ def _audit_listing_photo_added(*, actor, listing_photo, request=None):
 
 
 def _audit_listing_photo_removed(*, actor, listing, listing_photo_state, photo_count, request=None):
+    from apps.verification.deadlines import invalidate_full_checks
+    invalidate_full_checks(property_record=listing.property, actor=actor, reason="Listing photos changed", request=request)
     create_audit_log(
         actor=actor,
         action=LISTING_PHOTO_REMOVED,

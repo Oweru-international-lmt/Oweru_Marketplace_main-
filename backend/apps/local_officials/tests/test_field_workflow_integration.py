@@ -50,7 +50,7 @@ def test_level_two_submission_requires_no_local_official_and_covered_officials_s
     field.refresh_from_db()
     assert field.status == PropertyVerification.Status.APPROVED
     assert field.reviewed_by_id == ward_official.pk
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     assert AuditLog.objects.filter(
         action=VERIFICATION_FIELD_APPROVED,
         entity_id=str(field.pk),
@@ -103,7 +103,7 @@ def test_authority_loss_after_approval_does_not_rewrite_history_or_level_three()
     field.refresh_from_db()
     assert field.status == PropertyVerification.Status.APPROVED
     assert field.reviewed_by_id == reviewer.pk
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     assert api_client(reviewer).get(canonical_field_url(field)).status_code == 403
 
 
@@ -119,7 +119,7 @@ def test_expired_assignment_denies_future_review_without_expiring_existing_field
 
     field.refresh_from_db()
     assert field.status == PropertyVerification.Status.APPROVED
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     assert api_client(reviewer).get(canonical_field_url(field)).status_code == 403
 
     field.expires_at = timezone.now() - timedelta(seconds=1)

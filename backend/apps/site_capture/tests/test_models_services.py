@@ -291,7 +291,7 @@ def test_submit_transitions_draft_once_and_preserves_observations():
 
 def test_submitted_capture_is_immutable_through_services():
     owner, property_record = make_owner_and_property("Immutable")
-    capture = submit_site_capture(site_capture=create_capture(owner, property_record), actor=owner)
+    capture = submit_site_capture(site_capture=create_capture(owner, property_record, observed_boundary=observed_boundary()), actor=owner)
 
     with pytest.raises(ValidationError):
         update_site_capture(site_capture=capture, actor=owner, observed_point=Point(39.24, -6.77, srid=4326))
@@ -307,7 +307,7 @@ def test_capture_services_do_not_call_property_duplicate_detection(monkeypatch):
         calls.append((args, kwargs))
 
     monkeypatch.setattr("apps.properties.services._run_duplicate_detection", record_call)
-    capture = create_capture(owner, property_record)
+    capture = create_capture(owner, property_record, observed_boundary=observed_boundary())
     update_site_capture(site_capture=capture, actor=owner, observed_point=Point(39.23, -6.79, srid=4326))
     submit_site_capture(site_capture=capture, actor=owner)
 

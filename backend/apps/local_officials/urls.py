@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.verification.task_api import TaskCollectionView
 
 from apps.verification.views import (
     LocalOfficialFieldVerificationApproveView,
@@ -11,6 +12,7 @@ from .views import LocalOfficialSelfJurisdictionView, LocalOfficialSelfProfileVi
 
 
 urlpatterns = [
+    path("full-check-tasks/", TaskCollectionView.as_view()),
     path("me/", LocalOfficialSelfProfileView.as_view(), name="local-official-self"),
     path(
         "me/jurisdictions/",

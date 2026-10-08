@@ -1,4 +1,5 @@
 from django.urls import path
+from .full_check_api import CaptureAssetView
 
 from .views import (
     PropertySiteCaptureCollectionView,
@@ -7,6 +8,7 @@ from .views import (
     SiteCaptureMediaDetailView,
     SiteCapturePromoteView,
     SiteCaptureSubmitView,
+    SiteCaptureCornerView,
 )
 
 
@@ -15,6 +17,8 @@ property_urlpatterns = [
 ]
 
 urlpatterns = [
+    path("<str:capture_id>/assets/", CaptureAssetView.as_view(), name="site-capture-asset"),
+    path("<str:capture_id>/corners/", SiteCaptureCornerView.as_view(), name="site-capture-corner"),
     path("<str:capture_id>/", SiteCaptureDetailView.as_view(), name="site-capture-detail"),
     path("<str:capture_id>/submit/", SiteCaptureSubmitView.as_view(), name="site-capture-submit"),
     path("<str:capture_id>/promote/", SiteCapturePromoteView.as_view(), name="site-capture-promote"),

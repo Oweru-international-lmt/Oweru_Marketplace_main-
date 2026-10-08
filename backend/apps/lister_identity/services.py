@@ -31,7 +31,7 @@ PUBLIC_VERIFICATION_LEVEL_3 = 3
 PUBLIC_VERIFICATION_UNVERIFIED_LABEL = "Not verified"
 PUBLIC_VERIFICATION_IDENTITY_LABEL = "Identity verified"
 PUBLIC_VERIFICATION_PROPERTY_LABEL = "Property verified"
-PUBLIC_VERIFICATION_FIELD_LABEL = "Field verified"
+PUBLIC_VERIFICATION_FIELD_LABEL = "Oweru Verified"
 PUBLIC_VERIFICATION_LABELS = {
     PUBLIC_VERIFICATION_LEVEL_0: PUBLIC_VERIFICATION_UNVERIFIED_LABEL,
     PUBLIC_VERIFICATION_LEVEL_1: PUBLIC_VERIFICATION_IDENTITY_LABEL,
@@ -367,11 +367,17 @@ def get_public_verification_summary(*, user=None, identity=None, property_record
         level = get_effective_verification_level(user=user, property_record=property_record, at=at)
     if level not in PUBLIC_VERIFICATION_LABELS:
         raise ValueError("Verification level must be canonical.")
-    return {
-        "level": level,
-        "label": PUBLIC_VERIFICATION_LABELS[level],
-        "is_verified": level > PUBLIC_VERIFICATION_LEVEL_0,
-    }
+    summary = {"level": level, "label": PUBLIC_VERIFICATION_LABELS[level], "is_verified": level > PUBLIC_VERIFICATION_LEVEL_0}
+    if level == 3 and property_record is not None:
+        from apps.verification.services import effective_full_checks
+        check = effective_full_checks(at=at).filter(property=property_record).select_related("result").order_by("-completed_at").first()
+        if check:
+            summary["completed_at"] = check.completed_at
+            summary["expires_at"] = check.expires_at
+            summary["checks"] = [{"name": "Full check", "result": "PASSED", "date": check.completed_at, "expires_at": check.expires_at, "staff_reference": str(check.verifier_id), "not_checked": check.result.not_checked, "partners": [{"name": item["author_name"], "role": item["author_role"]} for item in check.result.evidence_basis if item["author_role"] in {"professional", "local_official"}]}]
+            if property_record.title_type != "REGISTERED_TITLE":
+                summary["title_warning"] = "No registered title. Local office records give less protection than a title."
+    return summary
 
 
 def get_public_lister_roles(user):

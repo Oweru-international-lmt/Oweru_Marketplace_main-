@@ -138,7 +138,7 @@ def test_material_change_revokes_approved_document_and_preserves_evidence_histor
 def test_material_change_revokes_approved_document_and_field_and_collapses_to_level_one():
     owner, property_record, document, pending_field = submitted_field()
     field = approve_field_verification(verification=pending_field, reviewer=local_official())
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
     update_property_record(actor=owner, property_record=property_record, title_type=PropertyRecord.TitleType.SALE_AGREEMENT)
 

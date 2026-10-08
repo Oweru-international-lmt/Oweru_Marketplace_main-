@@ -190,7 +190,11 @@ def settings_confirmation_link(row, urlencode):
     from django.conf import settings
     if not settings.OWNER_CONFIRMATION_URL:
         raise ValidationError("OWNER_CONFIRMATION_URL must be configured before external delivery.")
-    return settings.OWNER_CONFIRMATION_URL + ("&" if "?" in settings.OWNER_CONFIRMATION_URL else "?") + urlencode({"delivery": str(row.pk), "token": row.delivery_token})
+    values = {"delivery": str(row.pk), "token": row.delivery_token}
+    if row.purpose == "FULL_CHECK_CONSENT":
+        values["purpose"] = row.purpose
+        values["decision_path"] = f"/api/v1/full-checks/consent/{row.pk}/"
+    return settings.OWNER_CONFIRMATION_URL + ("&" if "?" in settings.OWNER_CONFIRMATION_URL else "?") + urlencode(values)
 
 
 class SentView(APIView):

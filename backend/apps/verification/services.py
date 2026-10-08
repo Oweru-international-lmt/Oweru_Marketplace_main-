@@ -221,6 +221,9 @@ def invalidate_property_verifications_for_material_change(*, property_record, ch
     if not material_changes:
         return []
 
+    from .deadlines import invalidate_full_checks
+    invalidate_full_checks(property_record=property_record, actor=actor, reason="Property changed: " + ", ".join(material_changes), request=request)
+
     affected = list(
         PropertyVerification.objects.select_for_update(of=("self",))
         .select_related("property")
@@ -278,6 +281,17 @@ def get_effective_property_verifications(*, kind, at=None):
     )
 
 
+def effective_full_checks(*, at=None):
+    """Single authoritative qualifying ownership-result query."""
+    from .models import VerificationJob
+    adverse_properties = VerificationJob.objects.filter(status="PROBLEM_FOUND", invalidated_at__isnull=True).values("property_id")
+    return VerificationJob.objects.filter(
+        status="PASSED", result__result="PASSED", reports__isnull=False,
+        consent__decision="CONFIRM", payment_receipt__isnull=False,
+        invalidated_at__isnull=True, expires_at__gt=_current_time(at),
+    ).exclude(property_id__in=adverse_properties)
+
+
 def filter_queryset_with_effective_property_verification(queryset, *, kind, at=None):
     effective = get_effective_property_verifications(kind=kind, at=at).filter(property_id=OuterRef("pk"))
     return queryset.annotate(_has_effective_verification=Exists(effective)).filter(_has_effective_verification=True)
@@ -286,6 +300,7 @@ def filter_queryset_with_effective_property_verification(queryset, *, kind, at=N
 def annotate_listing_queryset_with_effective_verification_level(queryset, *, at=None):
     """Annotate Listing querysets using the same persisted ladder as the evaluator."""
     now = _current_time(at)
+    effective_full = effective_full_checks(at=now).filter(property_id=OuterRef("property_id"))
     effective_identity = ListerIdentity.objects.filter(
         user_id=OuterRef("lister_id"),
         status=ListerIdentity.Status.APPROVED,
@@ -302,16 +317,18 @@ def annotate_listing_queryset_with_effective_verification_level(queryset, *, at=
     ).filter(property_id=OuterRef("property_id"))
 
     return queryset.annotate(
+        _has_effective_full=Exists(effective_full),
         _has_effective_identity=Exists(effective_identity),
         _has_effective_document=Exists(effective_document),
         _has_effective_field=Exists(effective_field),
     ).annotate(
         effective_verification_level=Case(
+            When(_has_effective_full=True, then=Value(3)),
             When(
                 _has_effective_identity=True,
                 _has_effective_document=True,
                 _has_effective_field=True,
-                then=Value(3),
+                then=Value(2),
             ),
             When(_has_effective_identity=True, _has_effective_document=True, then=Value(2)),
             When(_has_effective_identity=True, then=Value(1)),
@@ -362,6 +379,8 @@ def submit_document_verification(*, property_record, submitted_by, evidence, req
             evidence_type=item["evidence_type"],
             evidence_ref=item["evidence_ref"],
             created_by=submitter,
+            author_role="lister",
+            device=(request.META.get("HTTP_USER_AGENT", "")[:255] if request else "service"),
         )
         for item in evidence_items
     ])
@@ -406,6 +425,8 @@ def submit_field_verification(*, property_record, submitted_by, evidence, reques
             evidence_type=item["evidence_type"],
             evidence_ref=item["evidence_ref"],
             created_by=submitter,
+            author_role="lister",
+            device=(request.META.get("HTTP_USER_AGENT", "")[:255] if request else "service"),
         )
         for item in evidence_items
     ])
@@ -652,6 +673,9 @@ def expire_property_verifications(*, at=None):
 
 def get_effective_verification_level(*, user, property_record=None, at=None):
     now = _current_time(at)
+    if property_record is not None:
+        if effective_full_checks(at=now).filter(property=property_record).exists():
+            return 3
     if not has_effective_lister_identity(user=user, at=now):
         return 0
     if property_record is None:
@@ -668,4 +692,4 @@ def get_effective_verification_level(*, user, property_record=None, at=None):
         kind=PropertyVerification.Kind.FIELD,
         at=now,
     ).filter(property=property_record)
-    return 3 if field_verifications.exists() else 2
+    return 2

@@ -76,7 +76,7 @@ def owner_property_capture(prefix="Promotion", *, boundary=None, submitted=True)
         property_record=property_record_instance,
         actor=owner,
         observed_point=Point(39.25, -6.79, srid=4326),
-        observed_boundary=boundary,
+        observed_boundary=boundary if boundary is not None else (observed_boundary() if submitted else None),
     )
     if submitted:
         site_capture = submit_site_capture(site_capture=site_capture, actor=owner)
@@ -145,8 +145,9 @@ def test_promotion_selection_and_lifecycle_validation():
         promote_site_capture(site_capture=submitted, actor=submitted_owner, unexpected=True)
     with pytest.raises(ValidationError):
         promote_site_capture(site_capture=submitted, actor=submitted_owner, promote_point=True, promote_boundary="yes")
-    with pytest.raises(ValidationError):
-        promote_site_capture(site_capture=submitted, actor=submitted_owner, promote_point=False, promote_boundary=True)
+    # Boundary is now mandatory at submission, so a boundary-only promotion is valid.
+    promoted = promote_site_capture(site_capture=submitted, actor=submitted_owner, promote_point=False, promote_boundary=True)
+    assert promoted.boundary.equals_exact(submitted.observed_boundary, tolerance=0)
 
 
 def test_promotion_authorization_uses_canonical_property_policy_only():

@@ -64,7 +64,8 @@ def test_public_summary_uses_the_canonical_level_zero_to_three_ladder():
     assert public_summary(level_zero) == {"level": 0, "label": "Not verified", "is_verified": False}
     assert public_summary(level_one) == {"level": 1, "label": "Identity verified", "is_verified": True}
     assert public_summary(level_two) == {"level": 2, "label": "Property verified", "is_verified": True}
-    assert public_summary(level_three) == {"level": 3, "label": "Field verified", "is_verified": True}
+    # Historic FIELD approval is evidence, not a completed Full Check.
+    assert public_summary(level_three) == {"level": 2, "label": "Property verified", "is_verified": True}
 
 
 def test_public_summary_cascades_when_persisted_prerequisites_stop_being_effective():
@@ -112,7 +113,7 @@ def test_public_search_minimum_level_uses_the_same_ladder_and_keeps_hidden_listi
     assert {level_one.listing_id, level_two.listing_id, level_three.listing_id}.issubset(result_ids(1))
     assert {level_two.listing_id, level_three.listing_id}.issubset(result_ids(2))
     assert level_one.listing_id not in result_ids(2)
-    assert level_three.listing_id in result_ids(3)
+    assert level_three.listing_id not in result_ids(3)
     assert level_two.listing_id not in result_ids(3)
     assert hidden_level_three.listing_id not in result_ids(0)
     assert hidden_level_three.listing_id not in result_ids(3)
@@ -125,7 +126,7 @@ def test_public_level_serialization_uses_annotated_data_without_per_listing_veri
     with CaptureQueriesContext(connection) as captured:
         payload = ListingPublicSerializer(list(get_public_listing_search_queryset()), many=True).data
 
-    assert {item["lister"]["verification"]["level"] for item in payload} == {0, 1, 2, 3}
+    assert {item["lister"]["verification"]["level"] for item in payload} == {0, 1, 2}
     assert len(captured) <= 3
     rendered = repr(payload).lower()
     for forbidden in ("evidence_ref", "reviewed_by", "rejection_reason", "expires_at", "subject_snapshot"):

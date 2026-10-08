@@ -6,8 +6,15 @@ from apps.listings.urls import management_urlpatterns as listing_management_urlp
 from apps.properties.urls import management_duplicate_urlpatterns as property_duplicate_management_urlpatterns
 from apps.payments.urls import deal_urlpatterns, payout_urlpatterns, management_urlpatterns as finance_management_urlpatterns
 from apps.verification.urls import management_urlpatterns as verification_management_urlpatterns
+from apps.professionals.urls import management_urlpatterns as professional_management_urlpatterns
+from apps.verification.full_check_api import VerificationSettingView, NotificationView
+from apps.site_capture.full_check_api import PublicMapLayerView
+from apps.verification.outbox import VerificationOutboxView, VerificationNoticeSentView
 
 urlpatterns = [
+    path("management/verification-outbox/", VerificationOutboxView.as_view()),
+    path("management/verification-outbox/<uuid:notice_id>/sent/", VerificationNoticeSentView.as_view()),
+    path("management/map-layers/", PublicMapLayerView.as_view()),
     path("", include("apps.common.urls")),
     path("auth/", include("apps.accounts.urls")),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
@@ -17,6 +24,12 @@ urlpatterns = [
     path("properties/", include("apps.properties.urls")),
     path("site-captures/", include("apps.site_capture.urls")),
     path("verifications/", include("apps.verification.urls")),
+    path("verification-tasks/", include("apps.verification.task_urls")),
+    path("professionals/", include("apps.professionals.urls")),
+    path("management/professionals/", include((professional_management_urlpatterns, "professionals-management"))),
+    path("full-checks/", include("apps.verification.full_check_urls")),
+    path("verification-notices/", NotificationView.as_view()),
+    path("management/verification-settings/<str:setting_key>/", VerificationSettingView.as_view()),
     path("listings/", include("apps.listings.urls")),
     path("media/", include("apps.media.urls")),
     path("leads/", include("apps.leads.urls")),

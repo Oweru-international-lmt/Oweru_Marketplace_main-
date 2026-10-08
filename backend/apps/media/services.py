@@ -66,7 +66,9 @@ def _ensure_can_access(actor, media):
         return owner
     if isinstance(owner, PropertyRecord) and can_view_property_record(actor, owner):
         return owner
-    if isinstance(owner, SiteCapture) and can_view_property_record(actor, owner.property):
+    if isinstance(owner, SiteCapture):
+        from apps.site_capture.services import _ensure_can_read_capture
+        _ensure_can_read_capture(actor, owner)
         return owner
     raise PermissionDenied("You cannot access this media.")
 
@@ -225,6 +227,10 @@ def _create_image_media_for_owner(
             content=BytesIO(processed.display_bytes),
         )
         stored_keys.append(display_key)
+        from apps.payments.documents import pending_objects
+        pending = pending_objects.get()
+        if pending is not None:
+            pending.extend((storage, key) for key in stored_keys)
 
         content_type = ContentType.objects.get_for_model(owner)
         media = Media(
@@ -300,27 +306,32 @@ def _resolve_site_capture_for_media(site_capture):
 
 
 def _ensure_can_manage_site_capture_media(actor, site_capture):
-    if not can_update_property_record(actor, site_capture.property):
-        raise PermissionDenied("You cannot manage media for this site capture.")
+    from apps.site_capture.services import _ensure_can_edit_capture
+    _ensure_can_edit_capture(actor, site_capture)
     if site_capture.status != SiteCapture.Status.DRAFT:
         raise ValidationError({"status": "Media can only be changed while the site capture is a draft."})
 
 
-@transaction.atomic
 def upload_site_capture_image(*, site_capture, actor, image, captured_at=None, captured_location=None, device="", request=None):
-    actor = _active_actor(actor)
-    site_capture = _resolve_site_capture_for_media(site_capture)
-    _ensure_can_manage_site_capture_media(actor, site_capture)
-    return _create_image_media_for_owner(
-        actor=actor,
-        owner=site_capture,
-        image=image,
-        source=Media.Source.SITE_CAPTURE,
-        captured_at=captured_at,
-        captured_location=captured_location,
-        device=device,
-        request=request,
-    )
+    from apps.verification.task_services import private_write_scope
+    from apps.site_capture.evidence import image_metadata, provenance_flags
+    from apps.site_capture.models import CaptureAsset
+    from django.conf import settings
+    with private_write_scope(), transaction.atomic():
+        actor = _active_actor(actor)
+        site_capture = _resolve_site_capture_for_media(site_capture)
+        _ensure_can_manage_site_capture_media(actor, site_capture)
+        # Preserve the legacy endpoint's metadata while giving file metadata priority.
+        content = image.read(settings.MEDIA_MAX_UPLOAD_BYTES + 1)
+        image.seek(0)
+        try:
+            file_location, file_time = image_metadata(content)
+        except (OSError, ValueError, TypeError) as exc:
+            raise ValidationError("Invalid capture image.") from exc
+        media = _create_image_media_for_owner(actor=actor, owner=site_capture, image=image, source=Media.Source.SITE_CAPTURE, captured_at=file_time or captured_at, captured_location=file_location or captured_location, device=device, request=request)
+        flags, distance = provenance_flags(location=file_location, captured_at=file_time, capture=site_capture)
+        CaptureAsset.objects.create(capture=site_capture, media=media, source="UPLOAD", flags=flags, distance_m=distance)
+        return media
 
 
 @transaction.atomic
@@ -339,9 +350,11 @@ def remove_site_capture_media(*, site_capture, media, actor, request=None):
     except Media.DoesNotExist as exc:
         raise NotFound("Site capture media was not found.") from exc
 
-    variant_keys = list(media.variants.values_list("file_key", flat=True))
+    variant_keys = list(dict.fromkeys([media.file_key, *media.variants.values_list("file_key", flat=True)]))
     storage = get_private_media_storage()
     _audit_delete(actor=actor, media=media, owner=site_capture, request=request)
+    from apps.site_capture.models import CaptureAsset
+    CaptureAsset.objects.filter(media=media).delete()
     media.delete()
     transaction.on_commit(lambda: _cleanup(storage, variant_keys))
 

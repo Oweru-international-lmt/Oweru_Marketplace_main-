@@ -1,7 +1,7 @@
 from io import BytesIO
 
 import pytest
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import Point, Polygon
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from PIL import Image
@@ -57,7 +57,7 @@ def image_upload():
 def level_three_property():
     owner, property_record, _, field = submitted_field()
     approve_field_verification(verification=field, reviewer=local_official())
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     return owner, property_record
 
 
@@ -66,6 +66,7 @@ def submitted_capture(owner, property_record, point=None):
         property_record=property_record,
         actor=owner,
         observed_point=point or Point(39.25, -6.79, srid=4326),
+        observed_boundary=Polygon(((39.25, -6.79), (39.251, -6.79), (39.251, -6.789), (39.25, -6.79)), srid=4326),
     )
     return submit_site_capture(site_capture=capture, actor=owner)
 
@@ -77,9 +78,10 @@ def test_site_capture_lifecycle_and_media_do_not_affect_effective_level_or_evide
         property_record=property_record,
         actor=owner,
         observed_point=Point(39.25, -6.79, srid=4326),
+        observed_boundary=Polygon(((39.25, -6.79), (39.251, -6.79), (39.251, -6.789), (39.25, -6.79)), srid=4326),
     )
 
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     update_site_capture(
         site_capture=capture,
         actor=owner,
@@ -90,7 +92,7 @@ def test_site_capture_lifecycle_and_media_do_not_affect_effective_level_or_evide
     get_site_capture(capture_id=capture.capture_id, actor=owner)
     submit_site_capture(site_capture=capture, actor=owner)
 
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     assert set(PropertyVerificationEvidence.objects.values_list("pk", flat=True)) == evidence_ids
     assert not PropertyVerificationEvidence.objects.filter(evidence_ref=media.media_id).exists()
 
@@ -121,7 +123,7 @@ def test_same_value_promotion_preserves_level_three_without_invalidation():
 
     promote_site_capture(site_capture=capture, actor=owner)
 
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
     assert not AuditLog.objects.filter(action=SITE_CAPTURE_PROMOTED).exists()
     assert not AuditLog.objects.filter(action=VERIFICATION_PROPERTY_CHANGE_INVALIDATED).exists()
 
@@ -140,7 +142,7 @@ def test_draft_captures_cannot_change_property_or_verification_state():
 
     property_record.refresh_from_db()
     assert property_record.pin.equals_exact(original_point, tolerance=0)
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
 
 def test_stale_submitted_capture_reenters_canonical_invalidation_path_on_promotion():
@@ -170,7 +172,7 @@ def test_stale_submitted_capture_reenters_canonical_invalidation_path_on_promoti
         ),
         reviewer=local_official(),
     )
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
     promote_site_capture(site_capture=capture, actor=owner)
 

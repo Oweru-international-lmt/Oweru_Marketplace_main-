@@ -11,3 +11,4 @@ boto3>=1.38,<2.0
 python-dotenv>=1.1,<2.0
 pytest>=8.3,<10.0
 pytest-django>=4.11,<5.0
+reportlab>=4.4,<5.0

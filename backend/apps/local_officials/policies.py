@@ -17,6 +17,9 @@ def can_review_field_verification(user, verification, *, at=None):
         )
     except (TypeError, ValueError, PropertyVerification.DoesNotExist):
         return False
+    from apps.verification.conflicts import has_property_conflict
+    if has_property_conflict(user, field.property):
+        return False
     return get_effective_jurisdiction_assignments_covering_property(
         user=user,
         property_record=field.property,

@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models import F, Q
 
 from apps.common.models import TimeStampedModel
-from apps.localities.models import District, Region, Ward
+from apps.localities.models import District, Region, Ward, Locality
 
 
 OFFICIAL_ID_PREFIX = "OFF"
@@ -172,3 +172,19 @@ class OfficialJurisdictionAssignment(TimeStampedModel):
 
     def __str__(self):
         return self.assignment_id
+
+
+class OfficialLocalityCoverage(TimeStampedModel):
+    official = models.ForeignKey(LocalOfficialProfile, on_delete=models.PROTECT, related_name="locality_coverage")
+    locality = models.ForeignKey(Locality, on_delete=models.PROTECT, related_name="official_coverage")
+    assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    starts_at = models.DateTimeField()
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["official", "locality"], condition=Q(revoked_at__isnull=True), name="official_exact_locality_active"),
+            models.CheckConstraint(condition=Q(expires_at__isnull=True) | Q(expires_at__gt=F("starts_at")), name="official_locality_valid_period"),
+        ]
+        indexes = [models.Index(fields=["locality", "revoked_at"], name="official_exact_locality_idx")]

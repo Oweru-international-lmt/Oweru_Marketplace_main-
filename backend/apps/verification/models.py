@@ -5,6 +5,7 @@ from django.db import models
 from apps.common.models import TimeStampedModel
 from apps.lister_identity.evidence import normalize_evidence_reference
 from apps.properties.models import PropertyRecord
+from .immutability import AppendOnly
 
 
 SAFE_SUBJECT_SNAPSHOT_FIELDS = frozenset({
@@ -120,7 +121,7 @@ class PropertyVerification(TimeStampedModel):
         return super().save(*args, **kwargs)
 
 
-class PropertyVerificationEvidence(TimeStampedModel):
+class PropertyVerificationEvidence(AppendOnly, TimeStampedModel):
     class EvidenceType(models.TextChoices):
         TITLE_DOCUMENT = "TITLE_DOCUMENT", "Title document"
         FIELD_REPORT = "FIELD_REPORT", "Field report"
@@ -134,6 +135,9 @@ class PropertyVerificationEvidence(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="property_verification_evidence_created",
     )
+    author_role = models.CharField(max_length=32, blank=True)
+    device = models.CharField(max_length=255, blank=True)
+    supersedes = models.OneToOneField("self", on_delete=models.PROTECT, null=True, blank=True, related_name="correction")
 
     class Meta:
         ordering = ["created_at", "id"]
@@ -145,3 +149,10 @@ class PropertyVerificationEvidence(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.evidence_ref = normalize_evidence_reference(self.evidence_ref, field_name="evidence_ref")
         return super().save(*args, **kwargs)
+
+
+from .job_models import (  # noqa: E402,F401
+    FullCheckProof, FullCheckReceipt, JobHistory, OwnerConsent, PropertyRelationship,
+    TaskAssignment, TaskSubmission, VerificationJob, VerificationNotice,
+    VerificationReport, VerificationResult, VerificationSetting, VerificationTask, VerificationLevelSnapshot,
+)

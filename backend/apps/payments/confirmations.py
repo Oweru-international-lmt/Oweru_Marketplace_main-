@@ -81,6 +81,8 @@ def decide(*, delivery_id, token, decision, key, bank=None, bank_reference="", r
     if decision not in {"CONFIRM", "DECLINE"}:
         raise ValidationError("Confirm or Decline is required.")
     delivery = ConfirmationDelivery.objects.get(pk=delivery_id)
+    if delivery.purpose not in {"PHONE", "OWNER_PRICE", "OWNER_RECEIPT"}:
+        raise ValidationError("This confirmation purpose must use its domain-specific decision service.")
     resource = delivery.deal_id or delivery.listing_id or delivery.user_id
     def lock():
         if delivery.deal_id:
@@ -125,6 +127,8 @@ def decide(*, delivery_id, token, decision, key, bank=None, bank_reference="", r
                 if not bank_reference.strip():
                     raise ValidationError("Receipt bank reference is required.")
                 record_receipt(deal=deal, actor=None, transfer="OWNER", bank_reference=bank_reference, delivery=row, request=request)
+        else:
+            raise ValidationError("This confirmation purpose must use its domain-specific decision service.")
         row.consumed_at, row.decision, row.delivery_token = now, decision, ""
         if request:
             row.ip_address = request.META.get("REMOTE_ADDR") or None

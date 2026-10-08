@@ -25,6 +25,7 @@ from .services import (
     remove_site_capture_media,
     submit_site_capture,
     update_site_capture,
+    record_corner,
     upload_site_capture_image,
 )
 
@@ -37,7 +38,12 @@ class PropertySiteCaptureCollectionView(generics.GenericAPIView):
     http_method_names = ["get", "post", "options"]
 
     def get_property_record(self):
-        return get_property_record(actor=self.request.user, property_id=self.kwargs["property_id"])
+        from django.shortcuts import get_object_or_404
+        from apps.properties.models import PropertyRecord
+        from .services import _ensure_can_capture
+        property_record = get_object_or_404(PropertyRecord, property_id=self.kwargs["property_id"])
+        _ensure_can_capture(self.request.user, property_record)
+        return property_record
 
     @extend_schema(responses={200: SiteCapturePrivateSerializer(many=True)})
     def get(self, request, *args, **kwargs):
@@ -157,3 +163,15 @@ class SiteCaptureMediaDetailView(generics.GenericAPIView):
             request=request,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SiteCaptureCornerView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, capture_id):
+        from .serializers import CaptureCornerInputSerializer
+        from django.shortcuts import get_object_or_404
+        serializer = CaptureCornerInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        corner = record_corner(actor=request.user, site_capture=get_object_or_404(SiteCapture, capture_id=capture_id), request=request, **serializer.validated_data)
+        return Response({"id": str(corner.pk), "sequence": corner.sequence, "accuracy_m": str(corner.accuracy_m)}, status=201)

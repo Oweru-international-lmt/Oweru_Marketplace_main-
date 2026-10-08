@@ -142,7 +142,7 @@ def test_field_approval_requires_active_local_official_and_generates_expiry():
     assert approved.status == PropertyVerification.Status.APPROVED
     assert approved.expires_at > before + timedelta(days=55)
     assert approved.expires_at < before + timedelta(days=65)
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
 
 def test_field_approval_rechecks_level_two_and_pending_status():
@@ -197,7 +197,7 @@ def test_field_expiry_is_idempotent_and_level_two_cascade_remains_derived():
         evidence=field_evidence("private/replacement-field-report"),
     )
     future = approve_field_verification(verification=future, reviewer=local_official())
-    assert get_effective_verification_level(user=owner, property_record=property_record) == 3
+    assert get_effective_verification_level(user=owner, property_record=property_record) == 2
 
     document = revoke_document_verification(verification=document, reviewer=verifier())
     future.refresh_from_db()

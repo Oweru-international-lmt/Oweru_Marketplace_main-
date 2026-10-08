@@ -7,7 +7,7 @@ import uuid
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import Point, Polygon
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.utils import timezone
@@ -106,6 +106,7 @@ def capture(owner, property_record):
         property_record=property_record,
         actor=owner,
         observed_point=Point(39.21, -6.79, srid=4326),
+        observed_boundary=Polygon(((39.21, -6.79), (39.211, -6.79), (39.211, -6.789), (39.21, -6.79)), srid=4326),
     )
 
 

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.payments.apps.PaymentsConfig",
     "apps.properties.apps.PropertiesConfig",
     "apps.site_capture.apps.SiteCaptureConfig",
+    "apps.professionals.apps.ProfessionalsConfig",
     "apps.verification.apps.VerificationConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
@@ -130,6 +131,13 @@ LISTER_IDENTITY_VALIDITY_MONTHS = env_int("LISTER_IDENTITY_VALIDITY_MONTHS", 12)
 LISTER_IDENTITY_EXPIRY_REMINDER_DAYS = env_int("LISTER_IDENTITY_EXPIRY_REMINDER_DAYS", 30)
 PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS", 12)
 PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS", 12)
+
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    "verification-level-recalculation": {"task": "apps.verification.tasks.recalculate_verification_levels", "schedule": crontab(hour=0, minute=30)},
+    "verification-nightly-expiry": {"task": "apps.verification.tasks.process_document_verification_expiry", "schedule": crontab(hour=0, minute=15)},
+    "full-check-deadlines": {"task": "apps.verification.tasks.process_full_check_deadlines", "schedule": crontab(minute="*/15")},
+}
 LEAD_LOST_REVIEW_MONTHS = env_int("LEAD_LOST_REVIEW_MONTHS", 6)
 PAYOUT_WORKING_DAYS = env_int("PAYOUT_WORKING_DAYS", 3)
 PAYOUT_HOLIDAYS = env_list("PAYOUT_HOLIDAYS")
