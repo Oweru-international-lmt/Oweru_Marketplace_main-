@@ -27,6 +27,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     preferred_language = models.CharField(max_length=2, choices=Language.choices, default=Language.SWAHILI)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    management_position = models.CharField(max_length=20, blank=True, editable=False, choices=[("DIRECTOR", "Director"), ("HEAD_OPERATIONS", "Head of Operations")])
+    administration_version = models.PositiveIntegerField(default=1, editable=False)
     account_category = models.CharField(max_length=12, choices=[("public", "Public"), ("operational", "Operational")], default="public", editable=False)
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, editable=False)
     locked_until = models.DateTimeField(null=True, blank=True, editable=False)

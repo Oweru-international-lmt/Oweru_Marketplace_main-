@@ -219,10 +219,14 @@ class ManagementListingRestoreView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ListingPrivateSerializer
 
-    @extend_schema(request=EmptyActionSerializer, responses={200: ListingPrivateSerializer})
+    @extend_schema(request=ListingSuspendSerializer, responses={200: ListingPrivateSerializer})
     def post(self, request, listing_id, *args, **kwargs):
-        serializer = EmptyActionSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         listing = get_listing(actor=request.user, listing_id=listing_id)
-        listing = restore_listing(actor=request.user, listing=listing, request=request)
+        from .policies import can_restore_listing
+        from rest_framework.exceptions import PermissionDenied
+        if not can_restore_listing(request.user, listing):
+            raise PermissionDenied("Management is required.")
+        serializer = ListingSuspendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        listing = restore_listing(actor=request.user, listing=listing, reason=serializer.validated_data["reason"], request=request)
         return Response(self.get_serializer(listing).data)

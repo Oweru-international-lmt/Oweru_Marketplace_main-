@@ -101,7 +101,8 @@ def set_follow_up(*, actor, lead_id, follow_up_at, request=None):
 def review_lost_sales(deal):
     if deal.state != "COMPLETE":
         return 0
-    earliest = add_calendar_months(deal.completed_at, -settings.LEAD_LOST_REVIEW_MONTHS)
+    from apps.verification.configuration import setting
+    earliest = add_calendar_months(deal.completed_at, -int(setting("lost_sold_review_months")))
     matches = Lead.objects.filter(property_id=deal.property_id, stage="LOST", lost_at__gte=earliest, lost_at__lte=deal.completed_at)
     if deal.buyer_id:
         matches = matches.filter(buyer_id=deal.buyer_id)

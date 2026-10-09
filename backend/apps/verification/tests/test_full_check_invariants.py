@@ -148,9 +148,10 @@ def test_whatsapp_outbox_is_staff_only_and_delivery_is_idempotently_audited(work
     assert response.status_code == 200
     login = next(row for row in response.data if row["purpose"] == "PROFESSIONAL_LOGIN")
     assert profile.user.email in login["message"] and "token=" in login["message"]
-    ready = next(row for row in response.data if row["purpose"] == "FULL_CHECK_REPORT_READY")
-    assert ready["recipient"] == buyer.phone and str(job.pk) in ready["download_path"]
-    notice = VerificationNotice.objects.get(pk=ready["id"])
+    assert not any(row["purpose"] == "FULL_CHECK_REPORT_READY" for row in response.data)
+    ready = VerificationNotice.objects.get(job=job, purpose="FULL_CHECK_REPORT_READY")
+    assert ready.recipient_id == buyer.pk and ready.channels == ["screen", "email"]
+    notice = VerificationNotice.objects.get(pk=login["id"])
     url = f"/api/v1/management/verification-outbox/{notice.pk}/sent/"
     assert client.post(url, {}, format="json").status_code == 200
     assert client.post(url, {}, format="json").status_code == 200

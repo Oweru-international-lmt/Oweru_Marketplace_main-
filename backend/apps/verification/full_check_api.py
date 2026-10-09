@@ -287,6 +287,7 @@ class EligibleProfessionalsView(generics.GenericAPIView):
 
 class SettingSerializer(StrictInputSerializer):
     value = serializers.JSONField()
+    version = serializers.IntegerField(min_value=0)
 
 
 class VerificationSettingView(generics.GenericAPIView):
@@ -296,8 +297,8 @@ class VerificationSettingView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         from .configuration import change_setting
-        row = change_setting(actor=request.user, key=setting_key, request=request, **serializer.validated_data)
-        return Response({"key": row.key, "value": row.value})
+        row = change_setting(actor=request.user, key=setting_key, request=request, value=serializer.validated_data["value"], expected_version=serializer.validated_data["version"])
+        return Response({"key": row.key, "value": row.value, "version": row.version})
 
 
 class NotificationView(generics.GenericAPIView):

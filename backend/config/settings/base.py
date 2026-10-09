@@ -61,6 +61,10 @@ INSTALLED_APPS = [
     "apps.site_capture.apps.SiteCaptureConfig",
     "apps.professionals.apps.ProfessionalsConfig",
     "apps.verification.apps.VerificationConfig",
+    "apps.free_checks.apps.FreeChecksConfig",
+    "apps.complaints.apps.ComplaintsConfig",
+    "apps.notifications.apps.NotificationsConfig",
+    "apps.administration.apps.AdministrationConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
     "apps.audit.legacy_event_stream.apps.AuditConfig",
@@ -129,11 +133,13 @@ ACCOUNT_LOGIN_LOCKOUT_MINUTES = env_int("ACCOUNT_LOGIN_LOCKOUT_MINUTES", 15)
 ACCOUNT_EMAIL_VERIFICATION_MINUTES = env_int("ACCOUNT_EMAIL_VERIFICATION_MINUTES", 60)
 LISTER_IDENTITY_VALIDITY_MONTHS = env_int("LISTER_IDENTITY_VALIDITY_MONTHS", 12)
 LISTER_IDENTITY_EXPIRY_REMINDER_DAYS = env_int("LISTER_IDENTITY_EXPIRY_REMINDER_DAYS", 30)
-PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS", 12)
-PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS", 12)
+PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS", 6)
+PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS", 6)
 
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
+    "notification-email-delivery": {"task": "apps.notifications.tasks.deliver_pending_email", "schedule": crontab(minute="*/1")},
+    "notification-expiry-reminders": {"task": "apps.notifications.tasks.verification_expiry_reminders", "schedule": crontab(hour=8, minute=0)},
     "verification-level-recalculation": {"task": "apps.verification.tasks.recalculate_verification_levels", "schedule": crontab(hour=0, minute=30)},
     "verification-nightly-expiry": {"task": "apps.verification.tasks.process_document_verification_expiry", "schedule": crontab(hour=0, minute=15)},
     "full-check-deadlines": {"task": "apps.verification.tasks.process_full_check_deadlines", "schedule": crontab(minute="*/15")},
@@ -221,8 +227,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@oweru.example")
 PASSWORD_RESET_URL = os.getenv("PASSWORD_RESET_URL", "")
+MARKETPLACE_PUBLIC_URL = os.getenv("MARKETPLACE_PUBLIC_URL", "")
 EMAIL_VERIFICATION_URL = os.getenv("EMAIL_VERIFICATION_URL", "")
-PASSWORD_RESET_TIMEOUT = 60 * 60
+PASSWORD_RESET_TIMEOUT = 30 * 60
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

@@ -31,6 +31,8 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def workflow():
     manager, verifier, buyer, owner, official = [account(role) for role in ["management", "verifier", "buyer", "owner", "local_official"]]
+    manager.management_position = "DIRECTOR"
+    manager.save(update_fields=["management_position"])
     listing = create_listing_for(owner, lister_kind="OWNER", status="ACTIVE")
     listing.property.title_type = "REGISTERED_TITLE"
     listing.property.save(update_fields=["title_type"])

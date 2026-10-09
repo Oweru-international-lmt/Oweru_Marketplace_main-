@@ -124,7 +124,8 @@ def add_calendar_months(value, months):
 
 
 def calculate_lister_identity_expires_at(approved_at):
-    return add_calendar_months(approved_at, settings.LISTER_IDENTITY_VALIDITY_MONTHS)
+    from apps.verification.configuration import setting
+    return add_calendar_months(approved_at, int(setting("identity_expiry_months")))
 
 
 def _iso(value):

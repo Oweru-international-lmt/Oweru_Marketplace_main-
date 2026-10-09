@@ -212,8 +212,9 @@ def detect_photo_duplicates_for_listing_photo(*, listing_photo, request=None):
 
 def detect_property_duplicates(*, property_record, request=None):
     subject = _persisted_subject_property(property_record)
-    distance_threshold = settings.PROPERTY_DUPLICATE_DISTANCE_METERS
-    size_threshold = Decimal(str(settings.PROPERTY_DUPLICATE_SIZE_DIFFERENCE_PERCENT))
+    from apps.verification.configuration import setting
+    distance_threshold = float(setting("duplicate_distance_m"))
+    size_threshold = Decimal(str(setting("duplicate_size_percent")))
     nearby_records = _nearby_property_records(subject, distance_threshold)
 
     candidates = []

@@ -16,8 +16,25 @@ from .services import record_receipt
 
 
 @transaction.atomic
+def queue_identity_phone_confirmation(user):
+    """Trusted identity-submission handoff, supporting both existing role stores."""
+    from apps.roles.services import user_has_role
+    user = User.objects.select_for_update().get(pk=user.pk, is_active=True)
+    if not (user_has_role(user, "owner") or user_has_role(user, "agent") or user.has_marketplace_permission("listing.update")):
+        raise PermissionDenied("An active lister is required.")
+    ConfirmationDelivery.objects.filter(purpose="PHONE", user=user, consumed_at__isnull=True).update(consumed_at=timezone.now(), delivery_token="")
+    token = secrets.token_urlsafe(32)
+    from apps.verification.configuration import setting
+    row = ConfirmationDelivery.objects.create(purpose="PHONE", user=user, recipient=user.phone, context={"phone": user.phone}, token_digest=hashlib.sha256(token.encode()).hexdigest(), delivery_token=token, expires_at=timezone.now() + timedelta(days=float(setting("confirmation_days"))))
+    audit(user, "confirmation.queued", row, after={"purpose": "PHONE"})
+    return {"delivery_id": str(row.pk), "status": "QUEUED"}
+
+
+@transaction.atomic
 def request_confirmation(*, actor, purpose, listing_id=None, deal_id=None, owner_name="", owner_whatsapp="", request=None):
     actor = authorize(actor, "listing.update" if purpose in {"OWNER_PRICE", "PHONE"} else "deal.update")
+    if purpose == "PHONE":
+        return queue_identity_phone_confirmation(actor)
     listing, deal, user = None, None, None
     if purpose == "PHONE":
         user = User.objects.select_for_update().get(pk=actor.pk)
@@ -51,7 +68,8 @@ def request_confirmation(*, actor, purpose, listing_id=None, deal_id=None, owner
     pending = ConfirmationDelivery.objects.filter(purpose=purpose, listing=listing, deal=deal, user=user, consumed_at__isnull=True)
     pending.update(consumed_at=timezone.now(), delivery_token="")
     token = secrets.token_urlsafe(32)
-    delivery = ConfirmationDelivery.objects.create(purpose=purpose, listing=listing, deal=deal, user=user, recipient=recipient, context=context, token_digest=hashlib.sha256(token.encode()).hexdigest(), delivery_token=token, expires_at=timezone.now() + timedelta(days=settings.OWNER_CONFIRMATION_DAYS))
+    from apps.verification.configuration import setting
+    delivery = ConfirmationDelivery.objects.create(purpose=purpose, listing=listing, deal=deal, user=user, recipient=recipient, context=context, token_digest=hashlib.sha256(token.encode()).hexdigest(), delivery_token=token, expires_at=timezone.now() + timedelta(days=float(setting("confirmation_days"))))
     audit(actor, "confirmation.queued", delivery, after={"purpose": purpose}, request=request)
     # Bearer token intentionally excluded from Agent/initiator response.
     return {"delivery_id": str(delivery.pk), "status": "QUEUED"}

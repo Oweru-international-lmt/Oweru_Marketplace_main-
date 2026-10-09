@@ -10,8 +10,16 @@ from apps.professionals.urls import management_urlpatterns as professional_manag
 from apps.verification.full_check_api import VerificationSettingView, NotificationView
 from apps.site_capture.full_check_api import PublicMapLayerView
 from apps.verification.outbox import VerificationOutboxView, VerificationNoticeSentView
+from apps.complaints.urls import management_urlpatterns as complaint_management_urlpatterns
+from apps.notifications.urls import management_urlpatterns as notification_management_urlpatterns
 
 urlpatterns = [
+    path("management/", include("apps.administration.urls")),
+    path("notifications/", include("apps.notifications.urls")),
+    path("management/notifications/", include((notification_management_urlpatterns, "notifications-management"))),
+    path("complaints/", include("apps.complaints.urls")),
+    path("management/complaints/", include((complaint_management_urlpatterns, "complaints-management"))),
+    path("free-checks/", include("apps.free_checks.urls")),
     path("management/verification-outbox/", VerificationOutboxView.as_view()),
     path("management/verification-outbox/<uuid:notice_id>/sent/", VerificationNoticeSentView.as_view()),
     path("management/map-layers/", PublicMapLayerView.as_view()),

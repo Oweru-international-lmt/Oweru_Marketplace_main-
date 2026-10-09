@@ -163,9 +163,10 @@ def working_deadline(start, days):
 
 
 def create_payout(*, deal, actor, request=None):
+    from apps.verification.configuration import setting
     if deal.state != "COMPLETE" or deal.lister_kind != "AGENT":
         raise ValidationError("Only a completed agent Deal qualifies for payout.")
-    payout, created = Payout.objects.get_or_create(deal=deal, defaults={"agent": deal.lister, "amount": deal.agent_payout, "due_at": working_deadline(deal.completed_at, settings.PAYOUT_WORKING_DAYS), "status": "ON_HOLD" if deal.payout_blocks.filter(is_open=True).exists() else "PENDING"})
+    payout, created = Payout.objects.get_or_create(deal=deal, defaults={"agent": deal.lister, "amount": deal.agent_payout, "due_at": working_deadline(deal.completed_at, int(setting("payout_working_days"))), "status": "ON_HOLD" if deal.payout_blocks.filter(is_open=True).exists() else "PENDING"})
     if created:
         audit(actor, "payout.created", payout, after={"amount": str(payout.amount), "due_at": payout.due_at.isoformat()}, request=request)
     return payout

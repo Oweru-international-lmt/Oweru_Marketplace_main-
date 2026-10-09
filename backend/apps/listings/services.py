@@ -121,6 +121,8 @@ def _resolve_property_record(property_record):
 
 
 def _ensure_can_create_against_property(actor, property_record):
+    if property_record.is_outside_check:
+        raise ValidationError("An outside Free Check submission must be separately onboarded before listing.")
     if not policies.can_create_listing_for_property(actor, property_record):
         raise PermissionDenied("You cannot create a listing for this property record.")
 
@@ -647,12 +649,13 @@ def withdraw_listing(*, actor, listing, request=None):
 @transaction.atomic
 def suspend_listing(*, actor, listing, reason, request=None):
     actor = _active_persisted_actor(actor)
-    if reason is None or not isinstance(reason, str) or not reason.strip():
+    if reason is None or not isinstance(reason, str) or not reason.strip() or len(reason) > 1000:
         raise ValidationError({"reason": "Suspension reason is required."})
     locked = _resolve_listing_for_update(listing)
     _ensure_can_suspend_listing(actor, locked)
     _ensure_documented_transition(locked, Listing.Status.SUSPENDED)
-    return _set_listing_status(
+    previous = locked.status
+    result = _set_listing_status(
         locked,
         Listing.Status.SUSPENDED,
         actor=actor,
@@ -660,16 +663,25 @@ def suspend_listing(*, actor, listing, reason, request=None):
         request=request,
         after_extra={"reason_present": True},
     )
+    from apps.administration.models import AdministrationHistory
+    AdministrationHistory.objects.create(actor=actor, entity_type="Listing", entity_id=result.pk, reason=reason.strip(), before={"status": previous}, after={"status": result.status})
+    return result
 
 
 @transaction.atomic
-def restore_listing(*, actor, listing, request=None):
+def restore_listing(*, actor, listing, reason=None, request=None):
     actor = _active_persisted_actor(actor)
     locked = _resolve_listing_for_update(listing)
     _ensure_can_restore_listing(actor, locked)
     _ensure_documented_transition(locked, Listing.Status.ACTIVE)
     _ensure_activation_eligible(locked)
-    return _set_listing_status(locked, Listing.Status.ACTIVE, actor=actor, action=LISTING_RESTORED, request=request)
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > 1000:
+        raise ValidationError({"reason": "Restoration reason is required."})
+    previous = locked.status
+    result = _set_listing_status(locked, Listing.Status.ACTIVE, actor=actor, action=LISTING_RESTORED, request=request, after_extra={"reason_present": True})
+    from apps.administration.models import AdministrationHistory
+    AdministrationHistory.objects.create(actor=actor, entity_type="Listing", entity_id=result.pk, reason=reason.strip(), before={"status": previous}, after={"status": result.status})
+    return result
 
 
 def get_accessible_listings(actor):

@@ -2,7 +2,6 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -43,13 +42,8 @@ def send_email_verification(user):
     token = create_email_verification_token(user)
     if token is None:
         return None
-    send_mail(
-        subject="Verify your Oweru Marketplace email",
-        message=f"Verify your email using this link: {_verification_link(token)}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    from apps.notifications.services import send_account_email
+    send_account_email(user=user, purpose="EMAIL_VERIFICATION", link=_verification_link(token))
     return token
 
 

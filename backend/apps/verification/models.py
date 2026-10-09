@@ -154,5 +154,5 @@ class PropertyVerificationEvidence(AppendOnly, TimeStampedModel):
 from .job_models import (  # noqa: E402,F401
     FullCheckProof, FullCheckReceipt, JobHistory, OwnerConsent, PropertyRelationship,
     TaskAssignment, TaskSubmission, VerificationJob, VerificationNotice,
-    VerificationReport, VerificationResult, VerificationSetting, VerificationTask, VerificationLevelSnapshot,
+    VerificationReport, VerificationResult, VerificationSetting, SettingHistory, VerificationTask, VerificationLevelSnapshot,
 )

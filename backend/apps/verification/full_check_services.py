@@ -363,7 +363,7 @@ def finalize_full_check(*, actor, job_id, result, risk_assessment, not_checked=(
                 prior.invalidated_at, prior.invalidation_reason = now, "Later adverse ownership check"
                 prior.save()
                 audit(actor, "full_check.invalidated", prior, {"reason": "later_adverse_result"}, request)
-        VerificationNotice.objects.get_or_create(job=job, recipient=job.buyer, phone=job.buyer.phone, purpose="FULL_CHECK_REPORT_READY", defaults={"channels": ["screen", "email", "outbox"]})
+        VerificationNotice.objects.get_or_create(job=job, recipient=job.buyer, phone=job.buyer.phone, purpose="FULL_CHECK_REPORT_READY", defaults={"channels": ["screen", "email"]})
         audit(actor, "full_check.final_result", decision, {"result": result, "job_id": str(job.pk)}, request)
         audit(actor, "verification.level_recalculated", job.property, {"full_check_result": result}, request)
         return {"job_id": str(job.pk), "status": job.status, "report_id": str(report.pk)}

@@ -31,15 +31,18 @@ class PropertyRecord(TimeStampedModel):
     category = models.CharField(max_length=20, choices=Category.choices)
     pin = gis_models.PointField(srid=4326)
     boundary = gis_models.PolygonField(srid=4326, null=True, blank=True)
-    region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="property_records")
-    district = models.ForeignKey(District, on_delete=models.PROTECT, related_name="property_records")
-    ward = models.ForeignKey(Ward, on_delete=models.PROTECT, related_name="property_records")
-    locality = models.ForeignKey(Locality, on_delete=models.PROTECT, related_name="property_records")
+    is_outside_check = models.BooleanField(default=False, editable=False)
+    region = models.ForeignKey(Region, null=True, blank=True, on_delete=models.PROTECT, related_name="property_records")
+    district = models.ForeignKey(District, null=True, blank=True, on_delete=models.PROTECT, related_name="property_records")
+    ward = models.ForeignKey(Ward, null=True, blank=True, on_delete=models.PROTECT, related_name="property_records")
+    locality = models.ForeignKey(Locality, null=True, blank=True, on_delete=models.PROTECT, related_name="property_records")
     stated_size = models.DecimalField(max_digits=18, decimal_places=2)
     size_unit = models.CharField(max_length=20)
     title_type = models.CharField(max_length=32, choices=TitleType.choices)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
         editable=False,
         related_name="property_records_created",
@@ -50,6 +53,7 @@ class PropertyRecord(TimeStampedModel):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
+            models.CheckConstraint(condition=models.Q(is_outside_check=True) | models.Q(region__isnull=False, district__isnull=False, ward__isnull=False, locality__isnull=False, created_by__isnull=False), name="property_normal_context_required"),
             models.CheckConstraint(condition=models.Q(stated_size__gt=0), name="property_stated_size_positive"),
         ]
 

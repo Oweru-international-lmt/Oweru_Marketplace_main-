@@ -253,11 +253,15 @@ def invalidate_property_verifications_for_material_change(*, property_record, ch
 
 
 def calculate_document_verification_expires_at(approved_at):
-    return add_calendar_months(approved_at, settings.PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS)
+    from .configuration import setting
+    from .models import VerificationSetting
+    months = setting("location_check_months") if VerificationSetting.objects.filter(key="location_check_months").exists() else settings.PROPERTY_DOCUMENT_VERIFICATION_VALIDITY_MONTHS
+    return add_calendar_months(approved_at, int(months))
 
 
 def calculate_field_verification_expires_at(approved_at):
-    return add_calendar_months(approved_at, settings.PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS)
+    from .configuration import setting
+    return add_calendar_months(approved_at, int(setting("location_check_months")))
 
 
 def has_effective_lister_identity(*, user, at=None):

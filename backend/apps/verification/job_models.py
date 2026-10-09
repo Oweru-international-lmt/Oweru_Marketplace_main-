@@ -12,6 +12,17 @@ class VerificationSetting(TimeStampedModel):
     key = models.CharField(max_length=64, unique=True)
     value = models.JSONField()
     changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT)
+    version = models.PositiveIntegerField(default=0)
+
+
+class SettingHistory(AppendOnly, TimeStampedModel):
+    setting = models.ForeignKey(VerificationSetting, on_delete=models.PROTECT, related_name="history")
+    version = models.PositiveIntegerField()
+    value = models.JSONField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["setting", "version"], name="setting_history_version_unique")]
 
 
 class PropertyRelationship(AppendOnly, TimeStampedModel):

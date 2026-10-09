@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
@@ -13,13 +12,8 @@ def send_reset_link(user):
     token = default_token_generator.make_token(user)
     separator = "&" if "?" in settings.PASSWORD_RESET_URL else "?"
     link = f"{settings.PASSWORD_RESET_URL}{separator}uid={uid}&token={token}"
-    send_mail(
-        subject="Reset your Oweru Marketplace password",
-        message=f"Use this link to reset your password: {link}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    from apps.notifications.services import send_account_email
+    send_account_email(user=user, purpose="PASSWORD_RESET", link=link)
 
 
 def reset_password(uid, token, new_password, *, request=None):
