@@ -155,6 +155,25 @@ def test_photo_mismatch_uses_file_provenance():
     assert check.photos.count() == 1
 
 
+def test_api_accepts_photos_with_json_encoded_pin_in_multipart():
+    # Photos make the request multipart, where the GeoJSON pin arrives as text.
+    import json
+    from io import BytesIO
+    from PIL import Image
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    stream = BytesIO()
+    Image.new("RGB", (10, 10)).save(stream, format="PNG")
+    values = {**inputs(), "pin": json.dumps(inputs()["pin"]), "photos": SimpleUploadedFile("plot.png", stream.getvalue(), content_type="image/png")}
+    response = APIClient().post("/api/v1/free-checks/", values, format="multipart", HTTP_IDEMPOTENCY_KEY="multipart")
+    assert response.status_code == 201, response.data
+    assert FreeCheck.objects.get().photos.count() == 1
+
+
+def test_api_rejects_a_pin_that_is_not_geojson_text():
+    response = APIClient().post("/api/v1/free-checks/", {**inputs(), "pin": "not json"}, format="multipart", HTTP_IDEMPOTENCY_KEY="bad-pin")
+    assert response.status_code == 400 and "pin" in response.data
+
+
 def test_geography_adapter_verdict_is_validated():
     from django.test import override_settings
     with override_settings(FREE_CHECK_GEOGRAPHY_PROVIDER="example.Provider"), patch("apps.free_checks.services.import_string") as provider:

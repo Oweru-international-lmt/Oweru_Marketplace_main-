@@ -1,3 +1,4 @@
+import json
 from urllib.parse import quote
 from decimal import Decimal
 from django.conf import settings
@@ -44,6 +45,13 @@ class SubmitView(APIView):
         values = request.data.copy()
         if "photos" in values:
             values.pop("photos")
+        # With photos the request is multipart, where every field is text, so the
+        # GeoJSON pin arrives JSON-encoded. Decode it; the serializer validates it.
+        if isinstance(values.get("pin"), str):
+            try:
+                values["pin"] = json.loads(values["pin"])
+            except ValueError:
+                pass
         check = services.submit(values=values, key=request.headers.get("Idempotency-Key"), photos=request.FILES.getlist("photos"), actor=request.user, request=request)
         path = f"/api/v1/free-checks/{check.pk}/?token={services.token_for(check)}"
         link = request.build_absolute_uri(path)
