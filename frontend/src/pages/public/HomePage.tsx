@@ -228,6 +228,12 @@ function LatestListings() {
 
   useSectionReveal(root, [listings])
 
+  // The cards make the page taller; triggers further down were measured
+  // before they arrived, so re-measure once they render.
+  useEffect(() => {
+    if (listings) ScrollTrigger.refresh()
+  }, [listings])
+
   // Nothing useful to show if the API is unreachable; the hero still works.
   if (failed) return null
 

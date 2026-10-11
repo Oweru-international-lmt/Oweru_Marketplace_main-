@@ -7,7 +7,6 @@ import { CloseIcon, MenuIcon, WhatsAppIcon } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Logo } from '../components/Logo'
 import { whatsappLink } from '../lib/config'
-import { ScrollTrigger, useGSAP } from '../lib/gsap'
 
 // Shell for the public marketplace: home, search and property pages.
 export function PublicLayout() {
@@ -15,16 +14,17 @@ export function PublicLayout() {
   const { pathname, hash } = useLocation()
   // The home hero runs under the header, which stays clear until the page scrolls.
   const overHero = pathname === '/'
-  const [scrolled, setScrolled] = useState(false)
+  const [scrolled, setScrolled] = useState(() => window.scrollY > 24)
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
-  useGSAP(
-    () => {
-      ScrollTrigger.create({ start: 24, end: 'max', onToggle: (self) => setScrolled(self.isActive) })
-    },
-    { dependencies: [pathname], revertOnUpdate: true },
-  )
+  // A plain listener, not a ScrollTrigger: the page grows as listings load, and
+  // a trigger's "end" measured before that would switch the header back mid-page.
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 24)
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [pathname])
 
   // A new page starts at the top; "/#how" style links scroll to their section.
   useEffect(() => {
