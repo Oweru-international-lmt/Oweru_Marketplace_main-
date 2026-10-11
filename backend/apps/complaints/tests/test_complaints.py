@@ -35,6 +35,18 @@ def test_anonymous_intake_number_status_and_private_evidence():
     assert client.get(f"/api/v1/management/complaints/{row.pk}/").status_code == 401
 
 
+def test_anonymous_intake_keeps_a_per_address_limit():
+    # There is no blanket anonymous limit, so public intake must apply its own.
+    from django.core.cache import cache
+    from rest_framework.throttling import AnonRateThrottle
+    cache.clear()
+    client = APIClient()
+    with patch.object(AnonRateThrottle, "THROTTLE_RATES", {"anon": "2/hour"}):
+        codes = [client.post("/api/v1/complaints/", inputs(), format="json").status_code for _ in range(3)]
+    cache.clear()
+    assert codes == [201, 201, 429]
+
+
 @pytest.mark.parametrize("category,route", [("FAKE_LISTING", "HEAD_OPERATIONS"), ("WRONG_LISTING", "HEAD_OPERATIONS"), ("OTHER", "HEAD_OPERATIONS"), ("CONDUCT", "MANAGEMENT"), ("PAYMENT", "MANAGEMENT"), ("PAYOUT", "MANAGEMENT"), ("PRIVACY", "MANAGEMENT"), ("VERIFICATION", "VERIFIER")])
 def test_category_routes(category, route):
     assert services.lodge(values=inputs(category=category)).route == route

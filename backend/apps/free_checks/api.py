@@ -7,6 +7,7 @@ from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from apps.properties.serializers import RejectUnknownFieldsMixin, GeoJSONPointField
 from apps.properties.models import PropertyRecord
 from apps.media.storage import get_private_media_storage
@@ -32,8 +33,14 @@ class CheckInput(RejectUnknownFieldsMixin, serializers.Serializer):
         return value
 
 
+# Anonymous visitors have no blanket limit, so these public forms keep the
+# per-address "anon" rate on top of the per-phone daily quota (NFR-03).
+PUBLIC_FORM_THROTTLES = [AnonRateThrottle, UserRateThrottle]
+
+
 class SubmitView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_FORM_THROTTLES
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
@@ -60,6 +67,7 @@ class SubmitView(APIView):
 
 class ReportView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_FORM_THROTTLES
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)

@@ -88,6 +88,18 @@ def test_public_api_never_exposes_phone_geometry_or_private_keys():
     assert "whatsapp_link" in response.data
 
 
+def test_anonymous_submissions_keep_a_per_address_limit():
+    # The per-phone quota alone can be dodged by changing numbers.
+    from django.core.cache import cache
+    from rest_framework.throttling import AnonRateThrottle
+    cache.clear()
+    client = APIClient()
+    with patch.object(AnonRateThrottle, "THROTTLE_RATES", {"anon": "2/hour"}):
+        codes = [client.post("/api/v1/free-checks/", inputs(phone=f"+25571234567{index}"), format="json", HTTP_IDEMPOTENCY_KEY=str(index)).status_code for index in range(3)]
+    cache.clear()
+    assert codes == [201, 201, 429]
+
+
 def test_report_swahili_and_history_immutable():
     check = services.submit(values=inputs(language="sw"), key="sw")
     assert services.public_result(check)["disclaimer"] == "Huu si uthibitisho wa umiliki"

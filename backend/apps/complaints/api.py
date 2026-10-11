@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from apps.free_checks.api import PUBLIC_FORM_THROTTLES
 from apps.accounts.models import User
 from apps.audit.services import create_audit_log
 from apps.media.storage import get_private_media_storage
@@ -50,6 +51,7 @@ def summary(row):
 
 class IntakeView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_FORM_THROTTLES
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
@@ -69,6 +71,7 @@ class IntakeView(APIView):
 
 class PublicStatusView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_FORM_THROTTLES
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
