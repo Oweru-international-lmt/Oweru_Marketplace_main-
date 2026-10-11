@@ -30,9 +30,3 @@ export function GuestOnly({ children }: { children: ReactNode }) {
   if (status === 'authenticated') return <Navigate to="/account" replace />
   return children
 }
-
-export function HomeRedirect() {
-  const { status } = useAuth()
-  if (status === 'loading') return <FullPageLoader />
-  return <Navigate to={status === 'authenticated' ? '/account' : '/login'} replace />
-}

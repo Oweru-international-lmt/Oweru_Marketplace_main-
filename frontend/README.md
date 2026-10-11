@@ -1,6 +1,6 @@
 # Oweru Marketplace frontend
 
-React web app for the Oweru Marketplace backend in [`../backend/`](../backend/README.md). It covers the accounts module (M02): sign up, sign in, forgot password, reset password and a read-only account page; and the Management screens for roles and permissions (M03).
+React web app for the Oweru Marketplace backend in [`../backend/`](../backend/README.md). It covers the public marketplace (home, search and property pages), the accounts module (M02): sign up, sign in, forgot password, reset password and the account page; and the Management screens for roles and staff (M03).
 
 ## Stack
 
@@ -39,6 +39,9 @@ Copy `.env.example` to `.env.local` to override:
 
 | Route | Screen | Endpoint |
 |---|---|---|
+| `/` | Public home: hero, the four verification levels, recently listed property, how buying works | `GET /public/listings/?sort=NEWEST&page_size=6` |
+| `/listings` | Search (SRC-01): location bar, filter pills (type, price, size, title type, minimum level), sort, pagination; filters live in the URL | `GET /public/listings/`, `GET /localities/regions/`, `…/districts/?region=`, `…/wards/?district=` |
+| `/listings/:id` | Property page (SRC-03): gallery, facts, verification panel with the SRD section 10 wording, lister, WhatsApp contact, enquiry and viewing request | `GET /public/listings/{id}/`, `GET /notifications/self-service/listings/{id}/`, `POST /leads/` |
 | `/register` | Sign up with name, email, phone and password; language comes from the header switch | `POST /auth/register/`, then `POST /auth/login/` |
 | `/login` | Sign in with email and password | `POST /auth/login/` |
 | `/forgot-password` | Request a reset link by email, WhatsApp help for people who can't reach their inbox | `POST /auth/password/reset/` |
@@ -60,7 +63,8 @@ Management pages need the `authorization.view` permission; buttons and switches 
 - **Layout**: signed-in pages use a navy sidebar (`src/layouts/Sidebar.tsx`, items in `navigation.ts`) that collapses to icons on desktop (remembered per browser) and becomes a slide-in drawer on phones, plus a top bar with breadcrumb, language switch and user menu. Pages are a `PageHeader` followed by cards.
 - **Profile fields**: the API uses `preferred_language` and `is_email_verified`; `src/lib/authApi.ts` maps them to `language` and `email_verified` so components don't depend on the wire names.
 - **Access**: `/auth/me/` doesn't return roles or permissions yet. As a stopgap, `loadAccess()` in `src/lib/authApi.ts` calls `GET /management/authorization/roles/management/permissions/`, which only Management can read: success means the user is Management with those permissions, 403 means no staff access. Navigation links and management pages appear only when they apply (`src/auth/access.ts`). This is UX only; the API enforces every permission. Replace `loadAccess()` once `/auth/me/` reports roles.
-- **Motion**: all animation respects `prefers-reduced-motion`.
+- **Motion**: all animation respects `prefers-reduced-motion`. GSAP (registered once in `src/lib/gsap.ts`) runs page-level sequences and ScrollTrigger reveals; Motion handles component state (pills, sheets, gallery, hover). Never let both animate `transform` on the same element.
+- **Public design language**: follows the Horizon Realty reference (serif `font-serif` headlines with a gold accent phrase, navy buttons with small radii, soft `shadow-card` surfaces), with Zoopla's search structure on `/listings`. The map column on search is reserved until the API returns approximate positions (SRC-02).
 
 ## Brand
 

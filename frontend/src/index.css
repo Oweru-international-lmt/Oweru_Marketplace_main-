@@ -18,6 +18,12 @@
 
   --font-display: "Futura PT", "Jost", "Futura", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  /* Headline serif from the Horizon Realty reference; labels and buttons stay sans. */
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+
+  /* Soft lift used by cards and strips instead of outline rings. */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px -12px rgba(15, 23, 42, 0.18);
+  --shadow-lift: 0 2px 4px rgba(15, 23, 42, 0.06), 0 24px 48px -20px rgba(15, 23, 42, 0.32);
 }
 
 /* Gold text on off-white fails contrast, so links stay navy with a gold underline. */
@@ -32,6 +38,11 @@
 
   body {
     @apply bg-paper font-sans text-navy antialiased;
+  }
+
+  /* Playfair defaults to old-style figures, which make "Level 0" read as "Level o". */
+  .font-serif {
+    font-variant-numeric: lining-nums;
   }
 
   :focus-visible {

@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { can } from '../auth/access'
-import { ShieldIcon, UserIcon, UsersIcon } from '../components/icons'
+import { SearchIcon, ShieldIcon, UserIcon, UsersIcon } from '../components/icons'
 import type { User } from '../lib/authApi'
 
 export type NavItem = {
@@ -17,7 +17,10 @@ export type NavGroup = { titleKey: string; items: NavItem[] }
 const NAV_GROUPS: NavGroup[] = [
   {
     titleKey: 'nav.groupAccount',
-    items: [{ to: '/account', labelKey: 'nav.account', icon: UserIcon }],
+    items: [
+      { to: '/account', labelKey: 'nav.account', icon: UserIcon },
+      { to: '/listings', labelKey: 'site.browse', icon: SearchIcon },
+    ],
   },
   {
     titleKey: 'nav.groupManagement',
