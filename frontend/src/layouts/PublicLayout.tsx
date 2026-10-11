@@ -19,6 +19,8 @@ export function PublicLayout() {
   const overHero = pathname === '/'
   // The property page has its own fixed price bar (not its full check sub-page).
   const onListing = /^\/listings\/[^/]+\/?$/.test(pathname)
+  // The free check's phone flow is a full-screen map with its own sheet (S2).
+  const onFreeCheck = pathname === '/free-check'
   const [scrolled, setScrolled] = useState(() => window.scrollY > 24)
 
   // A plain listener, not a ScrollTrigger: the page grows as listings load, and
@@ -77,8 +79,8 @@ export function PublicLayout() {
 
       <SiteFooter />
       {/* Room for the fixed phone bars, so the footer's last line isn't covered. */}
-      <div aria-hidden="true" className={onListing ? 'h-24 lg:hidden' : 'h-24 md:hidden'} />
-      {!onListing && <BottomNav />}
+      {!onFreeCheck && <div aria-hidden="true" className={onListing ? 'h-24 lg:hidden' : 'h-24 md:hidden'} />}
+      {!onListing && !onFreeCheck && <BottomNav />}
     </div>
   )
 }

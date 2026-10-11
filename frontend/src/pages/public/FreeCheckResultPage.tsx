@@ -1,19 +1,18 @@
-import { motion } from 'motion/react'
-import { useEffect, useRef, useState, type ComponentType, type SVGProps } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Alert } from '../../components/Alert'
 import { FullPageLoader } from '../../components/FullPageLoader'
-import { AlertIcon, CheckIcon, DocumentIcon, SearchIcon, ShieldIcon, WhatsAppIcon } from '../../components/icons'
+import { DocumentIcon, WhatsAppIcon } from '../../components/icons'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { useNoReferrer } from '../../hooks/useNoReferrer'
-import { useReveal } from '../../hooks/useReveal'
 import { ApiError } from '../../lib/api'
 import { whatsappLink, whatsappTo } from '../../lib/config'
 import { errorMessage } from '../../lib/errors'
 import { formatDate, formatNumber } from '../../lib/format'
 import { servicesApi, type FreeCheckCreated, type FreeCheckResult, type Verdict } from '../../lib/servicesApi'
-import { CopyButton, Panel, ServiceColumns, ServiceHeader, ServicePage } from './services/ServiceUi'
+import { ReceiptBrand, ReceiptCard, ReceiptFooter, ReceiptPage, ReceiptRow, ReceiptRows, ReceiptSeal, ReceiptSection } from './services/receipt'
+import { CopyButton } from './services/ServiceUi'
 
 type Loaded = { key: string; result?: FreeCheckResult; failed?: 'invalid' | 'network' }
 
@@ -55,21 +54,18 @@ export function FreeCheckResultPage() {
 
 const VERDICT_ORDER = ['land', 'duplicates', 'photos', 'description_match'] as const
 
-type Tone = { icon: ComponentType<SVGProps<SVGSVGElement>>; badge: string; ring: string }
-
-// Good news in green, things to look into in amber or red, unknowns in grey.
-function toneFor(status: Verdict['status']): Tone {
-  if (status === 'LAND' || status === 'MATCH' || status === 'NONE') return { icon: CheckIcon, badge: 'bg-success-soft text-success', ring: 'ring-success/20' }
-  if (status === 'MISMATCH' || status === 'OUTSIDE') return { icon: AlertIcon, badge: 'bg-danger-soft text-danger', ring: 'ring-danger/25' }
-  if (status === 'FOUND') return { icon: AlertIcon, badge: 'bg-gold/15 text-[#8a5f12]', ring: 'ring-gold/30' }
-  return { icon: SearchIcon, badge: 'bg-paper text-muted', ring: 'ring-mist' }
+// Good news in green, things to look into in red or amber, unknowns in grey.
+function toneFor(status: Verdict['status']): string {
+  if (status === 'LAND' || status === 'MATCH' || status === 'NONE') return 'text-success'
+  if (status === 'MISMATCH' || status === 'OUTSIDE') return 'text-danger'
+  if (status === 'FOUND') return 'text-[#8a5f12]'
+  return 'text-muted'
 }
 
+// After S7: the report as one receipt card.
 function Report({ result, token, whatsapp }: { result: FreeCheckResult; token: string; whatsapp?: string }) {
   const { t, i18n } = useTranslation()
   useDocumentTitle(`${t('freeCheck.reportKicker')} ${result.reference}`)
-  const root = useRef<HTMLDivElement>(null)
-  useReveal(root)
   const [opening, setOpening] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
 
@@ -77,6 +73,8 @@ function Report({ result, token, whatsapp }: { result: FreeCheckResult; token: s
   const pageLink = `${window.location.origin}/free-check/${result.id}?${new URLSearchParams({ token })}`
   const message = t('freeCheck.shareMessage', { reference: result.reference, link: pageLink })
   const ownWhatsApp = whatsapp ? whatsappTo(new URL(whatsapp).pathname.slice(1), message) : whatsappTo(null, message)
+  const verdicts = VERDICT_ORDER.flatMap((name) => (result.verdicts[name] ? [{ name, verdict: result.verdicts[name] }] : []))
+  const worry = verdicts.some(({ verdict }) => verdict.status === 'MISMATCH' || verdict.status === 'OUTSIDE')
 
   async function openPdf() {
     setOpening(true)
@@ -91,135 +89,104 @@ function Report({ result, token, whatsapp }: { result: FreeCheckResult; token: s
     }
   }
 
-  const verdicts = VERDICT_ORDER.flatMap((name) => (result.verdicts[name] ? [{ name, verdict: result.verdicts[name] }] : []))
-
   return (
-    <ServicePage>
-      <div ref={root}>
-        <ServiceHeader kicker={t('freeCheck.reportKicker')} lead={t('freeCheck.reportTitle')}>
-          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/75 sm:text-muted">
-            <span>
-              {t('freeCheck.reference')}: <span className="font-semibold text-white sm:text-navy">{result.reference}</span>
-            </span>
-            <span>{t('freeCheck.checkedOn', { date: formatDate(result.date, i18n.language) })}</span>
-          </div>
-        </ServiceHeader>
+    <ReceiptPage>
+      <ReceiptBrand />
+      <ReceiptCard
+        mark={worry ? 'alert' : 'check'}
+        title={worry ? t('freeCheck.receiptTitleWorry') : t('freeCheck.receiptTitle')}
+        lead={
+          <>
+            {t('freeCheck.receiptLead')} <b className="font-semibold text-navy">{result.reference}</b>.
+          </>
+        }
+      >
+        <ReceiptSection title={t('freeCheck.details')}>
+          <ReceiptRows>
+            <ReceiptRow label={t('freeCheck.reference')} value={result.reference} />
+            <ReceiptRow label={t('freeCheck.date')} value={formatDate(result.date, i18n.language)} />
+            <ReceiptRow label={t('freeCheck.category')} value={t(`market.category.${result.category}`)} />
+            <ReceiptRow label={t('freeCheck.size')} value={`${formatNumber(result.size, i18n.language)} ${t(`freeCheck.units.${result.size_unit as 'sqm'}`)}`} />
+            <ReceiptRow label={t('freeCheck.descriptionShort')} value="" note={<span className="block text-[15px] whitespace-pre-line text-navy">{result.description}</span>} />
+          </ReceiptRows>
+        </ReceiptSection>
 
-        <ServiceColumns aside={<NextSteps reference={result.reference} />}>
-          {/* FRC-04's statement, in the language the check was made in. */}
-          <div data-reveal className="flex items-start gap-3 rounded-2xl bg-navy px-5 py-4 text-white sm:rounded-md">
-            <ShieldIcon className="mt-0.5 size-5 shrink-0 text-gold-light" />
-            <p className="font-serif text-lg leading-snug font-semibold">{result.disclaimer}</p>
-          </div>
+        <ReceiptSection title={t('freeCheck.verdicts')}>
+          <ReceiptRows>
+            {verdicts.map(({ name, verdict }) => (
+              <ReceiptRow
+                key={name}
+                label={t(`freeCheck.verdictNames.${name}`)}
+                value={<span className={toneFor(verdict.status)}>{t(`freeCheck.verdictShort.${verdict.status}`)}</span>}
+                note={verdict.message}
+              />
+            ))}
+          </ReceiptRows>
+        </ReceiptSection>
 
-          <section data-reveal aria-labelledby="verdicts-title">
-            <h2 id="verdicts-title" className="text-base font-bold text-navy sm:font-serif sm:text-2xl sm:font-semibold">
-              {t('freeCheck.verdicts')}
-            </h2>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {verdicts.map(({ name, verdict }, index) => {
-                const tone = toneFor(verdict.status)
-                return (
-                  <motion.li
-                    key={name}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 + index * 0.08, duration: 0.4 }}
-                    className={`flex gap-3 rounded-2xl bg-white p-4 shadow-card ring-1 sm:rounded-md sm:p-5 ${tone.ring}`}
-                  >
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-full ${tone.badge}`}>
-                      <tone.icon className="size-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-navy">{t(`freeCheck.verdictNames.${name}`)}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-navy/80">{verdict.message}</p>
-                    </div>
-                  </motion.li>
-                )
-              })}
-            </ul>
-          </section>
-
-          <section data-reveal className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              onClick={() => void openPdf()}
-              disabled={opening}
-              aria-busy={opening || undefined}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-navy px-6 text-sm font-semibold text-white transition-colors hover:bg-navy-soft disabled:opacity-70"
-            >
-              <DocumentIcon className="size-5" />
-              {opening ? t('freeCheck.downloading') : t('freeCheck.download')}
-            </button>
+        {/* FRC-04's statement, in the language the check was made in. */}
+        <ReceiptSection>
+          <p className="text-center text-[15px] leading-relaxed text-navy/75">
+            <b className="font-semibold text-navy">{result.disclaimer}.</b> {result.full_check}{' '}
             <a
-              href={ownWhatsApp}
+              href={whatsappLink(t('freeCheck.nextMessage', { reference: result.reference }))}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#1f7a4d] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#186440]"
+              className="font-medium text-gold underline-offset-4 hover:underline"
             >
-              <WhatsAppIcon className="size-5" />
-              {t('freeCheck.sendWhatsApp')}
+              {t('freeCheck.nextCta')}
             </a>
-            <div className="flex items-center justify-center sm:ml-auto">
-              <CopyButton value={pageLink} label={t('forms.copyLink')} />
-            </div>
-          </section>
-          {pdfError && <Alert tone="error">{pdfError}</Alert>}
+          </p>
+        </ReceiptSection>
+      </ReceiptCard>
 
-          <section data-reveal aria-labelledby="details-title" className="rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-6">
-            <h2 id="details-title" className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">
-              {t('freeCheck.details')}
-            </h2>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Detail label={t('freeCheck.category')} value={t(`market.category.${result.category}`)} />
-              <Detail label={t('freeCheck.size')} value={`${formatNumber(result.size, i18n.language)} ${t(`freeCheck.units.${result.size_unit as 'sqm'}`)}`} />
-              <div className="sm:col-span-2">
-                <Detail label={t('freeCheck.description')} value={result.description} />
-              </div>
-            </dl>
-            <p className="mt-5 border-t border-mist pt-4 text-xs leading-relaxed text-muted">
-              {t('freeCheck.validUntil', { date: formatDate(result.expires_at, i18n.language) })}. {t('forms.privateLink')}
-            </p>
-          </section>
-        </ServiceColumns>
-      </div>
-    </ServicePage>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-1 text-[15px] leading-relaxed break-words whitespace-pre-line text-navy">{value}</dd>
-    </div>
-  )
-}
-
-function NextSteps({ reference }: { reference: string }) {
-  const { t } = useTranslation()
-  return (
-    <>
-      <Panel tone="navy">
-        <h2 className="font-serif text-xl font-semibold">{t('freeCheck.nextTitle')}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/75">{t('freeCheck.limitNote')}</p>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <button
+          type="button"
+          onClick={() => void openPdf()}
+          disabled={opening}
+          aria-busy={opening || undefined}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-navy px-6 text-sm font-semibold text-white transition-colors hover:bg-navy-soft disabled:opacity-70"
+        >
+          <DocumentIcon className="size-5" />
+          {opening ? t('freeCheck.downloading') : t('freeCheck.download')}
+        </button>
         <a
-          href={whatsappLink(t('freeCheck.nextMessage', { reference }))}
+          href={ownWhatsApp}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold-light"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#1f7a4d] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#186440]"
         >
-          <WhatsAppIcon className="size-4" />
-          {t('freeCheck.nextCta')}
+          <WhatsAppIcon className="size-5" />
+          {t('freeCheck.sendWhatsApp')}
         </a>
-      </Panel>
-      <Link
-        to="/free-check"
-        className="flex h-12 items-center justify-center rounded-xl bg-white text-sm font-semibold text-navy ring-1 ring-mist transition-colors hover:ring-navy/30"
-      >
-        {t('freeCheck.another')}
-      </Link>
-    </>
+      </div>
+      {pdfError && (
+        <div className="mt-4">
+          <Alert tone="error">{pdfError}</Alert>
+        </div>
+      )}
+
+      <ReceiptFooter>
+        <p>
+          {t('freeCheck.reference')}: <b className="font-semibold text-navy/80">{result.reference}</b>
+        </p>
+        <div className="flex justify-center">
+          <CopyButton value={pageLink} label={t('forms.copyLink')} />
+        </div>
+        <p>
+          {t('freeCheck.helpLead')}{' '}
+          <Link to="/free-check" className="text-gold underline-offset-4 hover:underline">
+            {t('freeCheck.another')}
+          </Link>
+          .
+        </p>
+        <p className="text-[13px] text-muted/80">
+          {t('freeCheck.validUntil', { date: formatDate(result.expires_at, i18n.language) })}. {t('forms.privateLink')}
+        </p>
+      </ReceiptFooter>
+      <ReceiptSeal />
+    </ReceiptPage>
   )
 }
 

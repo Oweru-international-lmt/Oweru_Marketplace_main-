@@ -1,22 +1,20 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Alert } from '../../components/Alert'
-import { Button } from '../../components/Button'
-import { FilesField, TextAreaField } from '../../components/FormFields'
 import { FullPageLoader } from '../../components/FullPageLoader'
-import { CalendarIcon } from '../../components/icons'
+import { DocumentIcon, LockIcon, SearchIcon, ShieldIcon, WhatsAppIcon } from '../../components/icons'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { useNoReferrer } from '../../hooks/useNoReferrer'
-import { useReveal } from '../../hooks/useReveal'
 import { ApiError } from '../../lib/api'
 import { whatsappLink } from '../../lib/config'
 import { errorMessage } from '../../lib/errors'
 import { EVIDENCE_TYPES, firstFileProblem } from '../../lib/files'
 import { formatDate } from '../../lib/format'
 import { servicesApi, type ComplaintStatus, type ComplaintSummary } from '../../lib/servicesApi'
-import { Panel, ServiceColumns, ServiceHeader, ServicePage, Stages } from './services/ServiceUi'
+import { Field, PhotoBox } from './services/fields'
+import { TrackingCard, Timeline, type Stage } from './services/tracking'
 
 type Loaded = { key: string; complaint?: ComplaintSummary; failed?: 'invalid' | 'network' }
 
@@ -57,71 +55,89 @@ export function ComplaintStatusPage() {
 // review, and a final review sits between the decision and closing.
 const STAGE_OF: Record<ComplaintStatus, number> = { RECEIVED: 0, IN_REVIEW: 1, WAITING_INFORMATION: 1, RESOLVED: 2, UNDER_FINAL_REVIEW: 2, CLOSED: 3 }
 const OPEN: ComplaintStatus[] = ['RECEIVED', 'IN_REVIEW', 'WAITING_INFORMATION', 'UNDER_FINAL_REVIEW']
+const STAGES = [
+  { name: 'received', icon: DocumentIcon },
+  { name: 'review', icon: SearchIcon },
+  { name: 'resolved', icon: ShieldIcon },
+  { name: 'closed', icon: LockIcon },
+] as const
 
 function StatusView({ complaint, token, onChange }: { complaint: ComplaintSummary; token: string; onChange: (complaint: ComplaintSummary) => void }) {
   const { t, i18n } = useTranslation()
   useDocumentTitle(`${t('complaint.statusKicker')} ${complaint.reference}`)
-  const root = useRef<HTMLDivElement>(null)
-  useReveal(root, [complaint.status])
-  const stages = [t('complaint.stages.received'), t('complaint.stages.review'), t('complaint.stages.resolved'), t('complaint.stages.closed')]
-  const waiting = complaint.status === 'WAITING_INFORMATION'
+  const current = STAGE_OF[complaint.status]
+  // The current stage says what this exact status means; the others are generic.
+  const stages: Stage[] = STAGES.map((stage, index) => ({
+    label: index === current ? t(`complaint.statuses.${complaint.status}`) : t(`complaint.stages.${stage.name}`),
+    body: index === current ? t(`complaint.statusBody.${complaint.status}`) : t(`complaint.stageBody.${stage.name}`),
+    icon: stage.icon,
+  }))
+  const due = formatDate(complaint.resolution_due_at, i18n.language)
+  const help = whatsappLink(`${t('site.supportMessage')} ${complaint.reference}`)
   const decided = complaint.status === 'RESOLVED' || complaint.status === 'CLOSED'
 
   return (
-    <ServicePage>
-      <div ref={root}>
-        <ServiceHeader kicker={t('complaint.statusKicker')} lead={complaint.reference}>
-          <p className="mt-3 text-sm text-white/75 sm:text-muted">
-            <CalendarIcon className="mr-1.5 inline size-4 align-[-3px]" />
-            {t('complaint.dueBy', { date: formatDate(complaint.resolution_due_at, i18n.language) })}
-          </p>
-        </ServiceHeader>
-
-        <ServiceColumns
-          aside={
-            <Panel tone="navy">
-              <p className="text-sm leading-relaxed text-white/80">{t('complaint.helpBody')}</p>
-              <a
-                href={whatsappLink(`${t('site.supportMessage')} ${complaint.reference}`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex h-11 items-center rounded-md bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold-light"
-              >
-                {t('site.support')}
-              </a>
-            </Panel>
-          }
-        >
-          <section data-reveal className="rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-7">
-            <Stages label={t('complaint.progress')} stages={stages} current={STAGE_OF[complaint.status]} />
-            <div className={`mt-6 rounded-xl px-4 py-3 ${waiting ? 'bg-gold/15' : 'bg-paper'}`}>
-              <p className="font-semibold text-navy">{t(`complaint.statuses.${complaint.status}`)}</p>
-              <p className="mt-1 text-sm leading-relaxed text-navy/75">{t(`complaint.statusBody.${complaint.status}`)}</p>
-            </div>
-          </section>
-
-          {(complaint.outcome || complaint.reasons) && (
-            <section data-reveal className="space-y-4 rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-7">
-              {complaint.outcome && (
-                <div>
-                  <h2 className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{t('complaint.outcome')}</h2>
-                  <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-navy">{complaint.outcome}</p>
-                </div>
-              )}
-              {complaint.reasons && (
-                <div>
-                  <h2 className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{t('complaint.reasons')}</h2>
-                  <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-navy">{complaint.reasons}</p>
-                </div>
-              )}
-            </section>
-          )}
-
-          {OPEN.includes(complaint.status) && <ReplyForm complaintId={complaint.id} token={token} highlight={waiting} />}
-          {decided && <FinalReviewForm complaint={complaint} token={token} onChange={onChange} />}
-        </ServiceColumns>
+    <div className="mx-auto max-w-[860px] pb-16 lg:px-8 lg:pt-12">
+      <div className="lg:hidden">
+        <Timeline
+          label={t('complaint.progress')}
+          summary={[
+            { label: t('complaint.statusLabel'), value: t(`complaint.stages.${STAGES[current].name}`) },
+            { label: t('complaint.number'), value: <span className="font-mono text-base">{complaint.reference}</span> },
+          ]}
+          stages={stages}
+          current={current}
+        />
+        <p className="border-t border-mist px-6 py-4 text-sm text-muted">{t('complaint.dueBy', { date: due })}</p>
       </div>
-    </ServicePage>
+      <div className="hidden lg:block">
+        <TrackingCard
+          label={t('complaint.progress')}
+          title={`${t('complaint.statusKicker')}  –  ${complaint.reference}`}
+          facts={[
+            { label: t('complaint.number'), value: <span className="font-mono">{complaint.reference}</span> },
+            { label: t('complaint.statusLabel'), value: t(`complaint.statuses.${complaint.status}`) },
+            { label: t('complaint.target'), value: due },
+          ]}
+          stages={stages}
+          current={current}
+          action={{ href: help, label: t('site.support'), icon: WhatsAppIcon }}
+        />
+        <p className="mt-10 text-[15px] leading-relaxed text-navy/80">{t(`complaint.statusBody.${complaint.status}`)}</p>
+      </div>
+
+      <div className="mt-2 space-y-5 px-4 lg:mt-8 lg:px-0">
+        {(complaint.outcome || complaint.reasons) && (
+          <section className="rounded-2xl bg-white p-6 shadow-card lg:rounded-md">
+            {complaint.outcome && (
+              <>
+                <h2 className="text-[13px] font-medium tracking-[0.14em] text-navy/80 uppercase">{t('complaint.outcome')}</h2>
+                <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-navy">{complaint.outcome}</p>
+              </>
+            )}
+            {complaint.reasons && (
+              <>
+                <h2 className="mt-5 border-t border-mist pt-5 text-[13px] font-medium tracking-[0.14em] text-navy/80 uppercase">{t('complaint.reasons')}</h2>
+                <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-navy">{complaint.reasons}</p>
+              </>
+            )}
+          </section>
+        )}
+
+        {OPEN.includes(complaint.status) && <ReplyForm complaintId={complaint.id} token={token} highlight={complaint.status === 'WAITING_INFORMATION'} />}
+        {decided && <FinalReviewForm complaint={complaint} token={token} onChange={onChange} />}
+
+        <a
+          href={help}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-12 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-navy ring-1 ring-mist transition-colors hover:ring-navy/30 lg:hidden"
+        >
+          <WhatsAppIcon className="size-4" />
+          {t('site.support')}
+        </a>
+      </div>
+    </div>
   )
 }
 
@@ -162,22 +178,17 @@ function ReplyForm({ complaintId, token, highlight }: { complaintId: string; tok
   }
 
   return (
-    <form
-      data-reveal
-      noValidate
-      onSubmit={(event) => void send(event)}
-      className={`space-y-5 rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-7 ${highlight ? 'ring-2 ring-gold/60' : ''}`}
-    >
-      <h2 className="text-lg font-semibold text-navy sm:font-serif sm:text-xl">{t('complaint.replyTitle')}</h2>
-      <TextAreaField label={t('complaint.replyLabel')} rows={4} maxLength={10000} value={text} onChange={(event) => setText(event.target.value)} error={fieldError} />
-      <FilesField label={`${t('complaint.stepEvidence')} ${t('forms.optional')}`} hint={t('complaint.evidenceHint')} files={files} onChange={setFiles} accept="image/jpeg,image/png,application/pdf" max={5} />
+    <form noValidate onSubmit={(event) => void send(event)} className={`space-y-5 rounded-2xl bg-white p-6 shadow-card lg:rounded-md ${highlight ? 'ring-2 ring-gold/60' : ''}`}>
+      <h2 className="text-lg font-bold text-navy">{t('complaint.replyTitle')}</h2>
+      <Field label={t('complaint.replyLabel')} variant="filled" error={fieldError}>
+        {(control) => (
+          <textarea {...control} rows={4} maxLength={10000} className={`${control.className} resize-y py-3.5 leading-relaxed`} value={text} onChange={(event) => setText(event.target.value)} />
+        )}
+      </Field>
+      <PhotoBox label={t('complaint.addEvidence')} files={files} onChange={setFiles} accept="image/jpeg,image/png,application/pdf" max={5} variant="filled" />
       <AnimatePresence>{sent && <Alert tone="success">{t('complaint.replySent')}</Alert>}</AnimatePresence>
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="sm:max-w-xs">
-        <Button type="submit" loading={sending} loadingLabel={t('listing.sending')}>
-          {t('complaint.replySend')}
-        </Button>
-      </div>
+      <SendButton busy={sending} label={t('complaint.replySend')} busyLabel={t('listing.sending')} />
     </form>
   )
 }
@@ -210,8 +221,8 @@ function FinalReviewForm({ complaint, token, onChange }: { complaint: ComplaintS
   }
 
   return (
-    <section data-reveal className="rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-7">
-      <h2 className="text-lg font-semibold text-navy sm:font-serif sm:text-xl">{t('complaint.reviewTitle')}</h2>
+    <section className="rounded-2xl bg-white p-6 shadow-card lg:rounded-md">
+      <h2 className="text-lg font-bold text-navy">{t('complaint.reviewTitle')}</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">{t('complaint.reviewBody')}</p>
       <AnimatePresence initial={false} mode="wait">
         {open ? (
@@ -225,13 +236,13 @@ function FinalReviewForm({ complaint, token, onChange }: { complaint: ComplaintS
             className="overflow-hidden"
           >
             <div className="space-y-5 pt-5">
-              <TextAreaField label={t('complaint.reviewLabel')} rows={4} maxLength={10000} value={reason} onChange={(event) => setReason(event.target.value)} error={fieldError} />
+              <Field label={t('complaint.reviewLabel')} variant="filled" error={fieldError}>
+                {(control) => (
+                  <textarea {...control} rows={4} maxLength={10000} className={`${control.className} resize-y py-3.5 leading-relaxed`} value={reason} onChange={(event) => setReason(event.target.value)} />
+                )}
+              </Field>
               {error && <Alert tone="error">{error}</Alert>}
-              <div className="sm:max-w-xs">
-                <Button type="submit" loading={sending} loadingLabel={t('listing.sending')}>
-                  {t('complaint.reviewSend')}
-                </Button>
-              </div>
+              <SendButton busy={sending} label={t('complaint.reviewSend')} busyLabel={t('listing.sending')} />
             </div>
           </motion.form>
         ) : (
@@ -242,13 +253,29 @@ function FinalReviewForm({ complaint, token, onChange }: { complaint: ComplaintS
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-4 inline-flex h-11 items-center rounded-md bg-white px-4 text-sm font-semibold text-navy ring-1 ring-mist hover:ring-navy/30"
+            className="mt-4 inline-flex h-11 items-center rounded-full bg-paper px-5 text-sm font-semibold text-navy hover:bg-mist/70"
           >
             {t('complaint.reviewSend')}
           </motion.button>
         )}
       </AnimatePresence>
     </section>
+  )
+}
+
+// S5's round Send button.
+function SendButton({ busy, label, busyLabel }: { busy: boolean; label: string; busyLabel: string }) {
+  return (
+    <motion.button
+      type="submit"
+      whileTap={{ scale: 0.98 }}
+      disabled={busy}
+      aria-busy={busy || undefined}
+      className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-gold text-[15px] font-semibold text-navy transition-colors hover:bg-gold-light disabled:opacity-70"
+    >
+      {busy && <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-navy/25 border-t-navy" />}
+      {busy ? busyLabel : label}
+    </motion.button>
   )
 }
 

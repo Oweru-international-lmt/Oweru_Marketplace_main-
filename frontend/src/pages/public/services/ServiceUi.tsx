@@ -1,11 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckIcon } from '../../../components/icons'
 import { gsap, MOTION_OK, useGSAP } from '../../../lib/gsap'
 
 // Building blocks shared by the free check, complaint and full check pages.
 // Phones get the M1 dark band header; desktop keeps the Horizon serif heading.
+// The status, receipt and form pieces live in tracking.tsx, receipt.tsx and fields.tsx.
 
 type HeaderProps = { kicker: string; lead: string; accent?: string; body?: string; children?: ReactNode }
 
@@ -59,26 +59,6 @@ export function ServicePage({ children }: { children: ReactNode }) {
   return <div className="mx-auto max-w-7xl pb-12 sm:px-8 sm:pt-6 lg:pt-10 lg:pb-20">{children}</div>
 }
 
-// A numbered white card, one per question the form asks.
-export function FormSection({ number, title, hint, children }: { number: number; title: string; hint?: string; children: ReactNode }) {
-  return (
-    <section data-reveal aria-labelledby={`section-${number}`} className="rounded-2xl bg-white p-5 shadow-card sm:rounded-md sm:p-7">
-      <div className="flex items-start gap-4">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-navy font-serif text-[15px] font-semibold text-gold-light">
-          {number}
-        </span>
-        <div className="min-w-0 pt-1">
-          <h2 id={`section-${number}`} className="text-lg leading-snug font-semibold text-navy sm:font-serif sm:text-xl">
-            {title}
-          </h2>
-          {hint && <p className="mt-1 text-sm leading-relaxed text-muted">{hint}</p>}
-        </div>
-      </div>
-      <div className="mt-5 space-y-5">{children}</div>
-    </section>
-  )
-}
-
 export function Panel({ title, children, tone = 'white' }: { title?: string; children: ReactNode; tone?: 'white' | 'navy' }) {
   const navy = tone === 'navy'
   return (
@@ -86,48 +66,6 @@ export function Panel({ title, children, tone = 'white' }: { title?: string; chi
       {title && <h2 className={`text-xs font-semibold tracking-[0.2em] uppercase ${navy ? 'text-gold-light' : 'text-gold'}`}>{title}</h2>}
       <div className={title ? 'mt-4' : ''}>{children}</div>
     </section>
-  )
-}
-
-// Progress along a fixed path. `current` is the index reached; `stopped` marks
-// a path that ended early (shown in red at that stage).
-export function Stages({ label, stages, current, stopped = false }: { label: string; stages: string[]; current: number; stopped?: boolean }) {
-  return (
-    <ol aria-label={label} className="flex items-start">
-      {stages.map((stage, index) => {
-        const done = index < current || (index === current && index === stages.length - 1 && !stopped)
-        const here = index === current
-        return (
-          <li key={stage} aria-current={here ? 'step' : undefined} className="relative flex flex-1 flex-col items-center text-center">
-            {index > 0 && (
-              <span aria-hidden="true" className="absolute top-3.5 right-1/2 h-0.5 w-full bg-mist">
-                <motion.span
-                  className="block h-full origin-left bg-gold"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: index <= current ? 1 : 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.08 }}
-                />
-              </span>
-            )}
-            <span
-              className={`relative z-10 grid size-7 place-items-center rounded-full text-xs font-semibold ${
-                here && stopped
-                  ? 'bg-danger text-white'
-                  : done
-                    ? 'bg-gold text-navy'
-                    : here
-                      ? 'bg-navy text-gold-light ring-4 ring-gold/25'
-                      : 'bg-white text-muted ring-1 ring-mist'
-              }`}
-            >
-              {done ? <CheckIcon className="size-4" /> : index + 1}
-            </span>
-            {/* Phones label only the current stage; the box below names it in full. */}
-            <span className={`mt-2 px-0.5 text-[11px] leading-tight sm:not-sr-only sm:text-xs ${here ? 'font-semibold text-navy' : 'sr-only text-muted'}`}>{stage}</span>
-          </li>
-        )
-      })}
-    </ol>
   )
 }
 

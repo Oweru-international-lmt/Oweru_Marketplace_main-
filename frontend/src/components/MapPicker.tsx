@@ -25,16 +25,24 @@ type Props = {
   onChange: (value: LngLat) => void
   invalid?: boolean
   describedBy?: string
+  // "bare" is the map alone, filling `mapClassName`; the page supplies its own
+  // controls (the phone sheet). "dark" suits the navy step form.
+  bare?: boolean
+  tone?: 'light' | 'dark'
+  mapClassName?: string
 }
 
 // Tap the map, or drag the pin, to mark the property. Keyboard users pan with
 // the arrow keys and pin the centre with the button below the map.
-export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
+export function MapPicker({ value, onChange, invalid, describedBy, bare = false, tone = 'light', mapClassName = 'h-[300px] sm:h-[380px]' }: Props) {
   const { t } = useTranslation()
   const element = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const marker = useRef<L.Marker | null>(null)
   const change = useRef(onChange)
+  // A map created after the pin was dropped opens on the pin.
+  const fresh = useRef(true)
+  const bareAtStart = useRef(bare)
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState(false)
 
@@ -46,12 +54,15 @@ export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
     if (!element.current) return
     const instance = L.map(element.current, { center: START, zoom: 11, zoomControl: false, attributionControl: true })
     L.control.zoom({ position: 'topright' }).addTo(instance)
+    // On the bare map a sheet covers the bottom; the OSM credit must stay visible.
+    if (bareAtStart.current) instance.attributionControl.setPosition('topleft')
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(instance)
     instance.on('click', (event: L.LeafletMouseEvent) => change.current([event.latlng.lng, event.latlng.lat]))
     map.current = instance
+    fresh.current = true
     return () => {
       instance.remove()
       map.current = null
@@ -64,11 +75,15 @@ export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
     const instance = map.current
     if (!instance) return
     if (!value) {
+      fresh.current = false
       marker.current?.remove()
       marker.current = null
       return
     }
     const position: L.LatLngTuple = [value[1], value[0]]
+    // A new map, or a pin set from outside (the phone's location), may not show it.
+    if (fresh.current || !instance.getBounds().contains(position)) instance.setView(position, Math.max(instance.getZoom(), 16))
+    fresh.current = false
     if (marker.current) {
       marker.current.setLatLng(position)
       return
@@ -107,17 +122,22 @@ export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
     if (centre) change.current([centre.lng, centre.lat])
   }
 
+  const dark = tone === 'dark'
+  if (bare) {
+    return <div ref={element} role="application" aria-label={t('freeCheck.mapLabel')} aria-describedby={describedBy} className={`isolate w-full bg-mist ${mapClassName}`} />
+  }
+
   return (
     <div>
       <div
-        className={`relative isolate overflow-hidden rounded-2xl ring-1 ${invalid ? 'ring-2 ring-danger' : 'ring-mist'}`}
+        className={`relative isolate overflow-hidden rounded-2xl ring-1 ${invalid ? 'ring-2 ring-danger' : dark ? 'ring-white/15' : 'ring-mist'}`}
         aria-describedby={describedBy}
       >
         <div
           ref={element}
           role="application"
           aria-label={t('freeCheck.mapLabel')}
-          className="h-[300px] w-full bg-mist sm:h-[380px]"
+          className={`w-full bg-mist ${mapClassName}`}
         />
         {!value && (
           <p className="pointer-events-none absolute inset-x-3 top-3 z-[500] mx-auto w-fit rounded-full bg-navy/90 px-4 py-2 text-center text-xs font-medium text-white shadow-card sm:text-sm">
@@ -131,7 +151,9 @@ export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
           onClick={locate}
           disabled={locating}
           aria-busy={locating || undefined}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-white transition-colors hover:bg-navy-soft disabled:opacity-70"
+          className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:opacity-70 ${
+            dark ? 'bg-gold text-navy hover:bg-gold-light' : 'bg-navy text-white hover:bg-navy-soft'
+          }`}
         >
           <MapPinIcon className="size-4" />
           {locating ? t('freeCheck.locating') : t('freeCheck.useLocation')}
@@ -139,12 +161,14 @@ export function MapPicker({ value, onChange, invalid, describedBy }: Props) {
         <button
           type="button"
           onClick={pinCentre}
-          className="inline-flex h-11 items-center rounded-full bg-white px-4 text-sm font-semibold text-navy ring-1 ring-mist transition-colors hover:ring-navy/30"
+          className={`inline-flex h-11 items-center rounded-full px-4 text-sm font-semibold ring-1 transition-colors ${
+            dark ? 'bg-white/[0.06] text-white ring-white/20 hover:ring-white/40' : 'bg-white text-navy ring-mist hover:ring-navy/30'
+          }`}
         >
           {t('freeCheck.pinCentre')}
         </button>
       </div>
-      {locateError && <p className="mt-2 text-sm text-danger">{t('freeCheck.locateFailed')}</p>}
+      {locateError && <p className={`mt-2 text-sm ${dark ? 'text-[#ffb3a6]' : 'text-danger'}`}>{t('freeCheck.locateFailed')}</p>}
     </div>
   )
 }
