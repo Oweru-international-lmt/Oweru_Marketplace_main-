@@ -25,10 +25,10 @@ export function VerificationPanel({ listing }: { listing: PublicListing }) {
       : t(`levels.label${level}`, { name })
 
   return (
-    <section aria-labelledby="verification-title" className="rounded-xl bg-white p-6 shadow-card sm:p-8">
+    <section aria-labelledby="verification-title" className="rounded-2xl bg-white p-5 shadow-card sm:rounded-xl sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="verification-title" className="flex items-center gap-2 font-serif text-2xl font-semibold text-navy">
-          <ShieldIcon className="size-6 text-gold" />
+        <h2 id="verification-title" className="flex items-center gap-2 text-base font-bold text-navy sm:font-serif sm:text-2xl sm:font-semibold">
+          <ShieldIcon className="size-5 text-gold sm:size-6" />
           {t('listing.verification')}
         </h2>
         <VerificationBadge level={level} size="md" />

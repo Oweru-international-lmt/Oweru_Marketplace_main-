@@ -3,7 +3,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDownIcon } from '../../../components/icons'
 import { VerificationBadge } from '../../../components/market/VerificationBadge'
-import { digitsOnly, formatNumber } from '../../../lib/format'
+import { digitsOnly, formatNumber, formatTshShort } from '../../../lib/format'
 import { CATEGORIES, TITLE_TYPES, type Place, type SearchParams } from '../../../lib/marketApi'
 
 export type Places = { regions: Place[]; districts: Place[]; wards: Place[] }
@@ -11,29 +11,30 @@ export type Change = Partial<Record<keyof SearchParams, string | undefined>>
 type FieldProps = { filters: SearchParams; onChange: (change: Change) => void }
 
 // SRC-01 filters as separate fields: the desktop pill row shows each in its
-// own pop-over, the phone sheet stacks them all. Changes apply to the URL at once.
+// own pop-over, the phone sheet stacks them all in the M2 reference's style.
+// Changes apply to the URL at once.
 export function FilterPanel({ filters, places, onChange }: FieldProps & { places: Places }) {
   const { t } = useTranslation()
   return (
-    <div className="space-y-6">
-      <Group title={t('search.category')}>
+    <div className="divide-y divide-mist">
+      <SheetGroup title={t('search.category')}>
         <CategoryField filters={filters} onChange={onChange} />
-      </Group>
-      <Group title={t('search.location')}>
+      </SheetGroup>
+      <SheetGroup title={t('search.priceRange')}>
+        <PriceSliderField min={filters.min_price} max={filters.max_price} onCommit={(min, max) => onChange({ min_price: min, max_price: max })} />
+      </SheetGroup>
+      <SheetGroup title={t('search.location')}>
         <LocationFields filters={filters} places={places} onChange={onChange} />
-      </Group>
-      <Group title={t('search.price')}>
-        <RangeField min={filters.min_price} max={filters.max_price} onCommit={(min, max) => onChange({ min_price: min, max_price: max })} />
-      </Group>
-      <Group title={t('search.size')}>
+      </SheetGroup>
+      <SheetGroup title={t('search.level')}>
+        <LevelBoxesField filters={filters} onChange={onChange} />
+      </SheetGroup>
+      <SheetGroup title={t('search.titleType')}>
+        <TitleTypePills filters={filters} onChange={onChange} />
+      </SheetGroup>
+      <SheetGroup title={t('search.size')}>
         <RangeField min={filters.min_size} max={filters.max_size} onCommit={(min, max) => onChange({ min_size: min, max_size: max })} />
-      </Group>
-      <Group title={t('search.titleType')}>
-        <TitleTypeField filters={filters} onChange={onChange} />
-      </Group>
-      <Group title={t('search.level')}>
-        <LevelField filters={filters} onChange={onChange} />
-      </Group>
+      </SheetGroup>
     </div>
   )
 }
@@ -47,12 +48,23 @@ export function Group({ title, children }: { title: string; children: ReactNode 
   )
 }
 
-export function CategoryField({ filters, onChange }: FieldProps) {
+// Sheet sections: a plain bold heading over the control, separated by hairlines.
+function SheetGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="py-5 first:pt-1">
+      <legend className="float-left mb-3.5 w-full text-[15px] font-semibold text-navy">{title}</legend>
+      <div className="clear-both">{children}</div>
+    </fieldset>
+  )
+}
+
+// M2's chip row: navy when chosen, outlined otherwise.
+export function CategoryField({ filters, onChange, nowrap = false }: FieldProps & { nowrap?: boolean }) {
   const { t } = useTranslation()
-  // Unique per instance, so two open panels never animate their pills into each other.
+  // Unique per instance, so two panels never animate their pills into each other.
   const pillId = useId()
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={`flex gap-2 ${nowrap ? 'w-max' : 'flex-wrap'}`}>
       {(['', ...CATEGORIES] as const).map((category) => {
         const active = (filters.category ?? '') === category
         return (
@@ -61,18 +73,169 @@ export function CategoryField({ filters, onChange }: FieldProps) {
             type="button"
             aria-pressed={active}
             onClick={() => onChange({ category: category || undefined })}
-            className={`relative h-10 rounded-full px-4 text-sm font-medium transition-colors ${
-              active ? 'text-navy' : 'text-muted ring-1 ring-mist hover:text-navy hover:ring-navy/30'
+            className={`relative h-10 shrink-0 rounded-full px-5 text-[13px] font-semibold transition-colors ${
+              active ? 'text-white' : 'bg-white text-navy ring-1 ring-mist hover:ring-navy/30'
             }`}
           >
             {active && (
               <motion.span
                 layoutId={`filter-category-${pillId}`}
-                className="absolute inset-0 rounded-full bg-gold/15 ring-1 ring-gold/60"
+                className="absolute inset-0 rounded-full bg-navy"
                 transition={{ type: 'spring', stiffness: 500, damping: 38 }}
               />
             )}
             <span className="relative">{category ? t(`market.category.${category}`) : t('search.any')}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Price stops in TSh. The first means "no minimum", the last "no maximum".
+const PRICE_STOPS = [0, 5e6, 10e6, 20e6, 50e6, 100e6, 200e6, 500e6, 1e9, 2e9, 5e9]
+
+function nearestStop(value?: string, fallback = 0) {
+  if (!value) return fallback
+  const amount = Number(value)
+  let best = 0
+  PRICE_STOPS.forEach((stop, index) => {
+    if (Math.abs(stop - amount) < Math.abs(PRICE_STOPS[best] - amount)) best = index
+  })
+  return best
+}
+
+// M2/M5's two-thumb price slider. It applies when a thumb is let go.
+export function PriceSliderField({ min, max, onCommit }: { min?: string; max?: string; onCommit: (min?: string, max?: string) => void }) {
+  const { t, i18n } = useTranslation()
+  const last = PRICE_STOPS.length - 1
+  const source = `${min}|${max}`
+  const [draft, setDraft] = useState({ low: nearestStop(min), high: nearestStop(max, last), source })
+  const current = draft.source === source ? draft : { low: nearestStop(min), high: nearestStop(max, last), source }
+
+  function commit() {
+    const low = current.low > 0 ? String(PRICE_STOPS[current.low]) : undefined
+    const high = current.high < last ? String(PRICE_STOPS[current.high]) : undefined
+    if (low !== min || high !== max) onCommit(low, high)
+  }
+
+  const label = (index: number) =>
+    index === 0 ? 'TSh 0' : index === last ? t('search.noLimit') : formatTshShort(PRICE_STOPS[index], i18n.language)
+  const percent = (index: number) => (index / last) * 100
+  const thumbs = [
+    { key: 'low', value: current.low, name: t('search.min') },
+    { key: 'high', value: current.high, name: t('search.max') },
+  ] as const
+
+  return (
+    <div className="px-1.5">
+      <div className="relative h-8">
+        <span className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mist" aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-navy"
+          style={{ left: `${percent(current.low)}%`, right: `${100 - percent(current.high)}%` }}
+        />
+        {thumbs.map((thumb) => (
+          <input
+            key={thumb.key}
+            type="range"
+            min={0}
+            max={last}
+            step={1}
+            value={thumb.value}
+            aria-label={thumb.name}
+            aria-valuetext={label(thumb.value)}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              setDraft(
+                thumb.key === 'low'
+                  ? { ...current, low: Math.min(value, current.high - 1) }
+                  : { ...current, high: Math.max(value, current.low + 1) },
+              )
+            }}
+            onPointerUp={commit}
+            onKeyUp={commit}
+            onBlur={commit}
+            className="dual-range"
+          />
+        ))}
+      </div>
+      <div className="relative mt-2 h-8">
+        {thumbs.map((thumb) => (
+          <span
+            key={thumb.key}
+            className="absolute top-0 rounded-full bg-paper px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap text-navy ring-1 ring-mist"
+            style={{
+              left: `clamp(0%, ${percent(thumb.value)}%, 100%)`,
+              transform: `translateX(${thumb.value === 0 ? '0' : thumb.value === last ? '-100%' : '-50%'})`,
+            }}
+          >
+            {label(thumb.value)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// M5's "Rooms" boxes, used for the minimum verification level.
+export function LevelBoxesField({ filters, onChange }: FieldProps) {
+  const { t } = useTranslation()
+  const options = [
+    { value: '', label: t('search.any') },
+    { value: '1', label: '1+' },
+    { value: '2', label: '2+' },
+    { value: '3', label: '3' },
+  ]
+  const chosen = filters.min_verification_level ?? ''
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-2">
+        {options.map((option) => {
+          const active = chosen === option.value
+          return (
+            <button
+              key={option.value || 'any'}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange({ min_verification_level: option.value || undefined })}
+              className={`h-12 rounded-xl text-sm font-semibold transition-colors ${
+                active ? 'bg-navy text-white' : 'bg-white text-navy ring-1 ring-mist hover:ring-navy/30'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+      {chosen && (
+        <div className="mt-3">
+          <VerificationBadge level={Number(chosen) as 1 | 2 | 3} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// M2's "House Type" pills, used for the title type.
+function TitleTypePills({ filters, onChange }: FieldProps) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-wrap gap-2">
+      {TITLE_TYPES.map((type) => {
+        const active = filters.title_type === type
+        return (
+          <button
+            key={type}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange({ title_type: active ? undefined : type })}
+            className={`h-10 rounded-full px-4 text-[13px] font-semibold transition-colors ${
+              active ? 'bg-navy text-white' : 'bg-white text-navy ring-1 ring-mist hover:ring-navy/30'
+            }`}
+          >
+            {t(`market.titleType.${type}`)}
           </button>
         )
       })}

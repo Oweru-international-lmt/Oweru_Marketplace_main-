@@ -1,22 +1,24 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { motion } from 'motion/react'
+import { useEffect, useState, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import { CloseIcon, MenuIcon, WhatsAppIcon } from '../components/icons'
+import { HomeIcon, SearchIcon, UserIcon, WhatsAppIcon } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Logo } from '../components/Logo'
 import { whatsappLink } from '../lib/config'
+import { DESKTOP, useMediaQuery } from '../lib/useMediaQuery'
 
-// Shell for the public marketplace: home, search and property pages.
+// Shell for the public marketplace: home, search and property pages. Phones
+// get a bottom bar instead of a menu; the property page swaps it for its own
+// price and action bar.
 export function PublicLayout() {
   const { t } = useTranslation()
   const { pathname, hash } = useLocation()
   // The home hero runs under the header, which stays clear until the page scrolls.
   const overHero = pathname === '/'
+  const onListing = pathname.startsWith('/listings/')
   const [scrolled, setScrolled] = useState(() => window.scrollY > 24)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
 
   // A plain listener, not a ScrollTrigger: the page grows as listings load, and
   // a trigger's "end" measured before that would switch the header back mid-page.
@@ -33,7 +35,10 @@ export function PublicLayout() {
     else window.scrollTo(0, 0)
   }, [pathname, hash])
 
-  const clear = overHero && !scrolled && !menuOpen
+  const clear = overHero && !scrolled
+  // On phones the home hero is a dark band (M1), so the clear header uses light text.
+  const desktop = useMediaQuery(DESKTOP)
+  const light = clear && !desktop
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper">
@@ -50,53 +55,18 @@ export function PublicLayout() {
         }`}
       >
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-          <Logo compact />
+          <Logo compact tone={light ? 'light' : 'dark'} />
           <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
             <HeaderLink to="/listings">{t('site.browse')}</HeaderLink>
             <HeaderLink to="/#how">{t('site.howItWorks')}</HeaderLink>
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden sm:block">
-              <LanguageSwitch />
-            </div>
+            <LanguageSwitch tone={light ? 'light' : 'dark'} />
             <div className="hidden md:block">
               <AccountActions />
             </div>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-expanded={menuOpen}
-              aria-controls="site-menu"
-              aria-label={menuOpen ? t('site.closeMenu') : t('site.openMenu')}
-              className="grid size-11 place-items-center rounded-xl text-navy ring-1 ring-mist hover:bg-white md:hidden"
-            >
-              {menuOpen ? <CloseIcon className="size-5" /> : <MenuIcon className="size-5" />}
-            </button>
           </div>
         </div>
-
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.nav
-              id="site-menu"
-              aria-label={t('nav.main')}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden border-t border-mist bg-paper md:hidden"
-            >
-              <div className="space-y-1 px-4 pt-3 pb-5" onClick={(event) => (event.target as HTMLElement).closest('a') && closeMenu()}>
-                <MenuLink to="/listings">{t('site.browse')}</MenuLink>
-                <MenuLink to="/#how">{t('site.howItWorks')}</MenuLink>
-                <div className="flex items-center justify-between gap-3 pt-4">
-                  <LanguageSwitch />
-                  <AccountActions />
-                </div>
-              </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
       </header>
 
       <main id="main" className={`flex-1 ${overHero ? '' : 'pt-18'}`}>
@@ -104,7 +74,66 @@ export function PublicLayout() {
       </main>
 
       <SiteFooter />
+      {/* Room for the fixed phone bars, so the footer's last line isn't covered. */}
+      <div aria-hidden="true" className={onListing ? 'h-24 lg:hidden' : 'h-24 md:hidden'} />
+      {!onListing && <BottomNav />}
     </div>
+  )
+}
+
+type Tab = { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; active: boolean; external?: boolean }
+
+// The M3 reference's floating dark bar, within thumb reach on phones.
+function BottomNav() {
+  const { t } = useTranslation()
+  const { status } = useAuth()
+  const { pathname } = useLocation()
+  const signedIn = status === 'authenticated'
+
+  const tabs: Tab[] = [
+    { to: '/', label: t('site.home'), icon: HomeIcon, active: pathname === '/' },
+    { to: '/listings', label: t('site.search'), icon: SearchIcon, active: pathname === '/listings' },
+    { to: whatsappLink(t('site.supportMessage')), label: t('site.help'), icon: WhatsAppIcon, active: false, external: true },
+    { to: signedIn ? '/account' : '/login', label: signedIn ? t('site.account') : t('site.signIn'), icon: UserIcon, active: false },
+  ]
+
+  return (
+    <nav
+      aria-label={t('site.bottomNav')}
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-2xl bg-navy/95 px-2 py-1.5 shadow-[0_18px_40px_-12px_rgba(15,23,42,0.6)] backdrop-blur md:hidden"
+    >
+      <ul className="grid grid-cols-4">
+        {tabs.map((tab) => {
+          const content = (
+            <>
+              {tab.active && (
+                <motion.span
+                  layoutId="bottom-nav-active"
+                  className="absolute inset-x-2 inset-y-0.5 rounded-xl bg-white/10"
+                  transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                />
+              )}
+              <tab.icon className="relative size-5" />
+              <span className="relative text-[11px] font-medium">{tab.label}</span>
+            </>
+          )
+          const className = `relative flex h-14 flex-col items-center justify-center gap-1 ${tab.active ? 'text-gold-light' : 'text-white/70'}`
+          return (
+            <li key={tab.label}>
+              {tab.external ? (
+                <a href={tab.to} target="_blank" rel="noopener noreferrer" className={className}>
+                  {content}
+                </a>
+              ) : (
+                <Link to={tab.to} aria-current={tab.active ? 'page' : undefined} className={className}>
+                  {content}
+                </Link>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </nav>
   )
 }
 
@@ -125,14 +154,6 @@ function HeaderLink({ to, children }: { to: string; children: string }) {
         </>
       )}
     </NavLink>
-  )
-}
-
-function MenuLink({ to, children }: { to: string; children: string }) {
-  return (
-    <Link to={to} className="flex h-12 items-center rounded-xl px-3 text-[15px] font-medium text-navy hover:bg-white">
-      {children}
-    </Link>
   )
 }
 

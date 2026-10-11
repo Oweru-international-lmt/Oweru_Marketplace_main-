@@ -1,12 +1,27 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from '../../../components/icons'
+import { Link } from 'react-router-dom'
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, ImageIcon } from '../../../components/icons'
 
 type Photo = { position: number; url: string }
 
+// Phones (M8 reference): edge to edge, a round back button, swipe and dots.
+function BackButton({ to }: { to: string }) {
+  const { t } = useTranslation()
+  return (
+    <Link
+      to={to}
+      aria-label={t('listing.back')}
+      className="absolute top-4 left-4 z-10 grid size-11 place-items-center rounded-full bg-white/95 text-navy shadow-lg backdrop-blur sm:hidden"
+    >
+      <ArrowLeftIcon className="size-5" />
+    </Link>
+  )
+}
+
 // Swipe or use the arrows; the thumbnail strip jumps to any photo.
-export function Gallery({ photos }: { photos: Photo[] }) {
+export function Gallery({ photos, backTo }: { photos: Photo[]; backTo?: string }) {
   const { t } = useTranslation()
   const [[index, direction], setState] = useState<[number, number]>([0, 0])
   const total = photos.length
@@ -23,7 +38,8 @@ export function Gallery({ photos }: { photos: Photo[] }) {
 
   if (total === 0) {
     return (
-      <div className="grid aspect-[4/3] place-items-center rounded-xl bg-mist text-muted sm:aspect-[16/10]">
+      <div className="relative grid aspect-[5/4] place-items-center bg-mist text-muted sm:aspect-[16/10] sm:rounded-xl">
+        {backTo && <BackButton to={backTo} />}
         <span className="flex flex-col items-center gap-2 text-sm">
           <ImageIcon className="size-9" />
           {t('market.noPhotos')}
@@ -40,8 +56,9 @@ export function Gallery({ photos }: { photos: Photo[] }) {
         aria-label={t('listing.photo', { index: index + 1, total })}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative aspect-[4/3] overflow-hidden rounded-xl bg-navy sm:aspect-[16/10]"
+        className="relative aspect-[5/4] overflow-hidden bg-navy sm:aspect-[16/10] sm:rounded-xl"
       >
+        {backTo && <BackButton to={backTo} />}
         <AnimatePresence initial={false} custom={direction}>
           <motion.img
             key={photos[index].url}
@@ -73,15 +90,21 @@ export function Gallery({ photos }: { photos: Photo[] }) {
           <>
             <ArrowButton side="left" label={t('listing.previousPhoto')} onClick={() => go(-1)} />
             <ArrowButton side="right" label={t('listing.nextPhoto')} onClick={() => go(1)} />
-            <span className="absolute bottom-4 left-4 rounded-full bg-navy/75 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm" aria-hidden="true">
+            <span className="absolute bottom-4 left-4 hidden rounded-full bg-navy/75 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm sm:block" aria-hidden="true">
               {index + 1} / {total}
             </span>
+            {/* Phones: M8's dots, above the sheet edge that overlaps the photo. */}
+            <div className="absolute inset-x-0 bottom-10 flex justify-center gap-1.5 sm:hidden" aria-hidden="true">
+              {photos.map((photo, dot) => (
+                <span key={photo.url} className={`h-1.5 rounded-full bg-white transition-all ${dot === index ? 'w-5' : 'w-1.5 opacity-60'}`} />
+              ))}
+            </div>
           </>
         )}
       </div>
 
       {total > 1 && (
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-3 hidden gap-2 overflow-x-auto pb-1 sm:flex">
           {photos.map((photo, thumb) => (
             <button
               key={photo.url}
@@ -110,7 +133,7 @@ function ArrowButton({ side, label, onClick }: { side: 'left' | 'right'; label: 
       onClick={onClick}
       aria-label={label}
       whileTap={{ scale: 0.92 }}
-      className={`absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow-lg backdrop-blur hover:bg-white ${
+      className={`absolute top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow-lg backdrop-blur hover:bg-white sm:grid ${
         side === 'left' ? 'left-3' : 'right-3'
       }`}
     >

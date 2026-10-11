@@ -281,6 +281,15 @@ export function CalendarIcon(props: IconProps) {
   )
 }
 
+export function ResetIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9" />
+      <path d="M4.5 4.5V9H9" />
+    </Icon>
+  )
+}
+
 export function BanknoteIcon(props: IconProps) {
   return (
     <Icon {...props}>

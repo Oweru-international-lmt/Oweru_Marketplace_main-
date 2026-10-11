@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import {
   BanknoteIcon,
+  ResetIcon,
   CloseIcon,
   FilterIcon,
   HomeIcon,
@@ -13,7 +14,9 @@ import {
   ShieldIcon,
   WhatsAppIcon,
 } from '../../components/icons'
+import { PhotoCard, PhotoCardSkeleton } from '../../components/market/PhotoCard'
 import { ResultCard, ResultCardSkeleton } from '../../components/market/ResultCard'
+import { DESKTOP, useMediaQuery } from '../../lib/useMediaQuery'
 import { VerificationBadge } from '../../components/market/VerificationBadge'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { whatsappLink } from '../../lib/config'
@@ -75,8 +78,18 @@ export function SearchPage() {
   const key = JSON.stringify(filters)
   const [result, setResult] = useState<Result | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  // The home page's filter button links here with ?filters=1 to open the sheet.
+  const [sheetOpen, setSheetOpen] = useState(() => searchParams.get('filters') === '1')
   const places = usePlaces(filters.region, filters.district)
+
+  function closeSheet() {
+    setSheetOpen(false)
+    if (searchParams.has('filters')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('filters')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   // `key` is the serialised filters, so it alone decides when to refetch.
   useEffect(() => {
@@ -109,10 +122,46 @@ export function SearchPage() {
 
   const clearAll = () => setSearchParams(filters.sort ? { sort: filters.sort } : {})
   const activeCount = Object.keys(filters).filter((name) => name !== 'sort' && name !== 'page').length
+  const placeName = (rows: Place[], id?: string) => rows.find((row) => row.id === id)?.name
+  const placeLabel =
+    placeName(places.wards, filters.ward) ?? placeName(places.districts, filters.district) ?? placeName(places.regions, filters.region) ?? t('search.anywhere')
 
   return (
     <div className="mx-auto max-w-7xl px-4 pt-8 pb-20 sm:px-8 sm:pt-12">
       <SearchHeader />
+
+      {/* Phones and tablets: place and filter buttons (M2/M3), then category chips. */}
+      <div className="mt-6 lg:hidden">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="flex h-13 min-w-0 flex-1 items-center gap-3 rounded-full bg-white pr-4 pl-5 text-left ring-1 ring-mist"
+          >
+            <SearchIcon className="size-5 shrink-0 text-navy" />
+            <span className="min-w-0 leading-tight">
+              <span className="block text-[11px] text-muted">{t('search.location')}</span>
+              <span className="block truncate text-sm font-semibold text-navy">{placeLabel}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-label={activeCount ? `${t('search.filters')} (${activeCount})` : t('search.filters')}
+            className="relative grid size-13 shrink-0 place-items-center rounded-full bg-white text-navy ring-1 ring-mist"
+          >
+            <FilterIcon className="size-5" />
+            {activeCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-navy">
+                {activeCount}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="-mx-4 mt-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-8 sm:px-8">
+          <CategoryField filters={filters} onChange={update} nowrap />
+        </div>
+      </div>
 
       {/* Zoopla's search bar, holding the location choice. */}
       <div className="mt-7 hidden items-stretch rounded-lg bg-white p-1.5 shadow-card lg:flex">
@@ -131,33 +180,29 @@ export function SearchPage() {
       </div>
 
       {/* Results bar: count on the left, sort on the right. */}
-      <div id="results" className="mt-7 flex scroll-mt-24 flex-wrap items-center justify-between gap-3">
+      <div id="results" className="mt-5 flex scroll-mt-24 items-center justify-between gap-3 lg:mt-7 lg:flex-wrap">
         <p className="flex items-baseline gap-2 text-navy" aria-live="polite">
           {current?.page ? (
             <>
-              <span className="text-2xl font-bold">{formatNumber(current.page.count, i18n.language)}</span>
-              <span className="text-sm text-muted">{t('search.results', { count: current.page.count }).replace(String(current.page.count), '').trim()}</span>
+              {/* Phones: M5's "53 Results Found"; desktop: Zoopla's big count. */}
+              <span className="text-[15px] font-bold lg:hidden">{t('search.found', { count: current.page.count })}</span>
+              <span className="hidden text-2xl font-bold lg:inline">{formatNumber(current.page.count, i18n.language)}</span>
+              <span className="hidden text-sm text-muted lg:inline">
+                {t('search.results', { count: current.page.count }).replace(String(current.page.count), '').trim()}
+              </span>
             </>
           ) : (
             <span className="text-2xl">&nbsp;</span>
           )}
         </p>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-[13px] font-semibold text-navy ring-1 ring-mist hover:ring-navy/30 lg:hidden"
-          >
-            <FilterIcon className="size-4 text-gold" />
-            {t('search.filters')}
-            {activeCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-navy">{activeCount}</span>}
-          </button>
           <label className="flex items-center gap-2 text-[13px] text-muted">
             <span className="hidden sm:inline">{t('search.sort')}</span>
             <select
               value={filters.sort ?? 'NEWEST'}
               onChange={(event) => update({ sort: event.target.value === 'NEWEST' ? undefined : event.target.value })}
-              className="h-10 cursor-pointer rounded-md border border-mist bg-white px-3 text-[13px] font-semibold text-navy outline-none focus:border-gold focus:ring-4 focus:ring-gold/20"
+              aria-label={t('search.sort')}
+              className="h-9 max-w-36 cursor-pointer rounded-full border border-mist bg-white px-3 text-[12px] font-semibold text-navy outline-none focus:border-gold focus:ring-4 focus:ring-gold/20 lg:h-10 lg:max-w-none lg:rounded-md lg:text-[13px]"
             >
               {SORTS.map((sort) => (
                 <option key={sort} value={sort}>
@@ -200,7 +245,7 @@ export function SearchPage() {
 
       <AnimatePresence>
         {sheetOpen && (
-          <FilterSheet count={current?.page?.count ?? null} onClose={() => setSheetOpen(false)}>
+          <FilterSheet count={current?.page?.count ?? null} onClose={closeSheet} onReset={activeCount > 0 ? clearAll : undefined}>
             <FilterPanel filters={filters} places={places} onChange={update} />
           </FilterSheet>
         )}
@@ -467,6 +512,8 @@ function Results({
   const { t } = useTranslation()
   const grid = useRef<HTMLDivElement>(null)
   const page = current?.page
+  // Desktop: Zoopla rows. Phones and tablets: M5 photo cards.
+  const desktop = useMediaQuery(DESKTOP)
 
   // New results rise in with a short stagger (kept small for long lists).
   useGSAP(
@@ -481,10 +528,8 @@ function Results({
 
   if (loading) {
     return (
-      <div className="grid gap-5">
-        {Array.from({ length: 3 }, (_, index) => (
-          <ResultCardSkeleton key={index} />
-        ))}
+      <div className="grid gap-5 sm:max-lg:grid-cols-2">
+        {Array.from({ length: 3 }, (_, index) => (desktop ? <ResultCardSkeleton key={index} /> : <PhotoCardSkeleton key={index} />))}
       </div>
     )
   }
@@ -522,10 +567,14 @@ function Results({
 
   return (
     <>
-      <div ref={grid} className="grid gap-5">
-        {page.results.map((listing, index) => (
-          <ResultCard key={listing.listing_id} listing={listing} priority={index < 2} />
-        ))}
+      <div ref={grid} className="grid gap-5 sm:max-lg:grid-cols-2">
+        {page.results.map((listing, index) =>
+          desktop ? (
+            <ResultCard key={listing.listing_id} listing={listing} priority={index < 2} />
+          ) : (
+            <PhotoCard key={listing.listing_id} listing={listing} priority={index < 2} />
+          ),
+        )}
       </div>
       {totalPages > 1 && (
         <nav aria-label={t('search.pagination')} className="mt-10 flex items-center justify-between gap-4 border-t border-mist pt-6">
@@ -552,8 +601,20 @@ function Results({
   )
 }
 
-// Phone filters: a bottom sheet that can be dragged down to close.
-function FilterSheet({ count, onClose, children }: { count: number | null; onClose: () => void; children: ReactNode }) {
+// Phone filters after the M2/M5 references: a sheet with close, title and
+// reset across the top and one dark pill button along the bottom. It can be
+// dragged down to close.
+function FilterSheet({
+  count,
+  onClose,
+  onReset,
+  children,
+}: {
+  count: number | null
+  onClose: () => void
+  onReset?: () => void
+  children: ReactNode
+}) {
   const { t } = useTranslation()
   const panel = useRef<HTMLDivElement>(null)
 
@@ -579,7 +640,7 @@ function FilterSheet({ count, onClose, children }: { count: number | null; onClo
       <motion.div
         ref={panel}
         tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col rounded-t-3xl bg-white shadow-2xl outline-none"
+        className="absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-white shadow-2xl outline-none"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -591,22 +652,40 @@ function FilterSheet({ count, onClose, children }: { count: number | null; onClo
           if (info.offset.y > 120 || info.velocity.y > 600) onClose()
         }}
       >
-        <div className="flex justify-center px-5 pt-3 pb-2">
+        <div className="flex justify-center pt-3 pb-1">
           <span className="h-1.5 w-10 rounded-full bg-mist" aria-hidden="true" />
         </div>
-        <div className="flex items-center justify-between px-5 pb-3">
-          <h2 className="font-serif text-xl font-semibold text-navy">{t('search.filters')}</h2>
-          <button type="button" onClick={onClose} aria-label={t('site.closeMenu')} className="grid size-10 place-items-center rounded-xl text-navy ring-1 ring-mist">
+        <div className="grid grid-cols-[44px_1fr_44px] items-center px-5 pt-2 pb-4">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('site.closeMenu')}
+            className="grid size-11 place-items-center rounded-full text-navy ring-1 ring-mist"
+          >
             <CloseIcon className="size-5" />
           </button>
+          <h2 className="text-center text-base font-semibold text-navy">{t('search.filterTitle')}</h2>
+          {onReset ? (
+            <button
+              type="button"
+              onClick={onReset}
+              aria-label={t('search.reset')}
+              title={t('search.reset')}
+              className="grid size-11 place-items-center rounded-full text-navy ring-1 ring-mist"
+            >
+              <ResetIcon className="size-5" />
+            </button>
+          ) : (
+            <span />
+          )}
         </div>
         {/* Stop drags that start inside the form so selects and inputs stay usable. */}
         <div className="flex-1 overflow-y-auto px-5 pb-4" onPointerDownCapture={(event) => event.stopPropagation()}>
           {children}
         </div>
-        <div className="border-t border-mist p-4">
-          <button type="button" onClick={onClose} className="h-12 w-full rounded-md bg-navy text-sm font-semibold text-white hover:bg-navy-soft">
-            {count === null ? t('search.apply') : `${t('search.apply')} (${count})`}
+        <div className="px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={onClose} className="h-14 w-full rounded-full bg-navy text-[15px] font-semibold text-white hover:bg-navy-soft">
+            {count === null ? t('search.apply') : t('search.showCount', { count })}
           </button>
         </div>
       </motion.div>

@@ -6,12 +6,13 @@ import { FullPageLoader } from '../../components/FullPageLoader'
 import { VerificationBadge } from '../../components/market/VerificationBadge'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { ApiError } from '../../lib/api'
-import { formatDate, formatTsh } from '../../lib/format'
+import { formatDate } from '../../lib/format'
 import { gsap, MOTION_OK, useGSAP } from '../../lib/gsap'
 import { placeName, sizeText, sortedPhotos } from '../../lib/listingText'
 import { marketApi, type PublicListing } from '../../lib/marketApi'
 import { Gallery } from './listing/Gallery'
-import { ContactActions, FullCheckCard, ListerCard } from './listing/ListingSidebar'
+import { ContactActions, FullCheckCard, ListerCard, ListerRow, MobileActionBar } from './listing/ListingSidebar'
+import { useListingActions } from './listing/useListingActions'
 import { VerificationPanel } from './listing/VerificationPanel'
 
 type Loaded = { id: string; listing?: PublicListing; missing?: boolean; failed?: boolean }
@@ -48,6 +49,7 @@ function ListingView({ listing }: { listing: PublicListing }) {
   const category = t(`market.category.${listing.property.category}`)
   const place = placeName(listing)
   useDocumentTitle(`${category}, ${place}`)
+  const actions = useListingActions(listing)
 
   useGSAP(
     () => {
@@ -76,73 +78,127 @@ function ListingView({ listing }: { listing: PublicListing }) {
   ].filter(Boolean) as { icon: typeof RulerIcon; label: string; value: string }[]
 
   return (
-    <div ref={root} className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-8 sm:pt-8 lg:pb-16">
-      <Link to="/listings" className="inline-flex h-11 items-center gap-2 text-sm font-medium text-muted hover:text-navy">
+    <div ref={root} className="mx-auto max-w-7xl pb-10 sm:px-8 sm:pt-6 lg:pt-8 lg:pb-16">
+      <Link to="/listings" className="hidden h-11 items-center gap-2 text-sm font-medium text-muted hover:text-navy sm:inline-flex">
         <ArrowLeftIcon className="size-4" />
         {t('listing.back')}
       </Link>
 
-      <div className="mt-2 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
-        <div className="min-w-0 space-y-8">
+      <div className="grid sm:mt-2 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
+        <div className="min-w-0">
           <div data-intro>
-            <Gallery photos={sortedPhotos(listing)} />
+            <Gallery photos={sortedPhotos(listing)} backTo="/listings" />
           </div>
 
-          <header className="space-y-3">
-            <div data-intro className="flex flex-wrap items-center gap-2">
-              <VerificationBadge level={listing.lister.verification.level} size="md" />
-              {listing.status === 'UNDER_OFFER' && (
-                <span className="rounded-full bg-navy px-3 py-1.5 text-sm font-semibold text-white">{t('market.underOffer')}</span>
-              )}
-            </div>
-            <h1 data-intro className="font-serif text-[34px] leading-tight font-semibold text-navy sm:text-[42px]">
-              {t('listing.inLocation', { category, place })}
-            </h1>
-            <p data-intro className="flex items-center gap-1.5 text-[15px] text-muted">
-              <MapPinIcon className="size-4 shrink-0" />
-              {[listing.property.location.ward, listing.property.location.district, listing.property.location.region].filter(Boolean).join(', ')}
-            </p>
-            <p data-intro className="text-3xl font-bold text-navy lg:hidden">
-              {formatTsh(listing.selling_price, i18n.language)}
-            </p>
-          </header>
-
-          <dl data-reveal className="grid gap-3 sm:grid-cols-2">
-            {facts.map((fact) => (
-              <div key={fact.label} className="flex items-start gap-3 rounded-lg bg-white p-4 shadow-card">
-                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-paper text-navy">
-                  <fact.icon className="size-5" />
-                </span>
-                <div className="min-w-0">
-                  <dt className="text-xs text-muted">{fact.label}</dt>
-                  <dd className="mt-0.5 font-medium break-words text-navy">{fact.value}</dd>
+          {/* Phones: the details slide over the photo's lower edge as a sheet (M8). */}
+          <div className="relative z-10 -mt-7 space-y-7 rounded-t-[28px] bg-paper px-5 pt-6 sm:mt-8 sm:space-y-8 sm:rounded-none sm:px-0 sm:pt-0">
+            <header className="space-y-2.5 sm:space-y-3">
+              <div data-intro className="flex flex-wrap items-center justify-between gap-2 sm:justify-start">
+                <span className="rounded-full bg-gold/15 px-3 py-1 text-xs font-semibold text-navy sm:hidden">{category}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <VerificationBadge level={listing.lister.verification.level} size="md" />
+                  {listing.status === 'UNDER_OFFER' && (
+                    <span className="rounded-full bg-navy px-3 py-1.5 text-sm font-semibold text-white">{t('market.underOffer')}</span>
+                  )}
                 </div>
               </div>
-            ))}
-          </dl>
+              <h1 data-intro className="text-[22px] leading-snug font-bold text-navy sm:font-serif sm:text-[34px] sm:leading-tight sm:font-semibold lg:text-[42px]">
+                <span className="sm:hidden">{place}</span>
+                <span className="hidden sm:inline">{t('listing.inLocation', { category, place })}</span>
+              </h1>
+              <p data-intro className="flex items-center gap-1.5 text-sm text-muted sm:text-[15px]">
+                <MapPinIcon className="size-4 shrink-0" />
+                {[listing.property.location.ward, listing.property.location.district, listing.property.location.region].filter(Boolean).join(', ')}
+              </p>
+            </header>
 
-          <section data-reveal aria-labelledby="about-title">
-            <h2 id="about-title" className="font-serif text-2xl font-semibold text-navy">
-              {t('listing.about')}
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-navy/85">
-              {listing.description.trim() || <span className="text-muted">{t('listing.noDescription')}</span>}
-            </p>
-            <Features features={listing.features} />
-          </section>
+            {/* Phones: M8's row of fact tiles. */}
+            <section aria-labelledby="facts-title" className="sm:hidden">
+              <h2 id="facts-title" className="text-base font-bold text-navy">
+                {t('listing.keyFacts')}
+              </h2>
+              <dl className="-mx-5 mt-3 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+                {facts.map((fact) => (
+                  <div key={fact.label} className="flex w-[124px] shrink-0 flex-col gap-2 rounded-2xl bg-white p-3.5 shadow-card">
+                    <span className="grid size-9 place-items-center rounded-xl bg-gold/12 text-gold">
+                      <fact.icon className="size-5" />
+                    </span>
+                    {/* Label first for the list's semantics; shown under the value. */}
+                    <dt className="order-last text-[11px] text-muted">{fact.label}</dt>
+                    <dd className="line-clamp-2 text-[13px] leading-snug font-semibold text-navy">{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
 
-          <div data-reveal>
-            <VerificationPanel listing={listing} />
+            <dl data-reveal className="hidden gap-3 sm:grid sm:grid-cols-2">
+              {facts.map((fact) => (
+                <div key={fact.label} className="flex items-start gap-3 rounded-lg bg-white p-4 shadow-card">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-md bg-paper text-navy">
+                    <fact.icon className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-muted">{fact.label}</dt>
+                    <dd className="mt-0.5 font-medium break-words text-navy">{fact.value}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+
+            <section data-reveal aria-labelledby="about-title">
+              <h2 id="about-title" className="text-base font-bold text-navy sm:font-serif sm:text-2xl sm:font-semibold">
+                {t('listing.about')}
+              </h2>
+              <Description text={listing.description.trim()} />
+              <Features features={listing.features} />
+            </section>
+
+            <div className="lg:hidden">
+              <ListerRow listing={listing} actions={actions} />
+            </div>
+
+            <div data-reveal>
+              <VerificationPanel listing={listing} />
+            </div>
+
+            <div className="lg:hidden">
+              <FullCheckCard listing={listing} />
+            </div>
           </div>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-          <ContactActions listing={listing} />
+        <aside className="hidden space-y-6 lg:sticky lg:top-24 lg:block lg:self-start">
+          <ContactActions listing={listing} actions={actions} />
           <ListerCard listing={listing} />
           <FullCheckCard listing={listing} />
         </aside>
       </div>
+
+      <MobileActionBar listing={listing} actions={actions} />
     </div>
+  )
+}
+
+// Phones clamp long descriptions to four lines behind "Read more" (M8).
+function Description({ text }: { text: string }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  if (!text) return <p className="mt-3 text-[15px] text-muted">{t('listing.noDescription')}</p>
+  const long = text.length > 180
+  return (
+    <>
+      <p className={`mt-3 text-[15px] leading-relaxed whitespace-pre-line text-navy/85 ${long && !open ? 'line-clamp-4 sm:line-clamp-none' : ''}`}>{text}</p>
+      {long && (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="mt-1.5 text-sm font-semibold text-navy underline decoration-gold decoration-2 underline-offset-4 sm:hidden"
+        >
+          {open ? t('listing.readLess') : t('listing.readMore')}
+        </button>
+      )}
+    </>
   )
 }
 
