@@ -1,24 +1,48 @@
-import type { Language } from '../i18n'
+import { isLanguage, type Language } from '../i18n'
 import { request } from './api'
 import type { Tokens } from './tokens'
 
 export type AccountCategory = 'public' | 'operational'
 
-// Mirrors accounts.serializers.UserPublicSerializer. `roles` and `permissions`
-// list effective access only; the API still checks every request.
-export type User = {
+// Mirrors accounts.serializers.UserPublicSerializer / UserPrivateProfileSerializer.
+type ApiProfile = {
   id: string
+  email: string
   phone: string
   full_name: string
-  email: string
-  language: Language
-  account_category: AccountCategory
-  roles: string[]
-  permissions: string[]
-  email_verified: boolean
-  phone_verified: boolean
-  must_change_password: boolean
+  preferred_language: string
+  is_email_verified: boolean
   created_at: string
+}
+
+export type Profile = {
+  id: string
+  email: string
+  phone: string
+  full_name: string
+  language: Language
+  email_verified: boolean
+  created_at: string
+}
+
+// The profile endpoints don't report roles or permissions, so `access` is
+// learned separately (see loadAccess). It only decides what the UI shows;
+// the API still checks every request.
+export type Access = { roles: string[]; permissions: string[] }
+export type User = Profile & Access
+
+export const NO_ACCESS: Access = { roles: [], permissions: [] }
+
+function toProfile(raw: ApiProfile): Profile {
+  return {
+    id: raw.id,
+    email: raw.email,
+    phone: raw.phone,
+    full_name: raw.full_name,
+    language: isLanguage(raw.preferred_language) ? raw.preferred_language : 'sw',
+    email_verified: raw.is_email_verified,
+    created_at: raw.created_at,
+  }
 }
 
 export type RegistrationInput = {
@@ -29,43 +53,50 @@ export type RegistrationInput = {
   language: Language
 }
 
-export type ProfileChanges = Partial<Pick<User, 'full_name' | 'phone' | 'language'>>
+export type ProfileChanges = Partial<Pick<Profile, 'full_name' | 'language'>>
 
+// Mirrors accounts.serializers.AccountDeletionRequestSerializer.
 export type DeletionRequest = {
   id: string
-  status: 'pending' | 'completed' | 'declined' | 'cancelled'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
   reason: string
   requested_at: string
-  resolved_at: string | null
-  resolution_note: string
-}
-
-export type ConfirmationLink = {
-  state: 'valid' | 'used' | 'expired'
-  purpose: string
-  recipient: string
-  full_name: string
-  expires_at: string
-  decision: '' | 'confirmed' | 'declined'
 }
 
 export const authApi = {
-  register: (input: RegistrationInput) => request<User>('/auth/register/', { method: 'POST', body: input }),
+  register: async (input: RegistrationInput) => {
+    const { language, ...rest } = input
+    return toProfile(
+      await request<ApiProfile>('/auth/register/', { method: 'POST', body: { ...rest, preferred_language: language } }),
+    )
+  },
 
-  login: (email: string, password: string) =>
-    request<Tokens & { user: User }>('/auth/login/', { method: 'POST', body: { email, password } }),
+  login: async (email: string, password: string) => {
+    const { user, ...tokens } = await request<Tokens & { user: ApiProfile }>('/auth/login/', {
+      method: 'POST',
+      body: { email, password },
+    })
+    return { ...tokens, user: toProfile(user) }
+  },
 
   logout: (refresh: string) => request<null>('/auth/logout/', { method: 'POST', body: { refresh } }),
 
-  me: () => request<User>('/auth/me/', { auth: true }),
+  me: async () => toProfile(await request<ApiProfile>('/auth/me/', { auth: true })),
 
-  updateProfile: (changes: ProfileChanges) =>
-    request<User>('/auth/me/', { method: 'PATCH', body: changes, auth: true }),
+  updateProfile: async ({ language, ...changes }: ProfileChanges) =>
+    toProfile(
+      await request<ApiProfile>('/users/me/', {
+        method: 'PATCH',
+        body: { ...changes, ...(language ? { preferred_language: language } : {}) },
+        auth: true,
+      }),
+    ),
 
+  // The server ends every session, this one included, so the caller signs out.
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<Tokens & { user: User }>('/auth/password/change/', {
+    request<{ detail: string }>('/auth/password/change/', {
       method: 'POST',
-      body: { current_password: currentPassword, new_password: newPassword },
+      body: { current_password: currentPassword, new_password: newPassword, new_password_confirm: newPassword },
       auth: true,
     }),
 
@@ -78,25 +109,25 @@ export const authApi = {
       body: { uid, token, new_password: newPassword },
     }),
 
-  confirmEmail: (id: string, token: string) =>
-    request<{ detail: string; state: string }>('/auth/email/confirm/', { method: 'POST', body: { id, token } }),
+  verifyEmail: (token: string) => request<{ detail: string }>('/auth/email/verify/', { method: 'POST', body: { token } }),
 
   resendEmailConfirmation: () => request<{ detail: string }>('/auth/email/resend/', { method: 'POST', auth: true }),
 
-  // SRD 20.3 WhatsApp confirmation page; no sign-in, the token is the proof.
-  confirmationLink: (id: string, token: string) =>
-    request<ConfirmationLink>(`/auth/confirmations/${encodeURIComponent(id)}/?token=${encodeURIComponent(token)}`),
-
-  decideConfirmationLink: (id: string, token: string, decision: 'confirmed' | 'declined') =>
-    request<{ state: string }>(`/auth/confirmations/${encodeURIComponent(id)}/`, {
-      method: 'POST',
-      body: { token, decision },
-    }),
-
-  deletionRequest: () => request<{ request: DeletionRequest | null }>('/auth/me/deletion-request/', { auth: true }),
-
+  // Returns the existing pending request if there already is one.
   requestDeletion: (reason: string) =>
-    request<{ request: DeletionRequest }>('/auth/me/deletion-request/', { method: 'POST', body: { reason }, auth: true }),
+    request<DeletionRequest>('/users/me/deletion-request/', { method: 'POST', body: { reason }, auth: true }),
+}
 
-  cancelDeletion: () => request<null>('/auth/me/deletion-request/', { method: 'DELETE', auth: true }),
+// Stopgap until /auth/me reports roles: this endpoint answers only for active
+// Management with authorization.view, and lists the Management role's grants.
+// Anyone else gets 403; any failure just hides the Management menu.
+export async function loadAccess(): Promise<Access> {
+  try {
+    const grants = await request<{ code: string }[]>('/management/authorization/roles/management/permissions/', {
+      auth: true,
+    })
+    return { roles: ['management'], permissions: grants.map((grant) => grant.code) }
+  } catch {
+    return NO_ACCESS
+  }
 }

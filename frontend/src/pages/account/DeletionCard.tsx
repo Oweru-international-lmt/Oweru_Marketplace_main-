@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert } from '../../components/Alert'
 import { Card } from '../../components/Card'
@@ -6,80 +6,42 @@ import { authApi, type DeletionRequest } from '../../lib/authApi'
 import { errorMessage } from '../../lib/errors'
 
 // ACC-08: request deletion; Management decides and keeps records the law requires.
+// The API can't list or withdraw a request yet. Sending again is safe: it
+// returns the request that is already pending.
 export function DeletionCard() {
   const { t, i18n } = useTranslation()
-  const [latest, setLatest] = useState<DeletionRequest | null | undefined>(undefined)
+  const [sent, setSent] = useState<DeletionRequest | null>(null)
   const [reason, setReason] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    authApi
-      .deletionRequest()
-      .then((data) => !cancelled && setLatest(data.request))
-      .catch(() => !cancelled && setLatest(null))
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const [error, setError] = useState<string | null>(null)
 
   async function submit() {
     setBusy(true)
-    setMessage(null)
+    setError(null)
     try {
-      setLatest((await authApi.requestDeletion(reason.trim())).request)
+      setSent(await authApi.requestDeletion(reason.trim()))
       setConfirming(false)
       setReason('')
-      setMessage({ tone: 'success', text: t('deletion.sent') })
-    } catch (error) {
-      setMessage({ tone: 'error', text: errorMessage(t, error) })
+    } catch (err) {
+      setError(errorMessage(t, err))
     } finally {
       setBusy(false)
     }
   }
 
-  async function cancel() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      await authApi.cancelDeletion()
-      setLatest((await authApi.deletionRequest()).request)
-      setMessage({ tone: 'success', text: t('deletion.cancelled') })
-    } catch (error) {
-      setMessage({ tone: 'error', text: errorMessage(t, error) })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (latest === undefined) return null
-  const pending = latest?.status === 'pending'
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat(i18n.language === 'sw' ? 'sw-TZ' : 'en-GB', { dateStyle: 'long' }).format(new Date(value))
 
   return (
     <Card title={t('deletion.title')} titleId="account-deletion" description={t('deletion.description')} delay={0.2} className="ring-danger/20">
       <div className="space-y-4">
-        {message && <Alert tone={message.tone}>{message.text}</Alert>}
-        {latest?.status === 'declined' && latest.resolution_note && (
-          <p className="rounded-xl bg-paper px-4 py-3 text-sm text-muted">{t('deletion.declined', { note: latest.resolution_note })}</p>
-        )}
-        {pending ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold/10 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-navy">{t('deletion.pending')}</p>
-              <p className="text-xs text-muted">{t('deletion.requestedOn', { date: formatDate(latest.requested_at) })}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void cancel()}
-              disabled={busy}
-              className="h-9 rounded-lg px-3 text-sm font-medium text-navy ring-1 ring-mist hover:bg-white disabled:opacity-60"
-            >
-              {t('deletion.cancel')}
-            </button>
+        {error && <Alert tone="error">{error}</Alert>}
+        {sent ? (
+          <div className="rounded-xl bg-gold/10 px-4 py-3">
+            <p className="text-sm font-medium text-navy">{t('deletion.pending')}</p>
+            <p className="text-xs text-muted">{t('deletion.requestedOn', { date: formatDate(sent.requested_at) })}</p>
+            <p className="mt-2 text-xs text-muted">{t('deletion.withdrawNote')}</p>
           </div>
         ) : (
           <>

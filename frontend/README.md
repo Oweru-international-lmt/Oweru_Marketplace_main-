@@ -22,7 +22,7 @@ React web app for the Oweru Marketplace backend in [`../backend/`](../backend/RE
 
 3. Open http://localhost:5173. Vite proxies `/api` to the Django server, so no CORS setup is needed in development.
 
-Port 5173 is fixed on purpose: the backend's `CORS_ALLOWED_ORIGINS` and `PASSWORD_RESET_URL` point to it.
+Port 5173 is fixed on purpose: the backend's `CORS_ALLOWED_ORIGINS`, `PASSWORD_RESET_URL` and `EMAIL_VERIFICATION_URL` point to it.
 
 Other scripts: `npm run build` (type-check and production build), `npm run lint` (oxlint), `npm run preview`.
 
@@ -43,15 +43,12 @@ Copy `.env.example` to `.env.local` to override:
 | `/login` | Sign in with email and password | `POST /auth/login/` |
 | `/forgot-password` | Request a reset link by email, WhatsApp help for people who can't reach their inbox | `POST /auth/password/reset/` |
 | `/reset-password?uid=&token=` | Set new password from the emailed link | `POST /auth/password/reset/confirm/` |
-| `/account` | Profile (edit name, phone, language), roles, email/phone confirmation status with resend, password change, deletion request | `GET`/`PATCH /auth/me/`, `POST /auth/email/resend/`, `POST /auth/password/change/`, `/auth/me/deletion-request/` |
-| `/change-password` | Forced first sign-in password change for accounts with a temporary password (ACC-06) | `POST /auth/password/change/` |
-| `/confirm-email?id=&token=` | Opened from the confirmation email (ACC-05) | `POST /auth/email/confirm/` |
-| `/confirm?id=&token=` | WhatsApp confirmation page: shows what is confirmed, Confirm or Decline (SRD 20.3) | `GET`/`POST /auth/confirmations/{id}/` |
+| `/account` | Profile (edit name and language), staff roles, email confirmation status with resend, password change (signs out everywhere), deletion request | `GET /auth/me/`, `PATCH /users/me/`, `POST /auth/email/resend/`, `POST /auth/password/change/`, `POST /users/me/deletion-request/` |
+| `/verify-email?token=` | Opened from the confirmation email (ACC-05); path set by the backend's `EMAIL_VERIFICATION_URL` | `POST /auth/email/verify/` |
 | `/management/roles` | Roles × permissions matrix; WhatsApp outbox switches for Verifier and Marketer | `GET /management/authorization/roles/…/permissions/`, `PUT …/roles/{role}/outbox-send/` |
-| `/management/staff` | Create staff accounts (temporary password shown once, sent by WhatsApp); find an account by email; give or remove Verifier and Marketer roles; edit, issue a new temporary password, deactivate or reactivate | `…/users/?email=`, `…/users/{id}/roles/…`, `/management/accounts/…` |
-| `/management/deletion-requests` | Pending, completed, declined and cancelled deletion requests; complete or decline with a note | `GET /management/accounts/deletion-requests/`, `POST …/{id}/resolve/` |
+| `/management/staff` | Create a Verifier or Marketer account (the backend emails a set-password link); find an account by email; give or remove Verifier and Marketer roles; rename, deactivate or reactivate with a reason | `…/users/?email=`, `…/users/{id}/roles/…`, `POST /management/accounts/`, `GET`/`POST /management/accounts/{id}/` |
 
-Management pages need the `authorization.view` permission; buttons and switches also check `authorization.assign_role`, `authorization.revoke_role` and `authorization.manage_outbox`.
+Management pages need the `authorization.view` permission; buttons and switches also check `account.manage`, `account.suspend`, `authorization.assign_role`, `authorization.revoke_role` and `authorization.manage_outbox`. Account changes send the account's `version`; a 409 means someone else changed it first, and the page reloads the version.
 
 ## How it works
 
@@ -61,7 +58,8 @@ Management pages need the `authorization.view` permission; buttons and switches 
 - **Errors**: DRF field errors appear under each field. Known English server messages are translated (`src/lib/errors.ts`).
 - **Language**: the UI starts in Swahili, remembers the visitor's choice, and switches to the account's saved language at sign-in.
 - **Layout**: signed-in pages use a navy sidebar (`src/layouts/Sidebar.tsx`, items in `navigation.ts`) that collapses to icons on desktop (remembered per browser) and becomes a slide-in drawer on phones, plus a top bar with breadcrumb, language switch and user menu. Pages are a `PageHeader` followed by cards.
-- **Access**: `/auth/me/` returns the user's effective `roles` and `permissions`. Navigation links and management pages appear only when they apply (`src/auth/access.ts`). This is UX only; the API enforces every permission.
+- **Profile fields**: the API uses `preferred_language` and `is_email_verified`; `src/lib/authApi.ts` maps them to `language` and `email_verified` so components don't depend on the wire names.
+- **Access**: `/auth/me/` doesn't return roles or permissions yet. As a stopgap, `loadAccess()` in `src/lib/authApi.ts` calls `GET /management/authorization/roles/management/permissions/`, which only Management can read: success means the user is Management with those permissions, 403 means no staff access. Navigation links and management pages appear only when they apply (`src/auth/access.ts`). This is UX only; the API enforces every permission. Replace `loadAccess()` once `/auth/me/` reports roles.
 - **Motion**: all animation respects `prefers-reduced-motion`.
 
 ## Brand
@@ -72,6 +70,8 @@ Auth page photos are of Dar es Salaam, from Unsplash (free licence): Ali Mkumbwa
 
 ## Known gaps (waiting on the backend)
 
-- Phone confirmation links are produced by `python manage.py issue_phone_confirmation` until identity submission (M05) and the staff WhatsApp outbox (M21) send them.
-- The email address (sign-in identifier) cannot be changed yet.
+- `/auth/me/` doesn't report roles, permissions or account category, so Verifiers, Marketers and partners don't see their roles in the UI, and only Management gets role-specific navigation.
+- No phone confirmation status in the API, so the account page shows email confirmation only.
+- Deletion requests: there's no endpoint to read your own request, withdraw it, or for Management to list and resolve requests. The account page can only send one.
+- Phone number and email (the sign-in identifier) can't be changed by the user.
 - Partner accounts (local officials, professionals) are created through their own onboarding, not on the staff page.

@@ -49,8 +49,8 @@ export function UserMenu({ onSignOut }: { onSignOut: () => void }) {
         </span>
         <span className="hidden text-left sm:block">
           <span className="block max-w-40 truncate text-sm font-semibold text-navy">{user.full_name}</span>
-          <span className="block text-xs text-muted">
-            {primaryRole ? t(`roleNames.${primaryRole}`, { defaultValue: primaryRole }) : t('account.noRoles')}
+          <span className="block max-w-40 truncate text-xs text-muted">
+            {primaryRole ? t(`roleNames.${primaryRole}`, { defaultValue: primaryRole }) : user.email}
           </span>
         </span>
         <ChevronDownIcon className={`size-4 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />

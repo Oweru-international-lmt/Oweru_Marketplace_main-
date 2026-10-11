@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { can } from '../auth/access'
 import { useAuth } from '../auth/useAuth'
 import { Card } from '../components/Card'
 import { ChangePasswordForm } from '../components/ChangePasswordForm'
@@ -35,18 +34,18 @@ export function AccountPage() {
               </span>
               <p className="mt-4 font-display text-xl font-semibold text-navy">{user.full_name}</p>
               <p className="mt-1 max-w-full truncate text-sm text-muted">{user.email}</p>
-              <p className="mt-1 text-xs text-muted">{t(`categories.${user.account_category}`)}</p>
             </div>
-            <div className="mt-6 border-t border-mist pt-5">
-              <p className="text-xs font-medium tracking-wide text-muted uppercase">{t('account.roles')}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {user.roles.length ? (
-                  user.roles.map((role) => <RoleBadge key={role} role={role} />)
-                ) : (
-                  <span className="text-sm text-muted">{t('account.noRoles')}</span>
-                )}
+            {/* Only staff roles are known to the UI for now (see loadAccess). */}
+            {user.roles.length > 0 && (
+              <div className="mt-6 border-t border-mist pt-5">
+                <p className="text-xs font-medium tracking-wide text-muted uppercase">{t('account.roles')}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {user.roles.map((role) => (
+                    <RoleBadge key={role} role={role} />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div className="mt-6 border-t border-mist pt-5">
               <p className="mb-4 text-xs font-medium tracking-wide text-muted uppercase">{t('profile.verification')}</p>
               <VerificationList user={user} />
@@ -59,7 +58,7 @@ export function AccountPage() {
           <Card title={t('security.title')} titleId="account-security" description={t('security.description')} delay={0.15}>
             <ChangePasswordForm submitLabel={t('security.submit')} />
           </Card>
-          {can(user, 'account.request_deletion') && <DeletionCard />}
+          <DeletionCard />
         </div>
       </div>
     </>

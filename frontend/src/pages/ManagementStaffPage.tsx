@@ -59,7 +59,7 @@ export function ManagementStaffPage() {
 
       <div className="space-y-6">
         {can(user, 'account.manage') && (
-          <CreateStaffCard onCreated={(account) => setFound({ account, roles: [] })} />
+          <CreateStaffCard onCreated={(account, role) => setFound({ account, roles: [{ role_code: role, is_active: true }] })} />
         )}
         <Card>
           <form noValidate onSubmit={handleSearch} className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
@@ -131,9 +131,6 @@ function AccountResult({ found, onChange }: { found: Found; onChange: (found: Fo
             <span className={`size-1.5 rounded-full ${account.is_active ? 'bg-success' : 'bg-danger'}`} aria-hidden="true" />
             {account.is_active ? t('staffPage.active') : t('staffPage.inactive')}
           </span>
-          {account.must_change_password && (
-            <span className="mt-2 text-xs font-medium text-muted">{t('staffAccount.pendingPassword')}</span>
-          )}
         </div>
         <div className="mt-6 border-t border-mist pt-5">
           <p className="text-xs font-medium tracking-wide text-muted uppercase">{t('staffPage.currentRoles')}</p>

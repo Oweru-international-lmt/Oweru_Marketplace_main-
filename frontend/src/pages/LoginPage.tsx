@@ -11,7 +11,7 @@ import { ApiError } from '../lib/api'
 import { errorMessage, fieldErrorsFrom } from '../lib/errors'
 import { emailError } from '../lib/validation'
 
-export type LoginNotice = 'resetDone' | 'registered' | 'sessionExpired'
+export type LoginNotice = 'resetDone' | 'registered' | 'sessionExpired' | 'passwordChanged'
 type LoginState = { from?: string; notice?: LoginNotice } | null
 
 type Errors = { email?: string; password?: string }

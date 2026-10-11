@@ -1,27 +1,29 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../lib/api'
-import { authApi, type User } from '../lib/authApi'
+import { authApi } from '../lib/authApi'
 import { errorMessage, fieldErrorsFrom } from '../lib/errors'
 import { passwordError } from '../lib/validation'
+import type { LoginNotice } from '../pages/LoginPage'
 import { Alert } from './Alert'
 import { Button } from './Button'
 import { TextField } from './TextField'
 
 type Errors = { current?: string; next?: string; confirm?: string }
 
-// Used on the account page and on the forced first-sign-in page (ACC-06).
-// The server ends other sessions and returns a fresh token pair, applied here.
-export function ChangePasswordForm({ submitLabel, onChanged }: { submitLabel: string; onChanged?: (user: User) => void }) {
+// The server ends every session, this one included, so a successful change
+// signs out here and asks for the new password.
+export function ChangePasswordForm({ submitLabel }: { submitLabel: string }) {
   const { t } = useTranslation()
-  const { applySession, user } = useAuth()
+  const { signOut, user } = useAuth()
+  const navigate = useNavigate()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -33,23 +35,19 @@ export function ChangePasswordForm({ submitLabel, onChanged }: { submitLabel: st
     }
     setErrors(validation)
     setFormError(null)
-    setDone(false)
     if (Object.values(validation).some(Boolean)) return
 
     setSubmitting(true)
     try {
-      const { access, refresh, user } = await authApi.changePassword(current, next)
-      applySession({ access, refresh }, user)
-      setCurrent('')
-      setNext('')
-      setConfirm('')
-      setDone(true)
-      onChanged?.(user)
+      await authApi.changePassword(current, next)
+      signOut()
+      navigate('/login', { replace: true, state: { notice: 'passwordChanged' satisfies LoginNotice } })
     } catch (error) {
       const fields = error instanceof ApiError ? fieldErrorsFrom(t, error.fieldErrors) : {}
-      setErrors({ current: fields.current_password, next: fields.new_password })
-      if (!fields.current_password && !fields.new_password) setFormError(errorMessage(t, error))
-    } finally {
+      setErrors({ current: fields.current_password, next: fields.new_password, confirm: fields.new_password_confirm })
+      if (!fields.current_password && !fields.new_password && !fields.new_password_confirm) {
+        setFormError(errorMessage(t, error))
+      }
       setSubmitting(false)
     }
   }
@@ -59,7 +57,6 @@ export function ChangePasswordForm({ submitLabel, onChanged }: { submitLabel: st
       {/* Lets password managers file the new password under the right account. */}
       <input type="email" name="username" autoComplete="username" value={user?.email ?? ''} readOnly hidden />
       {formError && <Alert tone="error">{formError}</Alert>}
-      {done && <Alert tone="success">{t('security.changed')}</Alert>}
       <TextField
         label={t('security.currentPassword')}
         type="password"

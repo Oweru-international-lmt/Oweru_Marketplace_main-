@@ -1,27 +1,23 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { can } from '../../auth/access'
 import { useAuth } from '../../auth/useAuth'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { TextField } from '../../components/TextField'
-import { isLanguage, LANGUAGES, type Language } from '../../i18n'
+import { LANGUAGES, type Language } from '../../i18n'
 import { ApiError } from '../../lib/api'
-import { authApi, type User } from '../../lib/authApi'
+import { authApi, type Profile, type User } from '../../lib/authApi'
 import { errorMessage, fieldErrorsFrom } from '../../lib/errors'
-import { formatPhone, normalizePhone } from '../../lib/phone'
+import { formatPhone } from '../../lib/phone'
 
-type Errors = { full_name?: string; phone?: string }
-
-// ACC-08: view and edit own name, phone and language. Email is the sign-in
-// identifier and is not edited here.
+// ACC-08: view and edit own name and language. Email and phone are fixed
+// identifiers; changing them goes through Oweru support.
 export function ProfileDetailsCard({ user }: { user: User }) {
   const { t, i18n } = useTranslation()
   const { setUser } = useAuth()
   const [editing, setEditing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const canEdit = can(user, 'account.update')
 
   const memberSince = new Intl.DateTimeFormat(i18n.language === 'sw' ? 'sw-TZ' : 'en-GB', { dateStyle: 'long' }).format(
     new Date(user.created_at),
@@ -30,7 +26,7 @@ export function ProfileDetailsCard({ user }: { user: User }) {
     { label: t('fields.fullName'), value: user.full_name },
     { label: t('fields.email'), value: user.email },
     { label: t('fields.phone'), value: formatPhone(user.phone) },
-    { label: t('fields.language'), value: isLanguage(user.language) ? t(`common.languageNames.${user.language}`) : user.language },
+    { label: t('fields.language'), value: t(`common.languageNames.${user.language}`) },
     { label: t('account.memberSince'), value: memberSince },
   ]
 
@@ -40,7 +36,7 @@ export function ProfileDetailsCard({ user }: { user: User }) {
       titleId="account-details"
       delay={0.1}
       action={
-        canEdit && !editing ? (
+        !editing ? (
           <button
             type="button"
             onClick={() => {
@@ -64,8 +60,8 @@ export function ProfileDetailsCard({ user }: { user: User }) {
           user={user}
           onCancel={() => setEditing(false)}
           onSaved={(updated) => {
-            setUser(updated)
-            if (isLanguage(updated.language)) void i18n.changeLanguage(updated.language)
+            setUser({ ...user, ...updated })
+            void i18n.changeLanguage(updated.language)
             setEditing(false)
             setMessage(t('profile.saved'))
           }}
@@ -84,33 +80,28 @@ export function ProfileDetailsCard({ user }: { user: User }) {
   )
 }
 
-function EditForm({ user, onCancel, onSaved }: { user: User; onCancel: () => void; onSaved: (user: User) => void }) {
+function EditForm({ user, onCancel, onSaved }: { user: User; onCancel: () => void; onSaved: (profile: Profile) => void }) {
   const { t } = useTranslation()
   const [fullName, setFullName] = useState(user.full_name)
-  const [phone, setPhone] = useState(formatPhone(user.phone))
   const [language, setLanguage] = useState<Language>(user.language)
-  const [errors, setErrors] = useState<Errors>({})
+  const [error, setError] = useState<string>()
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const normalized = normalizePhone(phone)
-    const next: Errors = {
-      full_name: fullName.trim() ? undefined : t('validation.required'),
-      phone: !phone.trim() ? t('validation.required') : normalized ? undefined : t('validation.phoneInvalid'),
-    }
-    setErrors(next)
+    const required = fullName.trim() ? undefined : t('validation.required')
+    setError(required)
     setFormError(null)
-    if (next.full_name || !normalized) return
+    if (required) return
 
     setSaving(true)
     try {
-      onSaved(await authApi.updateProfile({ full_name: fullName.trim(), phone: normalized, language }))
-    } catch (error) {
-      const fields = error instanceof ApiError ? fieldErrorsFrom(t, error.fieldErrors) : {}
-      setErrors({ full_name: fields.full_name, phone: fields.phone })
-      if (!fields.full_name && !fields.phone) setFormError(errorMessage(t, error))
+      onSaved(await authApi.updateProfile({ full_name: fullName.trim(), language }))
+    } catch (err) {
+      const fields = err instanceof ApiError ? fieldErrorsFrom(t, err.fieldErrors) : {}
+      setError(fields.full_name)
+      if (!fields.full_name) setFormError(errorMessage(t, err))
     } finally {
       setSaving(false)
     }
@@ -119,17 +110,7 @@ function EditForm({ user, onCancel, onSaved }: { user: User; onCancel: () => voi
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-5">
       {formError && <Alert tone="error">{formError}</Alert>}
-      <TextField label={t('fields.fullName')} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} error={errors.full_name} />
-      <TextField
-        label={t('fields.phone')}
-        type="tel"
-        inputMode="tel"
-        autoComplete="tel"
-        hint={t('profile.phoneChangeNote')}
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        error={errors.phone}
-      />
+      <TextField label={t('fields.fullName')} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} error={error} />
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-navy">{t('fields.language')}</legend>
         <div className="grid grid-cols-2 gap-3">

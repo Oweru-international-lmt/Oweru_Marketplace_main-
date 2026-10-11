@@ -1,6 +1,7 @@
 import type { Language } from '../i18n'
 import { request } from './api'
-import type { AccountCategory, DeletionRequest, ProfileChanges } from './authApi'
+import type { AccountCategory } from './authApi'
+import type { ASSIGNABLE_ROLES } from './roles'
 
 const BASE = '/management/authorization'
 const ACCOUNTS = '/management/accounts'
@@ -13,12 +14,21 @@ export type AccountSummary = {
   full_name: string
   account_category: AccountCategory
   is_active: boolean
-  must_change_password: boolean
 }
 
-export type StaffAccountInput = { email: string; phone: string; full_name: string; language: Language }
-export type TemporaryPasswordResult = { account: AccountSummary; temporary_password: string }
-export type ManagedDeletionRequest = DeletionRequest & { account: AccountSummary }
+// `version` guards against two managers editing at once: a stale one gets 409.
+export type AccountDetail = AccountSummary & { email: string; version: number }
+
+export type StaffAccountInput = {
+  role: (typeof ASSIGNABLE_ROLES)[number]
+  email: string
+  phone: string
+  full_name: string
+  language: Language
+}
+
+// Every change is recorded with a reason. Send either `active` or `full_name`.
+export type AccountChange = { version: number; reason: string; active?: boolean; full_name?: string }
 
 // All endpoints need JWT plus an active Management role and the named permission
 // (see doc/BACKEND_AUTHORIZATION.md).
@@ -58,34 +68,22 @@ export const managementApi = {
       auth: true,
     }),
 
-  // ACC-06 staff accounts (account.manage / account.suspend).
-  createStaffAccount: (input: StaffAccountInput) =>
-    request<TemporaryPasswordResult>(`${ACCOUNTS}/`, { method: 'POST', body: input, auth: true }),
-
-  updateStaffAccount: (userId: string, changes: ProfileChanges) =>
-    request<AccountSummary>(`${ACCOUNTS}/${encodeURIComponent(userId)}/`, { method: 'PATCH', body: changes, auth: true }),
-
-  issueTemporaryPassword: (userId: string) =>
-    request<TemporaryPasswordResult>(`${ACCOUNTS}/${encodeURIComponent(userId)}/temporary-password/`, {
+  // ACC-06 staff accounts (account.manage). The new staff member gets an email
+  // link to set their own password.
+  createStaffAccount: ({ language, ...input }: StaffAccountInput) =>
+    request<{ id: string; version: number }>(`${ACCOUNTS}/`, {
       method: 'POST',
+      body: { ...input, preferred_language: language },
       auth: true,
     }),
 
-  setAccountActive: (userId: string, active: boolean, reason: string) =>
-    request<AccountSummary>(`${ACCOUNTS}/${encodeURIComponent(userId)}/${active ? 'reactivate' : 'deactivate'}/`, {
-      method: 'POST',
-      body: { reason },
-      auth: true,
-    }),
+  account: (userId: string) => request<AccountDetail>(`${ACCOUNTS}/${encodeURIComponent(userId)}/`, { auth: true }),
 
-  // ACC-08 deletion requests.
-  deletionRequests: (status: DeletionRequest['status']) =>
-    request<ManagedDeletionRequest[]>(`${ACCOUNTS}/deletion-requests/?status=${status}`, { auth: true }),
-
-  resolveDeletion: (requestId: string, decision: 'completed' | 'declined', note: string) =>
-    request<ManagedDeletionRequest>(`${ACCOUNTS}/deletion-requests/${encodeURIComponent(requestId)}/resolve/`, {
+  // Name changes need account.manage; activating or deactivating needs account.suspend.
+  changeAccount: (userId: string, change: AccountChange) =>
+    request<{ id: string; is_active: boolean; version: number }>(`${ACCOUNTS}/${encodeURIComponent(userId)}/`, {
       method: 'POST',
-      body: { decision, note },
+      body: change,
       auth: true,
     }),
 }

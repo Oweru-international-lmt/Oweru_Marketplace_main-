@@ -8,28 +8,29 @@ import { FullPageLoader } from '../components/FullPageLoader'
 import { CheckIcon, MailIcon } from '../components/icons'
 import { authApi } from '../lib/authApi'
 
-// Opened from the ACC-05 email: EMAIL_CONFIRMATION_URL?id=...&token=...
+// Opened from the ACC-05 email: EMAIL_VERIFICATION_URL?token=...
 export function EmailConfirmPage() {
   const { t } = useTranslation()
-  const { status, setUser } = useAuth()
+  const { status, user, setUser } = useAuth()
   const [params] = useSearchParams()
-  const id = params.get('id')
   const token = params.get('token')
-  const [result, setResult] = useState<'checking' | 'confirmed' | 'failed'>(id && token ? 'checking' : 'failed')
+  const [result, setResult] = useState<'checking' | 'confirmed' | 'failed'>(token ? 'checking' : 'failed')
   // The link works once, so React's development double-run must not send it twice.
   const sent = useRef(false)
 
   useEffect(() => {
-    if (!id || !token || sent.current) return
+    if (!token || sent.current) return
     sent.current = true
     authApi
-      .confirmEmail(id, token)
-      .then(() => {
-        setResult('confirmed')
-        if (status === 'authenticated') void authApi.me().then(setUser).catch(() => undefined)
-      })
+      .verifyEmail(token)
+      .then(() => setResult('confirmed'))
       .catch(() => setResult('failed'))
-  }, [id, token, status, setUser])
+  }, [token])
+
+  // Reflect the confirmation on the account page if this browser is signed in.
+  useEffect(() => {
+    if (result === 'confirmed' && user && !user.email_verified) setUser({ ...user, email_verified: true })
+  }, [result, user, setUser])
 
   if (result === 'checking') return <FullPageLoader inline />
 

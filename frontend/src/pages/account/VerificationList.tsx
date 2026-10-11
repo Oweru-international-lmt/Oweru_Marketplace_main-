@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckIcon, MailIcon, WhatsAppIcon } from '../../components/icons'
+import { CheckIcon, MailIcon } from '../../components/icons'
 import { authApi, type User } from '../../lib/authApi'
 import { errorMessage } from '../../lib/errors'
 
@@ -18,7 +18,7 @@ function Status({ ok }: { ok: boolean }) {
   )
 }
 
-// ACC-05 email confirmation (with resend) and ACC-01 phone confirmation status.
+// ACC-05 email confirmation (with resend). The API doesn't report phone confirmation yet.
 export function VerificationList({ user }: { user: User }) {
   const { t } = useTranslation()
   const [sending, setSending] = useState(false)
@@ -55,16 +55,6 @@ export function VerificationList({ user }: { user: User }) {
             </>
           )}
           {note && <p className={`mt-2 text-xs ${note.tone === 'ok' ? 'text-success' : 'text-danger'}`}>{note.text}</p>}
-        </div>
-      </li>
-      <li className="flex gap-3">
-        <WhatsAppIcon className="mt-0.5 size-5 shrink-0 text-muted" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-navy">{t('fields.phone')}</span>
-            <Status ok={user.phone_verified} />
-          </div>
-          {!user.phone_verified && <p className="mt-1 text-xs leading-relaxed text-muted">{t('profile.phoneNote')}</p>}
         </div>
       </li>
     </ul>
