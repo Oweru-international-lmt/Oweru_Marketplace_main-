@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import {
   BanknoteIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ResetIcon,
   CloseIcon,
   FilterIcon,
@@ -115,9 +117,10 @@ export function SearchPage() {
     setSearchParams(next)
   }
 
+  // Land at the top of the results, not the page headline.
   function goToPage(page: number) {
     update({ page: page > 1 ? String(page) : undefined })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const clearAll = () => setSearchParams(filters.sort ? { sort: filters.sort } : {})
@@ -576,28 +579,83 @@ function Results({
           ),
         )}
       </div>
-      {totalPages > 1 && (
-        <nav aria-label={t('search.pagination')} className="mt-10 flex items-center justify-between gap-4 border-t border-mist pt-6">
-          <button
-            type="button"
-            disabled={!page.previous}
-            onClick={() => page.previous && onPage(page.previous)}
-            className="h-11 rounded-xl bg-white px-5 text-sm font-semibold text-navy ring-1 ring-mist hover:ring-navy/30 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {t('search.previous')}
-          </button>
-          <span className="text-sm text-muted">{t('search.pageOf', { page: pageNumber, total: totalPages })}</span>
-          <button
-            type="button"
-            disabled={!page.next}
-            onClick={() => page.next && onPage(page.next)}
-            className="h-11 rounded-xl bg-navy px-5 text-sm font-semibold text-white hover:bg-navy-soft disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {t('search.next')}
-          </button>
-        </nav>
-      )}
+      {totalPages > 1 && <Pagination page={pageNumber} total={totalPages} onPage={onPage} />}
     </>
+  )
+}
+
+// Page numbers to show: always the first and last, the current page and its
+// neighbours (`spread` either side), with gaps marked as null.
+function pageWindow(page: number, total: number, spread: number): (number | null)[] {
+  const pages: (number | null)[] = []
+  for (let number = 1; number <= total; number++) {
+    const near = Math.abs(number - page) <= spread
+    if (number === 1 || number === total || near) pages.push(number)
+    else if (pages[pages.length - 1] !== null) pages.push(null)
+  }
+  return pages
+}
+
+function Pagination({ page, total, onPage }: { page: number; total: number; onPage: (page: number) => void }) {
+  const { t } = useTranslation()
+  // Phones show one neighbour each side so the row fits; desktop shows two.
+  const desktop = useMediaQuery(DESKTOP)
+  const numbers = pageWindow(page, total, desktop ? 2 : 1)
+
+  return (
+    <nav aria-label={t('search.pagination')} className="mt-10 border-t border-mist pt-6">
+      <p className="sr-only" aria-live="polite">
+        {t('search.pageOf', { page, total })}
+      </p>
+      <ul className="flex items-center justify-center gap-1.5 sm:gap-2">
+        <li>
+          <PageButton label={t('search.previous')} disabled={page <= 1} onClick={() => onPage(page - 1)}>
+            <ChevronLeftIcon className="size-5" />
+          </PageButton>
+        </li>
+        {numbers.map((number, index) =>
+          number === null ? (
+            <li key={`gap-${index}`} className="grid size-11 place-items-center text-sm text-muted" aria-hidden="true">
+              …
+            </li>
+          ) : (
+            <li key={number}>
+              <button
+                type="button"
+                onClick={() => onPage(number)}
+                aria-current={number === page ? 'page' : undefined}
+                aria-label={t('search.pageOf', { page: number, total })}
+                className={`grid size-11 place-items-center rounded-full text-sm font-semibold transition-colors lg:rounded-md ${
+                  number === page ? 'bg-navy text-white' : 'bg-white text-navy ring-1 ring-mist hover:ring-navy/30'
+                }`}
+              >
+                {number}
+              </button>
+            </li>
+          ),
+        )}
+        <li>
+          <PageButton label={t('search.next')} disabled={page >= total} onClick={() => onPage(page + 1)}>
+            <ChevronRightIcon className="size-5" />
+          </PageButton>
+        </li>
+      </ul>
+    </nav>
+  )
+}
+
+function PageButton({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="grid size-11 place-items-center rounded-full bg-white text-navy ring-1 ring-mist transition-colors hover:ring-navy/30 disabled:cursor-not-allowed disabled:opacity-40 lg:rounded-md"
+    >
+      {children}
+    </button>
   )
 }
 
