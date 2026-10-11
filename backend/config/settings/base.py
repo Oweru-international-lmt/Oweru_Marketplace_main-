@@ -159,8 +159,11 @@ REST_FRAMEWORK = {
     "VERSION_PARAM": "version",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    # No blanket limit on anonymous visitors: public search and property pages
+    # make several requests per page, and 120/hour cut buyers off within minutes.
+    # Sign-in, registration, password reset and confirmations keep their own
+    # limits below (NFR-03); those views still apply the "anon" rate explicitly.
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour", "confirmation": "20/hour"},
