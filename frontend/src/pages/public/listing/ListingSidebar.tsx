@@ -3,8 +3,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { Alert } from '../../../components/Alert'
-import { CalendarIcon, ChatIcon, ShieldIcon, TickIcon, WhatsAppIcon } from '../../../components/icons'
-import { whatsappLink } from '../../../lib/config'
+import { AlertIcon, ArrowRightIcon, CalendarIcon, ChatIcon, ShieldIcon, TickIcon, WhatsAppIcon } from '../../../components/icons'
 import { formatDate, formatTsh } from '../../../lib/format'
 import { initials } from '../../../lib/initials'
 import type { PublicListing } from '../../../lib/marketApi'
@@ -217,8 +216,8 @@ export function MobileActionBar({ listing, actions }: { listing: PublicListing; 
   )
 }
 
-// FUL-01 entry point. Online ordering comes with the buyer screens; until
-// then the button opens Oweru's WhatsApp with the property reference.
+// FUL-01 entry point: the fee and scope come first on the order page, which
+// asks guests to sign in.
 export function FullCheckCard({ listing }: { listing: PublicListing }) {
   const { t } = useTranslation()
   if (listing.lister.verification.level === 3) return null
@@ -228,16 +227,28 @@ export function FullCheckCard({ listing }: { listing: PublicListing }) {
       <ShieldIcon className="absolute -top-4 -right-4 size-28 text-white/5" />
       <h2 className="font-serif text-xl font-semibold">{t('listing.fullCheckTitle')}</h2>
       <p className="mt-2 text-sm leading-relaxed text-white/75">{t('listing.fullCheckBody')}</p>
-      <p className="mt-3 text-xs leading-relaxed text-white/55">{t('listing.fullCheckSoon')}</p>
-      <a
-        href={whatsappLink(t('listing.fullCheckMessage', { reference: listing.property.property_id }))}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold-light"
+      <Link
+        to={`/listings/${encodeURIComponent(listing.listing_id)}/full-check`}
+        className="group mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold-light"
       >
-        <WhatsAppIcon className="size-4" />
-        {t('site.support')}
-      </a>
+        {t('listing.fullCheckCta')}
+        <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+      </Link>
     </section>
+  )
+}
+
+// CMP-01: the complaint form opens with this property's number filled in.
+export function ReportLink({ listing }: { listing: PublicListing }) {
+  const { t } = useTranslation()
+  const query = new URLSearchParams({ property: listing.property.property_id, type: 'FAKE_LISTING' })
+  return (
+    <Link
+      to={`/complaints/new?${query}`}
+      className="inline-flex h-11 items-center gap-2 text-sm font-medium text-muted underline decoration-mist underline-offset-4 hover:text-navy hover:decoration-navy/40"
+    >
+      <AlertIcon className="size-4" />
+      {t('listing.report')}
+    </Link>
   )
 }

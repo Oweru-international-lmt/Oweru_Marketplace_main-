@@ -3,7 +3,7 @@ import { useEffect, useState, type ComponentType, type ReactNode, type SVGProps 
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import { HomeIcon, SearchIcon, UserIcon, WhatsAppIcon } from '../components/icons'
+import { HomeIcon, SearchIcon, ShieldIcon, UserIcon, WhatsAppIcon } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Logo } from '../components/Logo'
 import { whatsappLink } from '../lib/config'
@@ -17,7 +17,8 @@ export function PublicLayout() {
   const { pathname, hash } = useLocation()
   // The home hero runs under the header, which stays clear until the page scrolls.
   const overHero = pathname === '/'
-  const onListing = pathname.startsWith('/listings/')
+  // The property page has its own fixed price bar (not its full check sub-page).
+  const onListing = /^\/listings\/[^/]+\/?$/.test(pathname)
   const [scrolled, setScrolled] = useState(() => window.scrollY > 24)
 
   // A plain listener, not a ScrollTrigger: the page grows as listings load, and
@@ -58,6 +59,7 @@ export function PublicLayout() {
           <Logo compact tone={light ? 'light' : 'dark'} />
           <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
             <HeaderLink to="/listings">{t('site.browse')}</HeaderLink>
+            <HeaderLink to="/free-check">{t('site.freeCheck')}</HeaderLink>
             <HeaderLink to="/#how">{t('site.howItWorks')}</HeaderLink>
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -93,6 +95,7 @@ function BottomNav() {
   const tabs: Tab[] = [
     { to: '/', label: t('site.home'), icon: HomeIcon, active: pathname === '/' },
     { to: '/listings', label: t('site.search'), icon: SearchIcon, active: pathname === '/listings' },
+    { to: '/free-check', label: t('site.freeCheckTab'), icon: ShieldIcon, active: pathname.startsWith('/free-check') },
     { to: whatsappLink(t('site.supportMessage')), label: t('site.help'), icon: WhatsAppIcon, active: false, external: true },
     { to: signedIn ? '/account' : '/login', label: signedIn ? t('site.account') : t('site.signIn'), icon: UserIcon, active: false },
   ]
@@ -102,7 +105,7 @@ function BottomNav() {
       aria-label={t('site.bottomNav')}
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-2xl bg-navy/95 px-2 py-1.5 shadow-[0_18px_40px_-12px_rgba(15,23,42,0.6)] backdrop-blur md:hidden"
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {tabs.map((tab) => {
           const content = (
             <>
@@ -200,11 +203,13 @@ function SiteFooter() {
         </div>
         <FooterColumn title={t('site.footerExplore')}>
           <FooterLink to="/listings">{t('site.browse')}</FooterLink>
+          <FooterLink to="/free-check">{t('site.freeCheck')}</FooterLink>
           <FooterLink to="/#how">{t('site.howItWorks')}</FooterLink>
         </FooterColumn>
         <FooterColumn title={t('site.footerAccount')}>
           <FooterLink to="/login">{t('site.signIn')}</FooterLink>
           <FooterLink to="/register">{t('site.register')}</FooterLink>
+          <FooterLink to="/full-checks">{t('site.myFullChecks')}</FooterLink>
         </FooterColumn>
         <FooterColumn title={t('site.footerHelp')}>
           <a
@@ -216,6 +221,7 @@ function SiteFooter() {
             <WhatsAppIcon className="size-4" />
             {t('site.support')}
           </a>
+          <FooterLink to="/complaints/new">{t('site.complaint')}</FooterLink>
         </FooterColumn>
       </div>
       <div className="border-t border-white/10">

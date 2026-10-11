@@ -11,7 +11,7 @@ import { gsap, MOTION_OK, useGSAP } from '../../lib/gsap'
 import { placeName, sizeText, sortedPhotos } from '../../lib/listingText'
 import { marketApi, type PublicListing } from '../../lib/marketApi'
 import { Gallery } from './listing/Gallery'
-import { ContactActions, FullCheckCard, ListerCard, ListerRow, MobileActionBar } from './listing/ListingSidebar'
+import { ContactActions, FullCheckCard, ListerCard, ListerRow, MobileActionBar, ReportLink } from './listing/ListingSidebar'
 import { useListingActions } from './listing/useListingActions'
 import { VerificationPanel } from './listing/VerificationPanel'
 
@@ -163,6 +163,9 @@ function ListingView({ listing }: { listing: PublicListing }) {
 
             <div className="lg:hidden">
               <FullCheckCard listing={listing} />
+              <div className="mt-2">
+                <ReportLink listing={listing} />
+              </div>
             </div>
           </div>
         </div>
@@ -171,6 +174,7 @@ function ListingView({ listing }: { listing: PublicListing }) {
           <ContactActions listing={listing} actions={actions} />
           <ListerCard listing={listing} />
           <FullCheckCard listing={listing} />
+          <ReportLink listing={listing} />
         </aside>
       </div>
 
