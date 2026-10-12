@@ -1,5 +1,5 @@
 import { isLanguage, type Language } from '../i18n'
-import { request } from './api'
+import { ApiError, request } from './api'
 import type { Tokens } from './tokens'
 
 export type AccountCategory = 'public' | 'operational'
@@ -118,22 +118,35 @@ export const authApi = {
     request<DeletionRequest>('/users/me/deletion-request/', { method: 'POST', body: { reason }, auth: true }),
 }
 
-// Stopgap until /auth/me reports roles. Two probes, run together:
+// Stopgap until /auth/me reports roles. Three probes, run together:
 // - the Management role's grants answer only for active Management with
 //   authorization.view;
 // - the complaints desk answers only for complaint.handle, which Verifiers
-//   and Management hold (roles catalog).
+//   and Management hold (roles catalog);
+// - the lister's identity answers 200, or 404 before they start, only for an
+//   active Owner or Agent; everyone else gets 403.
 // Any failure just hides those menus; the API still checks every request.
 export async function loadAccess(): Promise<Access> {
-  const [grants, desk] = await Promise.allSettled([
+  const [grants, desk, identity] = await Promise.allSettled([
     request<{ code: string }[]>('/management/authorization/roles/management/permissions/', { auth: true }),
     request<unknown[]>('/management/complaints/', { auth: true }),
+    request<unknown>('/lister-identity/me/', { auth: true }),
   ])
   const handlesComplaints = desk.status === 'fulfilled'
+  const lists =
+    identity.status === 'fulfilled' || (identity.reason instanceof ApiError && identity.reason.status === 404)
+  const access: Access = { roles: [], permissions: [] }
   if (grants.status === 'fulfilled') {
-    const permissions = grants.value.map((grant) => grant.code)
-    return { roles: ['management'], permissions: handlesComplaints ? [...new Set([...permissions, 'complaint.handle'])] : permissions }
+    access.roles.push('management')
+    access.permissions.push(...grants.value.map((grant) => grant.code))
+    if (handlesComplaints) access.permissions.push('complaint.handle')
+  } else if (handlesComplaints) {
+    access.roles.push('verifier')
+    access.permissions.push('complaint.handle', 'verification.record_result')
   }
-  if (handlesComplaints) return { roles: ['verifier'], permissions: ['complaint.handle', 'verification.record_result'] }
-  return NO_ACCESS
+  if (lists) {
+    access.roles.push('lister')
+    access.permissions.push('listing.create', 'lead.view')
+  }
+  return { roles: access.roles, permissions: [...new Set(access.permissions)] }
 }

@@ -37,3 +37,26 @@ export function formatShortDate(value: string, language: string): string {
 export function digitsOnly(value: string): string {
   return value.replace(/[^\d]/g, '')
 }
+
+// "5 days ago", "in 2 days": for listing and enquiry ages.
+export function formatRelative(value: string, language: string, now = Date.now()): string {
+  const seconds = (new Date(value).getTime() - now) / 1000
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['year', 31_536_000],
+    ['month', 2_592_000],
+    ['week', 604_800],
+    ['day', 86_400],
+    ['hour', 3_600],
+    ['minute', 60],
+  ]
+  const format = new Intl.RelativeTimeFormat(locale(language), { numeric: 'auto' })
+  for (const [unit, size] of steps) {
+    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit)
+  }
+  return format.format(0, 'minute')
+}
+
+// "10:59", for today's enquiries.
+export function formatTime(value: string, language: string): string {
+  return new Intl.DateTimeFormat(locale(language), { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+}

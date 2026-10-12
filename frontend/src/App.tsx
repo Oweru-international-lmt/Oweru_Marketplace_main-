@@ -1,8 +1,10 @@
 import { MotionConfig } from 'motion/react'
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { can } from './auth/access'
 import { AuthProvider } from './auth/AuthContext'
 import { GuestOnly, RequireAuth, RequirePermission } from './auth/guards'
+import { useAuth } from './auth/useAuth'
 import { AppLayout } from './layouts/AppLayout'
 import { AuthLayout } from './layouts/AuthLayout'
 import { PublicLayout } from './layouts/PublicLayout'
@@ -31,9 +33,23 @@ import { FullCheckDeskPage } from './pages/staff/ops/FullCheckDeskPage'
 import { FullChecksDeskPage } from './pages/staff/ops/FullChecksDeskPage'
 import { OverviewPage } from './pages/staff/ops/OverviewPage'
 import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
+import { BecomeListerPage } from './pages/lister/BecomeListerPage'
+import { EnquiriesPage } from './pages/lister/EnquiriesPage'
+import { IdentityPage } from './pages/lister/IdentityPage'
+import { ListerHomePage } from './pages/lister/ListerHomePage'
 
 // The map library is only needed on this page; keep it out of the first load.
 const FreeCheckPage = lazy(() => import('./pages/public/FreeCheckPage').then((module) => ({ default: module.FreeCheckPage })))
+const ListingEditorPage = lazy(() => import('./pages/lister/ListingEditorPage').then((module) => ({ default: module.ListingEditorPage })))
+const MyListingsPage = lazy(() => import('./pages/lister/MyListingsPage').then((module) => ({ default: module.MyListingsPage })))
+
+// Lister pages: only for active Owners and Agents (listing.create). Anyone
+// else is shown how to become one.
+function Lister({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  if (!can(user, 'listing.create')) return <Navigate to="/sell" replace />
+  return <Suspense fallback={<FullPageLoader inline />}>{children}</Suspense>
+}
 
 export default function App() {
   return (
@@ -72,6 +88,14 @@ export default function App() {
             </Route>
             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/sell" element={<BecomeListerPage />} />
+              {/* SRD 15 to 18: the lister's listings, enquiries and identity. */}
+              <Route path="/lister" element={<Lister><ListerHomePage /></Lister>} />
+              <Route path="/lister/listings" element={<Lister><MyListingsPage /></Lister>} />
+              <Route path="/lister/listings/new" element={<Lister><ListingEditorPage /></Lister>} />
+              <Route path="/lister/listings/:listingId" element={<Lister><ListingEditorPage /></Lister>} />
+              <Route path="/lister/enquiries" element={<Lister><EnquiriesPage /></Lister>} />
+              <Route path="/lister/identity" element={<Lister><IdentityPage /></Lister>} />
               {/* Staff work (CMP-02 to CMP-08, PAY-13, FUL-07): Verifiers and Management. */}
               <Route path="/staff" element={<RequirePermission permission="complaint.handle"><OverviewPage /></RequirePermission>} />
               <Route path="/staff/complaints" element={<RequirePermission permission="complaint.handle"><ComplaintsDeskPage /></RequirePermission>} />

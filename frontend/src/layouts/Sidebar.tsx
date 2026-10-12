@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { CloseIcon, LogOutIcon, SidebarIcon, WhatsAppIcon } from '../components/icons'
 import { Logo } from '../components/Logo'
@@ -24,6 +24,7 @@ export function Sidebar({ collapsed = false, onNavigate, onToggleCollapse, onClo
   const { user } = useAuth()
   const groups = visibleGroups(user)
   const paths = groups.flatMap((group) => group.items.map((item) => item.to))
+  const { pathname, search } = useLocation()
 
   return (
     <div className="flex h-full w-full flex-col bg-navy text-white">
@@ -50,7 +51,7 @@ export function Sidebar({ collapsed = false, onNavigate, onToggleCollapse, onClo
               <p className="mb-1.5 px-5 text-[10px] font-semibold tracking-[0.16em] text-white/40 uppercase">{t(group.titleKey)}</p>
             )}
             <ul>
-              {group.items.map(({ to, labelKey, icon: Icon }) => (
+              {group.items.map(({ to, labelKey, icon: Icon, children }) => (
                 <li key={to}>
                   <NavLink
                     to={to}
@@ -67,6 +68,28 @@ export function Sidebar({ collapsed = false, onNavigate, onToggleCollapse, onClo
                     <Icon className="size-[18px] shrink-0" />
                     <span className={collapsed ? 'sr-only' : 'truncate'}>{t(labelKey)}</span>
                   </NavLink>
+                  {/* L11: the open item's status submenu on a thin guide line. */}
+                  {children && !collapsed && pathname === to && (
+                    <ul className="mt-1 mb-1.5 ml-[29px] border-l border-white/12 pl-2.5">
+                      {children.map((child) => {
+                        const on = (new URLSearchParams(search).get('status') ?? '') === (new URLSearchParams(child.search).get('status') ?? '')
+                        return (
+                          <li key={child.labelKey}>
+                            <Link
+                              to={`${to}${child.search}`}
+                              onClick={onNavigate}
+                              aria-current={on ? 'page' : undefined}
+                              className={`block rounded-[4px] px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                                on ? 'bg-gold/15 font-medium text-gold-light' : 'text-white/60 hover:text-white'
+                              }`}
+                            >
+                              {t(child.labelKey)}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

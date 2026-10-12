@@ -346,3 +346,93 @@ export function DashboardIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  )
+}
+
+export function PlusCircleIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
+    </Icon>
+  )
+}
+
+export function ListIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="4" width="17" height="16" rx="2" />
+      <path d="M8 9h8M8 12.5h8M8 16h5" />
+    </Icon>
+  )
+}
+
+export function IdCardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8.5" cy="11" r="2" />
+      <path d="M5.5 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2M14 10h4M14 13.5h3" />
+    </Icon>
+  )
+}
+
+export function InboxIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 13.5 6.2 5.6A1.5 1.5 0 0 1 7.6 4.5h8.8a1.5 1.5 0 0 1 1.4 1.1L20 13.5" />
+      <path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18Z" />
+    </Icon>
+  )
+}
+
+export function MoreIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="5.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18.5" r="1.2" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
+export function InfoIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5M12 7.8v.2" />
+    </Icon>
+  )
+}
+
+export function SortIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 4v16M4 17l3 3 3-3M13 6h7M13 11h5M13 16h3" />
+    </Icon>
+  )
+}
+
+export function BarsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 20v-7M10 20V5M15 20v-9M20 20v-4" />
+    </Icon>
+  )
+}
+
+export function SelfieIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+      <circle cx="12" cy="10" r="2.5" />
+      <path d="M8.5 16.5c.7-1.6 2-2.4 3.5-2.4s2.8.8 3.5 2.4" />
+    </Icon>
+  )
+}
