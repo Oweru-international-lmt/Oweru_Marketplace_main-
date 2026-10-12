@@ -22,7 +22,18 @@ class ListerIdentityInputSerializer(serializers.Serializer):
     live_selfie_ref = OpaqueEvidenceReferenceField(required=False)
 
 
-class ListerIdentityPrivateSerializer(serializers.ModelSerializer):
+class WhatsAppConfirmedMixin(serializers.Serializer):
+    # Whether the lister's current phone number is confirmed (ACC-01); the
+    # number itself stays out of these payloads.
+    whatsapp_confirmed = serializers.SerializerMethodField()
+
+    def get_whatsapp_confirmed(self, identity):
+        from .services import lister_phone_confirmed
+
+        return lister_phone_confirmed(identity.user)
+
+
+class ListerIdentityPrivateSerializer(WhatsAppConfirmedMixin, serializers.ModelSerializer):
     class Meta:
         model = ListerIdentity
         fields = (
@@ -37,11 +48,12 @@ class ListerIdentityPrivateSerializer(serializers.ModelSerializer):
             "expires_at",
             "created_at",
             "updated_at",
+            "whatsapp_confirmed",
         )
         read_only_fields = fields
 
 
-class ListerIdentityManagementSerializer(serializers.ModelSerializer):
+class ListerIdentityManagementSerializer(WhatsAppConfirmedMixin, serializers.ModelSerializer):
     user_id = serializers.UUIDField(source="user.id", read_only=True)
     user_full_name = serializers.CharField(source="user.full_name", read_only=True)
     reviewed_by_id = serializers.UUIDField(source="reviewed_by.id", read_only=True, allow_null=True)
@@ -63,6 +75,7 @@ class ListerIdentityManagementSerializer(serializers.ModelSerializer):
             "expires_at",
             "created_at",
             "updated_at",
+            "whatsapp_confirmed",
         )
         read_only_fields = fields
 

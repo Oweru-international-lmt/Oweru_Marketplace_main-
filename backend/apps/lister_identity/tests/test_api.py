@@ -753,3 +753,60 @@ def test_identity_evidence_needs_an_owner_or_agent():
     grant_role(buyer, ROLE_BUYER)
     response = authenticated_client(buyer).post("/api/v1/lister-identity/me/evidence/", {"kind": "live_selfie", "image": _png()}, format="multipart")
     assert response.status_code == 403
+
+
+def _uploaded_and_submitted(user):
+    client = authenticated_client(user)
+    client.post("/api/v1/lister-identity/", {"national_id_number": "19900101123450000123"}, format="json")
+    client.post("/api/v1/lister-identity/me/evidence/", {"kind": "national_id_photo", "image": _png()}, format="multipart")
+    client.post("/api/v1/lister-identity/me/evidence/", {"kind": "live_selfie", "image": _png("me.png")}, format="multipart")
+    return client.post("/api/v1/lister-identity/me/submit/")
+
+
+def test_submitting_identity_queues_one_whatsapp_link_and_reports_it_unconfirmed():
+    from apps.payments.models import ConfirmationDelivery
+
+    user = lister_user()
+    response = _uploaded_and_submitted(user)
+
+    assert response.status_code == 200
+    assert response.data["whatsapp_confirmed"] is False
+    link = ConfirmationDelivery.objects.get(purpose="PHONE", user=user)
+    assert link.recipient == user.phone and link.consumed_at is None and link.sent_at is None
+    assert "token" not in repr(response.data).lower()
+
+
+def test_management_opens_identity_photos_through_short_lived_links_and_access_is_logged():
+    from apps.audit.models import AuditLog
+
+    user = lister_user()
+    _uploaded_and_submitted(user)
+    identity = ListerIdentity.objects.get(user=user)
+    base = f"/api/v1/management/lister-identities/{identity.pk}/evidence/"
+
+    assert APIClient().get(base + "live_selfie/").status_code == 401
+    verifier = create_user()
+    grant_role(verifier, ROLE_VERIFIER)
+    assert authenticated_client(verifier).get(base + "live_selfie/").status_code == 403
+    assert authenticated_client(user).get(base + "live_selfie/").status_code == 403
+
+    manager = authenticated_client(management_user())
+    for kind in ("national_id_photo", "live_selfie"):
+        response = manager.get(base + kind + "/")
+        assert response.status_code == 200
+        assert response.data["url"] and response.data["expires_in"] > 0
+    assert manager.get(base + "passport/").status_code == 404
+    logged = AuditLog.objects.filter(action="sensitive_data.accessed", entity_id=str(identity.pk), after__access_type="management_identity_evidence")
+    assert logged.count() == 2
+
+
+def test_management_detail_reports_whatsapp_confirmation_without_the_number():
+    user = lister_user()
+    _uploaded_and_submitted(user)
+    identity = ListerIdentity.objects.get(user=user)
+
+    response = authenticated_client(management_user()).get(f"/api/v1/management/lister-identities/{identity.pk}/")
+
+    assert response.status_code == 200
+    assert response.data["whatsapp_confirmed"] is False
+    assert user.phone not in repr(response.data)

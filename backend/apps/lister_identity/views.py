@@ -127,6 +127,46 @@ class ManagementListerIdentityDetailView(generics.RetrieveAPIView):
         return response
 
 
+class ManagementListerIdentityEvidenceView(generics.GenericAPIView):
+    """A short-lived link to one identity photo, for side-by-side review (IDV-03)."""
+
+    permission_classes = [IsAuthenticated, IsManagement]
+    queryset = ListerIdentity.objects.select_related("user")
+
+    @extend_schema(responses={200: {"type": "object", "properties": {"url": {"type": "string"}, "expires_in": {"type": "integer"}}}})
+    def get(self, request, pk, kind, *args, **kwargs):
+        from django.conf import settings
+        from django.contrib.contenttypes.models import ContentType
+        from rest_framework.exceptions import NotFound
+
+        from apps.media.models import Media
+        from apps.media.storage import get_private_media_storage
+
+        from .services import EVIDENCE_KINDS
+
+        identity = self.get_object()
+        field = EVIDENCE_KINDS.get(kind)
+        if field is None:
+            raise NotFound("Evidence was not found.")
+        media = Media.objects.filter(
+            media_id=getattr(identity, field),
+            content_type=ContentType.objects.get_for_model(ListerIdentity),
+            object_id=identity.pk,
+        ).first()
+        if media is None:
+            raise NotFound("Evidence was not found.")
+        record_sensitive_access(
+            actor=request.user,
+            entity_type="ListerIdentity",
+            entity_id=identity.pk,
+            after={"access_type": "management_identity_evidence", "purpose": "identity_review", "evidence": kind},
+            request=request,
+        )
+        expires_in = settings.MEDIA_SIGNED_URL_TTL_SECONDS
+        url = get_private_media_storage().generate_signed_read_url(key=media.file_key, expires_in=expires_in)
+        return Response({"url": url, "expires_in": expires_in})
+
+
 class ManagementListerIdentityApproveView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated, IsManagement]
 

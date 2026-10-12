@@ -303,6 +303,13 @@ def submit_lister_identity(*, user, identity=None, request=None):
     return identity
 
 
+def lister_phone_confirmed(user):
+    """True when the account's current phone number has been confirmed."""
+    from apps.payments.models import PhoneConfirmation
+
+    return PhoneConfirmation.objects.filter(user_id=user.pk, phone=user.phone).exists()
+
+
 @transaction.atomic
 def approve_lister_identity(*, identity, reviewed_by, request=None):
     actor = _require_persisted_management(reviewed_by)
