@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
+from rest_framework import generics, serializers, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -18,6 +19,7 @@ from .serializers import (
 )
 from .services import (
     approve_lister_identity,
+    attach_identity_evidence,
     create_lister_identity,
     get_lister_identity,
     get_public_lister_identity,
@@ -52,6 +54,26 @@ class ListerIdentityMeView(generics.GenericAPIView):
         serializer = ListerIdentityInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         identity = update_lister_identity(user=request.user, request=request, **serializer.validated_data)
+        return Response(ListerIdentityPrivateSerializer(identity).data)
+
+
+class IdentityEvidenceInputSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=["national_id_photo", "live_selfie"])
+    image = serializers.FileField()
+
+
+class ListerIdentityEvidenceView(generics.GenericAPIView):
+    """Upload the ID photo or the selfie for one's own identity (IDV-01, IDV-02)."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = IdentityEvidenceInputSerializer
+
+    @extend_schema(request=IdentityEvidenceInputSerializer, responses={200: ListerIdentityPrivateSerializer})
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        identity = attach_identity_evidence(user=request.user, request=request, upload=serializer.validated_data["image"], kind=serializer.validated_data["kind"])
         return Response(ListerIdentityPrivateSerializer(identity).data)
 
 

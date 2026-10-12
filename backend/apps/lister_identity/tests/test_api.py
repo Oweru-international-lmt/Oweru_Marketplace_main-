@@ -702,3 +702,54 @@ def test_public_lister_profile_does_not_invent_photo_areas_or_property_types():
     assert "property_types" not in response.data
     assert identity.national_id_photo_ref != response.data.get("photo")
     assert identity.live_selfie_ref != response.data.get("photo")
+
+
+def _png(name="id.png"):
+    from io import BytesIO
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    stream = BytesIO()
+    Image.new("RGB", (40, 30), "white").save(stream, format="PNG")
+    return SimpleUploadedFile(name, stream.getvalue(), content_type="image/png")
+
+
+def test_owner_uploads_id_photo_and_selfie_as_private_evidence_then_submits():
+    from apps.media.models import Media
+    from apps.media.storage import get_private_media_storage
+
+    user = lister_user()
+    client = authenticated_client(user)
+    assert client.post("/api/v1/lister-identity/", {"national_id_number": "19900101123450000123"}, format="json").status_code == 201
+    first = client.post("/api/v1/lister-identity/me/evidence/", {"kind": "national_id_photo", "image": _png()}, format="multipart")
+    second = client.post("/api/v1/lister-identity/me/evidence/", {"kind": "live_selfie", "image": _png("me.png")}, format="multipart")
+    assert first.status_code == 200 and second.status_code == 200
+    identity = ListerIdentity.objects.get(user=user)
+    photo = Media.objects.get(media_id=identity.national_id_photo_ref)
+    assert photo.object_id == identity.pk and photo.file_key.startswith(f"identity/{identity.pk}/")
+    assert photo.file_key in get_private_media_storage().objects
+    assert identity.live_selfie_ref and identity.live_selfie_ref != identity.national_id_photo_ref
+    assert client.post("/api/v1/lister-identity/me/submit/").status_code == 200
+
+
+def test_identity_evidence_rejects_wrong_kind_non_images_and_submitted_identities():
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    user = lister_user()
+    client = authenticated_client(user)
+    client.post("/api/v1/lister-identity/", {}, format="json")
+    assert client.post("/api/v1/lister-identity/me/evidence/", {"kind": "passport", "image": _png()}, format="multipart").status_code == 400
+    pdf = SimpleUploadedFile("id.pdf", b"%PDF-1.4\n%%EOF", content_type="application/pdf")
+    assert client.post("/api/v1/lister-identity/me/evidence/", {"kind": "national_id_photo", "image": pdf}, format="multipart").status_code == 400
+    submitted = lister_user()
+    create_submitted_identity(submitted)
+    late = authenticated_client(submitted).post("/api/v1/lister-identity/me/evidence/", {"kind": "live_selfie", "image": _png()}, format="multipart")
+    assert late.status_code == 400
+
+
+def test_identity_evidence_needs_an_owner_or_agent():
+    buyer = create_user()
+    grant_role(buyer, ROLE_BUYER)
+    response = authenticated_client(buyer).post("/api/v1/lister-identity/me/evidence/", {"kind": "live_selfie", "image": _png()}, format="multipart")
+    assert response.status_code == 403

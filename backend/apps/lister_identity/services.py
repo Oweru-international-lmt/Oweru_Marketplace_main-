@@ -224,6 +224,58 @@ def update_lister_identity(*, user, identity=None, request=None, **attrs):
     return identity
 
 
+EVIDENCE_KINDS = {"national_id_photo": "national_id_photo_ref", "live_selfie": "live_selfie_ref"}
+
+
+@transaction.atomic
+def attach_identity_evidence(*, user, kind, upload, request=None):
+    """Store an ID photo or selfie privately and point the identity at it.
+
+    The photo is saved to private storage against the person's own identity
+    record; the identity keeps only the opaque media id as its reference.
+    """
+    import uuid
+    from io import BytesIO
+
+    from django.contrib.contenttypes.models import ContentType
+
+    from apps.media.models import Media
+    from apps.media.storage import get_private_media_storage
+    from apps.payments.documents import pending_objects, validate_document
+
+    field = EVIDENCE_KINDS.get(kind)
+    if field is None:
+        raise ValidationError({"kind": "Choose national_id_photo or live_selfie."})
+    user = _require_persisted_lister(user)
+    identity = _own_identity_for_update(user)
+    _ensure_self_owned(identity, user)
+    _ensure_editable(identity)
+    content, mime, digest = validate_document(upload)
+    if mime not in {"image/jpeg", "image/png"}:
+        raise ValidationError({"image": "Identity photos must be JPEG or PNG."})
+
+    storage = get_private_media_storage()
+    key = f"identity/{identity.pk}/{uuid.uuid4().hex}"
+    storage.save_private_object(key=key, content=BytesIO(content), content_type=mime)
+    pending = pending_objects.get()
+    if pending is not None:
+        pending.append((storage, key))
+    try:
+        media = Media.objects.create(
+            content_type=ContentType.objects.get_for_model(identity),
+            object_id=identity.pk,
+            uploaded_by=user,
+            file_key=key,
+            mime_type=mime,
+            file_hash=digest,
+            size_bytes=len(content),
+        )
+    except Exception:
+        storage.delete_private_object(key=key)
+        raise
+    return update_lister_identity(user=user, identity=identity, request=request, **{field: media.media_id})
+
+
 @transaction.atomic
 def submit_lister_identity(*, user, identity=None, request=None):
     user = _require_persisted_lister(user)
