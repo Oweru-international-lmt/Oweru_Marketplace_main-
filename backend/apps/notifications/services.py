@@ -49,13 +49,16 @@ def emit(*, event_key, purpose, channels, recipient=None, phone="", email="", na
 
 
 class SMTPAdapter:
+    def deliver_message(self, *, subject, message, email, message_id):
+        result = EmailMessage(subject, message, settings.DEFAULT_FROM_EMAIL, [email], headers={"Message-ID": message_id}).send(fail_silently=False)
+        if result != 1:
+            raise RuntimeError("Email provider did not accept the message.")
+
     def deliver(self, row):
         if row.context.get("link", "").startswith("/"):
             raise ValidationError("MARKETPLACE_PUBLIC_URL must be configured before external delivery.")
         subject = CATALOG[row.purpose][1 if row.language == "sw" else 0]
-        result = EmailMessage(subject, row.message, settings.DEFAULT_FROM_EMAIL, [row.email], headers={"Message-ID": f"<oweru-{row.pk}@marketplace>"}).send(fail_silently=False)
-        if result != 1:
-            raise RuntimeError("Email provider did not accept the message.")
+        self.deliver_message(subject=subject, message=row.message, email=row.email, message_id=f"<oweru-{row.pk}@marketplace>")
 
 
 @transaction.atomic

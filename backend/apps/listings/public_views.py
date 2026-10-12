@@ -58,5 +58,5 @@ class PublicListingDetailView(generics.GenericAPIView):
     @extend_schema(operation_id="public_listing_retrieve", responses={200: ListingPublicSerializer})
     def get(self, request, listing_id, *args, **kwargs):
         listing = get_public_listing(listing_id=listing_id)
-        _record_analytics_safely(public_analytics.record_public_listing_view, listing=listing)
+        _record_analytics_safely(public_analytics.record_public_listing_view, listing=listing, source_tag=request.query_params.get("source_tag", ""))
         return Response(self.get_serializer(listing).data)

@@ -40,10 +40,12 @@ def record_public_listing_search(*, params, result_count):
         "metadata": _safe_search_metadata(params=params, result_count=result_count),
     }
     logger.info(json.dumps(payload, sort_keys=True))
+    from apps.analytics.services import record_search
+    record_search(params)
     return payload
 
 
-def record_public_listing_view(*, listing):
+def record_public_listing_view(*, listing, source_tag=""):
     payload = {
         "event": PUBLIC_LISTING_VIEW,
         "metadata": {
@@ -51,4 +53,6 @@ def record_public_listing_view(*, listing):
         },
     }
     logger.info(json.dumps(payload, sort_keys=True))
+    from apps.analytics.services import record_view
+    record_view(listing, source_tag)
     return payload

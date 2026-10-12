@@ -14,7 +14,7 @@ def audit(actor, action, obj, before=None, after=None, request=None):
 
 
 @transaction.atomic
-def create_lead(*, actor, listing_id, source, buyer_name=None, buyer_whatsapp=None, request=None):
+def create_lead(*, actor, listing_id, source, buyer_name=None, buyer_whatsapp=None, source_tag="", request=None):
     actor = authorize(actor, "lead.create")
     listing = Listing.objects.select_for_update().get(listing_id=listing_id)
     if listing.status != Listing.Status.ACTIVE:
@@ -34,6 +34,8 @@ def create_lead(*, actor, listing_id, source, buyer_name=None, buyer_whatsapp=No
     audit(actor, "lead.created", lead, after={"source": source, "stage": lead.stage}, request=request)
     from apps.payments.notices import queue_notice
     queue_notice(recipient=listing.lister, purpose="LEAD_CREATED", lead=lead)
+    from apps.analytics.services import record_enquiry
+    record_enquiry(lead, source_tag)
     return lead
 
 
