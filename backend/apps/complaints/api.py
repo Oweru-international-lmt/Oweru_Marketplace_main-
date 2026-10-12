@@ -104,7 +104,9 @@ class DeskView(APIView):
             rows = Complaint.objects.order_by("created_at")
             if not management(actor):
                 rows = rows.filter(category="VERIFICATION", route="VERIFIER", handler=actor)
-            return Response([{**summary(row), "route": row.route, "overdue": row.status not in {"RESOLVED", "CLOSED"} and row.resolution_due_at < timezone.now()} for row in rows[:100]])
+            # The desk list names the complainant and type so handlers can triage
+            # without opening each complaint; phone and description stay on the detail.
+            return Response([{**summary(row), "name": row.name, "category": row.category, "created_at": row.created_at, "route": row.route, "overdue": row.status not in {"RESOLVED", "CLOSED"} and row.resolution_due_at < timezone.now()} for row in rows[:100]])
         row = get_object_or_404(Complaint, pk=complaint_id)
         services.require_handler(actor, row)
         create_audit_log(actor=actor, action="sensitive_data.accessed", entity_type="Complaint", entity_id=row.pk, request=request)

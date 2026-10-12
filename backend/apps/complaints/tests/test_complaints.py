@@ -35,6 +35,15 @@ def test_anonymous_intake_number_status_and_private_evidence():
     assert client.get(f"/api/v1/management/complaints/{row.pk}/").status_code == 401
 
 
+def test_desk_list_shows_type_name_and_date_but_not_contact_details():
+    row = services.lodge(values=inputs(category="CONDUCT", name="Asha"))
+    client = APIClient()
+    client.force_authenticate(account("management"))
+    listed = client.get("/api/v1/management/complaints/").data[0]
+    assert (listed["reference"], listed["category"], listed["name"]) == (row.reference, "CONDUCT", "Asha")
+    assert listed["created_at"] and not {"phone", "email", "description"} & listed.keys()
+
+
 def test_anonymous_intake_keeps_a_per_address_limit():
     # There is no blanket anonymous limit, so public intake must apply its own.
     from django.core.cache import cache
