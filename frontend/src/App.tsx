@@ -25,6 +25,12 @@ import { ListingPage } from './pages/public/ListingPage'
 import { SearchPage } from './pages/public/SearchPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { ComplaintDetailPage } from './pages/staff/ops/ComplaintDetailPage'
+import { ComplaintsDeskPage } from './pages/staff/ops/ComplaintsDeskPage'
+import { FullCheckDeskPage } from './pages/staff/ops/FullCheckDeskPage'
+import { FullChecksDeskPage } from './pages/staff/ops/FullChecksDeskPage'
+import { OverviewPage } from './pages/staff/ops/OverviewPage'
+import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
 
 // The map library is only needed on this page; keep it out of the first load.
 const FreeCheckPage = lazy(() => import('./pages/public/FreeCheckPage').then((module) => ({ default: module.FreeCheckPage })))
@@ -66,6 +72,13 @@ export default function App() {
             </Route>
             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
               <Route path="/account" element={<AccountPage />} />
+              {/* Staff work (CMP-02 to CMP-08, PAY-13, FUL-07): Verifiers and Management. */}
+              <Route path="/staff" element={<RequirePermission permission="complaint.handle"><OverviewPage /></RequirePermission>} />
+              <Route path="/staff/complaints" element={<RequirePermission permission="complaint.handle"><ComplaintsDeskPage /></RequirePermission>} />
+              <Route path="/staff/complaints/:complaintId" element={<RequirePermission permission="complaint.handle"><ComplaintDetailPage /></RequirePermission>} />
+              <Route path="/staff/full-checks" element={<RequirePermission permission="complaint.handle"><FullChecksDeskPage /></RequirePermission>} />
+              <Route path="/staff/full-checks/:jobId" element={<RequirePermission permission="complaint.handle"><FullCheckDeskPage /></RequirePermission>} />
+              <Route path="/staff/full-checks/:jobId/result" element={<RequirePermission permission="complaint.handle"><ResultFormPage /></RequirePermission>} />
               <Route
                 path="/management/roles"
                 element={<RequirePermission permission="authorization.view"><ManagementRolesPage /></RequirePermission>}

@@ -11,6 +11,7 @@ import { whatsappLink } from '../../lib/config'
 import { errorMessage } from '../../lib/errors'
 import { EVIDENCE_TYPES, firstFileProblem } from '../../lib/files'
 import { formatDate, formatNumber, formatTsh } from '../../lib/format'
+import { openSigned } from '../../lib/openSigned'
 import { servicesApi, type FullCheck, type FullCheckStatus, type PaymentInstructions, type PaymentProofs } from '../../lib/servicesApi'
 import { PhotoBox } from './services/fields'
 import { CopyButton } from './services/ServiceUi'
@@ -60,21 +61,6 @@ const STAGES = [
   { name: 'review', icon: DocumentIcon },
   { name: 'result', icon: ShieldIcon },
 ] as const
-
-// Signed document links open in a new tab. The tab opens on the click itself,
-// before the request, so phone browsers don't block it as a popup.
-async function openSigned(load: () => Promise<{ url: string }>): Promise<void> {
-  const tab = window.open('', '_blank')
-  if (tab) tab.opener = null
-  try {
-    const { url } = await load()
-    if (tab) tab.location.href = url
-    else window.location.assign(url)
-  } catch (error) {
-    tab?.close()
-    throw error
-  }
-}
 
 function JobView({ job }: { job: FullCheck }) {
   const { t, i18n } = useTranslation()

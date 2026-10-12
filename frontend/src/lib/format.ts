@@ -28,6 +28,11 @@ export function formatDate(value: string, language: string): string {
   return new Intl.DateTimeFormat(locale(language), { dateStyle: 'long' }).format(new Date(value))
 }
 
+// "11 Oct 2026", for dense staff tables.
+export function formatShortDate(value: string, language: string): string {
+  return new Intl.DateTimeFormat(locale(language), { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
+}
+
 // Digits only, for price and size inputs ("120,000,000" -> "120000000").
 export function digitsOnly(value: string): string {
   return value.replace(/[^\d]/g, '')

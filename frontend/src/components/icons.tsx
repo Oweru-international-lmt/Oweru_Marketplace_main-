@@ -335,3 +335,14 @@ export function ClockIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function DashboardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="3.5" width="7" height="8" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="5" rx="1.5" />
+      <rect x="13.5" y="11.5" width="7" height="9" rx="1.5" />
+      <rect x="3.5" y="14.5" width="7" height="6" rx="1.5" />
+    </Icon>
+  )
+}

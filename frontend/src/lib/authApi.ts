@@ -118,16 +118,22 @@ export const authApi = {
     request<DeletionRequest>('/users/me/deletion-request/', { method: 'POST', body: { reason }, auth: true }),
 }
 
-// Stopgap until /auth/me reports roles: this endpoint answers only for active
-// Management with authorization.view, and lists the Management role's grants.
-// Anyone else gets 403; any failure just hides the Management menu.
+// Stopgap until /auth/me reports roles. Two probes, run together:
+// - the Management role's grants answer only for active Management with
+//   authorization.view;
+// - the complaints desk answers only for complaint.handle, which Verifiers
+//   and Management hold (roles catalog).
+// Any failure just hides those menus; the API still checks every request.
 export async function loadAccess(): Promise<Access> {
-  try {
-    const grants = await request<{ code: string }[]>('/management/authorization/roles/management/permissions/', {
-      auth: true,
-    })
-    return { roles: ['management'], permissions: grants.map((grant) => grant.code) }
-  } catch {
-    return NO_ACCESS
+  const [grants, desk] = await Promise.allSettled([
+    request<{ code: string }[]>('/management/authorization/roles/management/permissions/', { auth: true }),
+    request<unknown[]>('/management/complaints/', { auth: true }),
+  ])
+  const handlesComplaints = desk.status === 'fulfilled'
+  if (grants.status === 'fulfilled') {
+    const permissions = grants.value.map((grant) => grant.code)
+    return { roles: ['management'], permissions: handlesComplaints ? [...new Set([...permissions, 'complaint.handle'])] : permissions }
   }
+  if (handlesComplaints) return { roles: ['verifier'], permissions: ['complaint.handle', 'verification.record_result'] }
+  return NO_ACCESS
 }

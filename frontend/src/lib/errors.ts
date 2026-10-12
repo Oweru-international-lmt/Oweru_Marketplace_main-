@@ -26,6 +26,9 @@ const KNOWN_MESSAGES: [RegExp, string][] = [
   [/self-(assignment|revocation)/i, 'server.selfChange'],
   [/inactive account/i, 'server.inactiveTarget'],
   [/not have permission|required permission|required role|management is required/i, 'server.forbidden'],
+  [/payment and owner consent are mandatory/i, 'staff.result.consentMissing'],
+  [/every required task must be submitted/i, 'staff.result.tasksMissing'],
+  [/only an uninvalidated job under final review/i, 'staff.result.notReady'],
   [/required|may not be blank/i, 'validation.required'],
 ]
 
