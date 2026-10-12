@@ -60,6 +60,8 @@ class DealClosingService:
         if owner_bank is None or oweru_bank is None:
             raise ValidationError("Owner and Oweru receiving bank accounts are required before Closing.")
         deal = Deal.objects.create(lead=lead, listing=listing, property=listing.property, buyer=lead.buyer, lister=lead.lister, buyer_name=lead.buyer_name, buyer_whatsapp=lead.buyer_whatsapp, lister_kind=listing.lister_kind, rate_table=listing.rate_table, owner_bank_snapshot=bank_data(owner_bank), oweru_bank_snapshot=bank_data(oweru_bank), **breakdown)
+        from apps.analytics.models import DealPriceSnapshot
+        DealPriceSnapshot.objects.create(deal=deal, listed_price=listing.selling_price)
         record_transition(lead, "CLOSING", actor, request=request)
         listing.status = "UNDER_OFFER"
         listing.save(update_fields=["status", "updated_at"])

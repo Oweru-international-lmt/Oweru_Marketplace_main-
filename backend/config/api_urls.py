@@ -1,6 +1,6 @@
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenRefreshView
+from apps.accounts.token_views import LimitedTokenRefreshView
 
 from apps.listings.urls import management_urlpatterns as listing_management_urlpatterns
 from apps.properties.urls import management_duplicate_urlpatterns as property_duplicate_management_urlpatterns
@@ -14,6 +14,8 @@ from apps.complaints.urls import management_urlpatterns as complaint_management_
 from apps.notifications.urls import management_urlpatterns as notification_management_urlpatterns
 
 urlpatterns = [
+    path("analytics/", include("apps.analytics.api")),
+    path("marketing/", include("apps.marketing.api")),
     path("management/", include("apps.administration.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("management/notifications/", include((notification_management_urlpatterns, "notifications-management"))),
@@ -25,7 +27,7 @@ urlpatterns = [
     path("management/map-layers/", PublicMapLayerView.as_view()),
     path("", include("apps.common.urls")),
     path("auth/", include("apps.accounts.urls")),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("auth/token/refresh/", LimitedTokenRefreshView.as_view(), name="token-refresh"),
     path("users/", include("apps.accounts.profile_urls")),
     path("local-official/", include("apps.local_officials.urls")),
     path("localities/", include("apps.localities.urls")),

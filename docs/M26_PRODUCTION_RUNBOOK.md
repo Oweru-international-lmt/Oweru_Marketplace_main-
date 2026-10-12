@@ -1,0 +1,43 @@
+# Backend production readiness and recovery
+
+This is a reviewable deployment procedure, not a deployment record. No production rollout is authorized in this task. Frontend files remain exactly as received. The image build context is `backend/`; this workflow never builds, formats or regenerates frontend files.
+
+## Configuration and release preparation
+
+Use a protected runtime environment or secret manager based on `backend/production.env.example`. Never put real values in Git or Docker build arguments. Configure HTTPS public/reset/verification/owner-confirmation URLs against actual supported routes. Received frontend supports reset and verification routes, but has no marketing consent or external-owner confirmation screen; supply the approved consumer before launch. Backend consent endpoints are authenticated API contracts, not a completed preference screen.
+
+Use managed PostgreSQL 16/PostGIS, authenticated TLS Redis, private S3-compatible storage and verified SMTP. Production settings fail closed on insecure transport or unconfigured private storage. The image includes GDAL/GEOS and a pinned WSGI server. It runs as UID 10001, with no development server. Compose exposes the backend only on loopback; a reviewed TLS ingress must provide external routing. Serve `/static/` from the collected static volume; never serve private media directly. Do not expose database/cache ports.
+
+TLS ingress must strip all client forwarding headers and set its own forwarded protocol. Only then set `TRUST_PROXY_SSL_HEADER=true`. Restrict application ingress to that proxy. Apply a 32 MiB total request limit, bounded upstream timeouts and endpoint-specific edge limits. DRF cache throttles are best-effort under concurrency and are not a substitute for edge protection. Preserve unrestricted anonymous browsing and the explicit Free Check/complaint/auth/confirmation limits.
+
+Build a backend image with `docker build -t <reviewed-tag> backend`, scan its OS/Python dependencies, record its immutable digest and use that digest as `BACKEND_IMAGE`. `docker-compose.production.yml` does not build or start automatically. Retain the scan report/SBOM and update pinned dependencies through regression-tested changes. Image tags and apt repositories are not a complete supply-chain lock; pin the reviewed base-image digest in the release record.
+
+Run `python manage.py production_preflight --offline` under production settings for configuration checks without a service-readiness claim. Take a verified backup before migrations. Review `python manage.py migrate --plan` and apply forward migrations once as a dedicated release action. Never auto-migrate in each web/worker replica. Run `python manage.py collectstatic --noinput` into the shared static volume, then `python manage.py production_preflight` to check migrations, PostGIS and Redis. Seed approved localities and designate authorized management through existing trusted commands; no final fee, bank account, official WhatsApp number or privileged account is invented by this release.
+
+Start web and workers only after the release checks pass. Run exactly one Beat scheduler; duplicate Beat instances may enqueue duplicate jobs. Application workers lock deliveries and recheck consent, but SMTP provider acceptance followed by a process failure can still duplicate an email. Verify live SMTP receipt with a consenting test recipient, without sending a real campaign. Reconcile historical notification intents and refresh market aggregates through their explicit management commands; reconciliation sends nothing.
+
+## Monitoring and acceptance evidence
+
+Probe `/api/v1/health/live/` for liveness and `/api/v1/health/ready/` for PostGIS/Redis readiness. These endpoints do not establish SMTP, file replication, migration, worker or backup health. A protected operator runs `operational_status` for non-personal failed-email, delayed-outbox and stale-analytics counters. Collect structured request logs (request ID, route template, status, duration); exclude authorization headers, request bodies and query strings at the ingress too. Set alerts for readiness failures, sustained 5xx errors, latency budgets, missing daily backup, failed email attempts, stale nightly aggregates and overdue manual outbox. Assign an operator and escalation channel; log counters alone are not alerts.
+
+Validate search <2 s, detail <3 s and panel <5 s on representative production data and a normal mobile connection. Local query/timing checks establish server behavior only. Set the monthly uptime objective at 99.5% and retain monitoring measurements. Protect error tracking from request/identity/bank/payment payload capture. Sensitive domain reads retain their existing immutable audit boundaries.
+
+NFR-04 requires infrastructure evidence: encrypted database disks/backups, Redis persistence where enabled, private object storage encryption and access policy, signed URL expiry, limited roles and audit access. Application settings do not prove encryption at rest. Obtain approved retention periods and apply them without deleting permanent property, verification, partner, deal, payment or audit records. No blanket deletion job is supplied while retention policy remains unresolved.
+
+## Daily backups and quarterly restore
+
+Use managed daily full database backups or schedule `docker/backup_database.sh` on a dedicated PostgreSQL 16+ client host. The script takes a custom-format dump, checks its archive manifest, writes an SHA-256 checksum and creates no repository artifacts. Supply PGHOST/PGPORT/PGDATABASE/PGUSER and credentials through a protected PGPASSFILE; require verified TLS. The backend image deliberately contains no backup client; use the matching PostgreSQL 16+ tools on the dedicated backup host.
+
+Store full backups in encrypted access-controlled storage with a 30-day retention lifecycle. Replicate backups and private files to a separate failure domain. Enable private-media versioning/replication and prohibit public bucket/list access. Only expire backups after upload, checksum and replica verification. Record success/failure and alert when the newest verified full backup exceeds 24 hours. PostgreSQL dumps do not include object files, cluster roles or hosting configuration: protect those separately. Recovery point and recovery time targets require operator approval; the SRD does not supply them.
+
+Each quarter, restore a selected verified dump to a new isolated PostgreSQL/PostGIS database using `pg_restore --exit-on-error --no-owner --no-acl`. Do not use `--clean` against a production target. Configure an isolated backend instance, run system/migration checks, verify entity counts and immutable triggers, test one private object/PDF and signed URL expiry, and run representative workflows. Suppress all email/outbox workers during recovery testing. Record checksum, database/client/PostGIS versions, elapsed restore time, validation result and operator; exercise the file replica as well as the database. A successful archive listing is not a restore test.
+
+## Failed release or incident
+
+Stop routing traffic and pause workers/Beat before any recovery. Preserve logs and the failed release identifier. Roll back the image only when the previous code is compatible with applied forward migrations. Do not blindly reverse migrations that protect permanent evidence/history. If database recovery is needed, restore into a new isolated instance, validate it, assess writes since backup and obtain the incident owner's approval before switching traffic. Retain the original database for investigation. Rotate compromised credentials/capabilities according to the established incident plan.
+
+## Launch dependencies
+
+Required evidence remains external: licensed map/satellite and authoritative geography data; tax-compliant receipt operation; official WhatsApp number/staff sending schedule; approved fees/bank configuration; pending legacy partner onboarding; approved wording/retention/support identity policy; actual private-file replication/encryption; live SMTP; representative mobile performance; quarter restore sign-off; uptime/error/backup alerts. Backend artifacts and passing tests do not resolve these business/provider dependencies. No launch approval is implied.
+
+References: [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [Django proxy settings](https://docs.djangoproject.com/en/5.2/ref/settings/#secure-proxy-ssl-header), [PostgreSQL dump and restore](https://www.postgresql.org/docs/16/backup-dump.html), [Celery periodic-task operation](https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html).

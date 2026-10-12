@@ -1,0 +1,42 @@
+# Backend-only template. Managed PostgreSQL, Redis, S3 and TLS ingress are external.
+# No frontend build context, file generation, public database port or auto-migration.
+x-backend: &backend
+  image: ${BACKEND_IMAGE:?Set the reviewed immutable backend image reference}
+  env_file:
+    - ${PRODUCTION_ENV_FILE:?Set the absolute path to the protected runtime environment file}
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.production
+  user: "10001:10001"
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  stop_grace_period: 45s
+
+services:
+  web:
+    <<: *backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - staticfiles:/app/staticfiles
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+  beat:
+    <<: *backend
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+  release:
+    <<: *backend
+    profiles: ["release"]
+    restart: "no"
+    command: ["python", "manage.py", "production_preflight", "--offline"]
+    volumes:
+      - staticfiles:/app/staticfiles
+
+volumes:
+  staticfiles:

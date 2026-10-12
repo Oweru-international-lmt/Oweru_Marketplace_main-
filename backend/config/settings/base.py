@@ -4,7 +4,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(BASE_DIR / ".env")
+if os.getenv("DJANGO_SETTINGS_MODULE") != "config.settings.production":
+    load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name, default=False):
@@ -65,12 +66,15 @@ INSTALLED_APPS = [
     "apps.complaints.apps.ComplaintsConfig",
     "apps.notifications.apps.NotificationsConfig",
     "apps.administration.apps.AdministrationConfig",
+    "apps.marketing.apps.MarketingConfig",
+    "apps.analytics.apps.AnalyticsConfig",
     "apps.roles.apps.RolesConfig",
     "apps.roles.legacy_authorization.apps.AuthorizationConfig",
     "apps.audit.legacy_event_stream.apps.AuditConfig",
 ]
 
 MIDDLEWARE = [
+    "apps.common.middleware.RequestObservabilityMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -106,16 +110,16 @@ DATABASES = {"default": {
     "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
 }}
 if os.getenv("DATABASE_URL"):
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, unquote
 
     database_url = urlparse(os.environ["DATABASE_URL"])
     if database_url.scheme not in {"postgres", "postgresql", "postgis"}:
         raise RuntimeError("DATABASE_URL must use PostgreSQL/PostGIS.")
     DATABASES["default"].update({
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": database_url.path.lstrip("/"),
-        "USER": database_url.username or "",
-        "PASSWORD": database_url.password or "",
+        "NAME": unquote(database_url.path.lstrip("/")),
+        "USER": unquote(database_url.username or ""),
+        "PASSWORD": unquote(database_url.password or ""),
         "HOST": database_url.hostname or "localhost",
         "PORT": str(database_url.port or 5432),
     })
@@ -138,6 +142,11 @@ PROPERTY_FIELD_VERIFICATION_VALIDITY_MONTHS = env_int("PROPERTY_FIELD_VERIFICATI
 
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
+    "lister-identity-expiry": {"task": "apps.lister_identity.tasks.process_lister_identity_expiry", "schedule": crontab(hour=0, minute=0)},
+    "payout-due-check": {"task": "apps.payments.tasks.payout_due_check", "schedule": crontab(minute="*/15")},
+    "lost-sold-review": {"task": "apps.payments.tasks.lost_sold_review", "schedule": crontab(hour=1, minute=0)},
+    "market-aggregates": {"task": "apps.analytics.tasks.refresh_market_aggregates", "schedule": crontab(hour=2, minute=0)},
+    "marketing-email-delivery": {"task": "apps.marketing.tasks.deliver_campaigns", "schedule": crontab(minute="*/1")},
     "notification-email-delivery": {"task": "apps.notifications.tasks.deliver_pending_email", "schedule": crontab(minute="*/1")},
     "notification-expiry-reminders": {"task": "apps.notifications.tasks.verification_expiry_reminders", "schedule": crontab(hour=8, minute=0)},
     "verification-level-recalculation": {"task": "apps.verification.tasks.recalculate_verification_levels", "schedule": crontab(hour=0, minute=30)},
@@ -166,7 +175,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour", "confirmation": "20/hour"},
+    "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth_login": "10/minute", "auth_register": "5/hour", "auth_refresh": "30/minute", "confirmation": "20/hour"},
 }
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -190,6 +199,12 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_SOFT_TIME_LIMIT = 270
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
@@ -228,6 +243,10 @@ EMAIL_PORT = env_int("EMAIL_PORT", 25)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
+EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 15)
+DATA_UPLOAD_MAX_MEMORY_SIZE = env_int("DATA_UPLOAD_MAX_MEMORY_SIZE", 32 * 1024 * 1024)
+FILE_UPLOAD_MAX_MEMORY_SIZE = env_int("FILE_UPLOAD_MAX_MEMORY_SIZE", 1024 * 1024)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@oweru.example")
 PASSWORD_RESET_URL = os.getenv("PASSWORD_RESET_URL", "")
 MARKETPLACE_PUBLIC_URL = os.getenv("MARKETPLACE_PUBLIC_URL", "")

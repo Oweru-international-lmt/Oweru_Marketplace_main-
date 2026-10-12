@@ -16,6 +16,7 @@ class LeadCreateSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
     source = serializers.ChoiceField(choices=Lead.Source.choices)
     buyer_name = serializers.CharField(required=False, max_length=255)
     buyer_whatsapp = serializers.RegexField(r"^\+[1-9]\d{7,14}$", required=False)
+    source_tag = serializers.RegexField(r"^[A-Za-z0-9_-]{1,100}$", required=False)
 
 
 class TransitionSerializer(RejectUnknownFieldsMixin, serializers.Serializer):

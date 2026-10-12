@@ -48,6 +48,7 @@ class PublicListingSearchParamsSerializer(RejectUnknownSearchFieldsMixin, serial
     sort = serializers.ChoiceField(choices=PUBLIC_LISTING_SORT_CHOICES, default=SORT_NEWEST, required=False)
     page = serializers.IntegerField(min_value=1, required=False)
     page_size = serializers.IntegerField(min_value=1, required=False)
+    source_tag = serializers.RegexField(r"^[A-Za-z0-9_-]{1,100}$", required=False)
 
     def validate(self, attrs):
         if "min_price" in attrs and "max_price" in attrs and attrs["min_price"] > attrs["max_price"]:
