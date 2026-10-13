@@ -104,6 +104,23 @@ def outbox_actor(actor):
     return actor
 
 
+# Confirmation context shown to the person on WhatsApp: labelled values they
+# can check, never raw JSON or internal ids (rate tables, unrounded sums).
+CONTEXT_LABELS = {
+    "phone": ("Number", "Namba"),
+    "listing_id": ("Listing", "Tangazo"),
+    "owner_price": ("Price TSh", "Bei TSh"),
+    "amount": ("Amount TSh", "Kiasi TSh"),
+    "final_selling_price": ("Final price TSh", "Bei ya mwisho TSh"),
+}
+
+
+def readable_context(context, language):
+    index = 1 if language == "sw" else 0
+    parts = [f"{labels[index]}: {context[key]}" for key, labels in CONTEXT_LABELS.items() if context.get(key) not in (None, "")]
+    return ". ".join(parts) + ("." if parts else "")
+
+
 def outbox_payload(row, request):
     message = row.message
     if row.status != "SENT" and (row.expires_at and row.expires_at <= timezone.now() or row.recipient_id and not row.recipient.is_active):
@@ -116,8 +133,7 @@ def outbox_payload(row, request):
         if source.consumed_at or source.expires_at <= timezone.now():
             return None
         link = settings_confirmation_link(source, urlencode)
-        import json
-        message, _ = render(row.purpose, row.language, {"reference": source.context.get("property_id", source.context.get("deal_id", "")), "details": json.dumps(source.context, ensure_ascii=False), "link": link})
+        message, _ = render(row.purpose, row.language, {"reference": source.context.get("property_id", source.context.get("deal_id", "")), "details": readable_context(source.context, row.language), "link": link})
     elif row.status != "SENT" and row.purpose == "PROFESSIONAL_LOGIN" and row.source_type == "VerificationNotice":
         from apps.verification.models import VerificationNotice
         from apps.verification.outbox import message as legacy_message

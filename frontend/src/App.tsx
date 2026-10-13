@@ -34,6 +34,7 @@ import { FullChecksDeskPage } from './pages/staff/ops/FullChecksDeskPage'
 import { OverviewPage } from './pages/staff/ops/OverviewPage'
 import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
 import { IdentityReviewPage } from './pages/staff/ops/IdentityReviewPage'
+import { OutboxPage } from './pages/staff/ops/OutboxPage'
 import { ConfirmLinkPage } from './pages/public/ConfirmLinkPage'
 import { BecomeListerPage } from './pages/lister/BecomeListerPage'
 import { EnquiriesPage } from './pages/lister/EnquiriesPage'
@@ -107,6 +108,8 @@ export default function App() {
               <Route path="/staff/full-checks" element={<RequirePermission permission="complaint.handle"><FullChecksDeskPage /></RequirePermission>} />
               <Route path="/staff/full-checks/:jobId" element={<RequirePermission permission="complaint.handle"><FullCheckDeskPage /></RequirePermission>} />
               <Route path="/staff/full-checks/:jobId/result" element={<RequirePermission permission="complaint.handle"><ResultFormPage /></RequirePermission>} />
+              {/* NTF-02: WhatsApp messages Oweru staff send by hand. */}
+              <Route path="/staff/outbox" element={<RequirePermission permission="outbox.send"><OutboxPage /></RequirePermission>} />
               {/* IDV-03: Management reviews lister identities. */}
               <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
               <Route path="/staff/identities/:identityId" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />

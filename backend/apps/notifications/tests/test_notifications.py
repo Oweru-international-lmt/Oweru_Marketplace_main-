@@ -223,3 +223,15 @@ def test_concurrent_manual_send_records_one_sender_and_audit():
     row.refresh_from_db()
     assert row.sent_by_id == manager.pk
     assert AuditLog.objects.filter(action="notification.outbox_sent", entity_id=str(row.pk)).count() == 1
+
+
+def test_confirmation_message_reads_as_labelled_values_not_raw_data():
+    from apps.payments.confirmations import queue_identity_phone_confirmation
+    owner = account("owner")
+    delivery = queue_identity_phone_confirmation(owner)
+    row = Notification.objects.get(source_id=delivery["delivery_id"])
+    with override_settings(OWNER_CONFIRMATION_URL="https://marketplace.example.test/confirm"):
+        message = services.outbox_payload(row, None)["message"]
+    assert "{" not in message and '"phone"' not in message
+    assert (f"Namba: {owner.phone}" in message) or (f"Number: {owner.phone}" in message)
+    assert services.readable_context({"owner_price": "1000", "rate_table_id": "x", "total_rate": "0.1"}, "en") == "Price TSh: 1000."

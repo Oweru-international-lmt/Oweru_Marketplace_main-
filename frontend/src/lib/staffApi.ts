@@ -97,6 +97,23 @@ export type IdentityReview = {
 
 export type IdentityPhoto = 'national_id_photo' | 'live_selfie'
 
+// NTF-02: one row of the central staff outbox (notifications.services.outbox_payload).
+export type OutboxMessage = {
+  id: string
+  recipient_name: string
+  phone: string
+  purpose: string
+  message: string
+  language: string
+  created_at: string
+  created_by: string | null
+  sent_by: string | null
+  sent_at: string | null
+  status: 'WAITING' | 'SENT'
+  overdue: boolean
+  whatsapp_link: string
+}
+
 export const staffApi = {
   complaints: () => request<DeskComplaint[]>('/management/complaints/', { auth: true }),
 
@@ -143,6 +160,12 @@ export const staffApi = {
   approveIdentity: (id: string) => request<IdentityReview>(`/management/lister-identities/${id}/approve/`, { method: 'POST', body: {}, auth: true }),
   rejectIdentity: (id: string, reason: string) =>
     request<IdentityReview>(`/management/lister-identities/${id}/reject/`, { method: 'POST', body: { reason }, auth: true }),
+
+  // Waiting messages, or the last 100 sent with history.
+  outbox: (history = false) => request<OutboxMessage[]>(`/management/notifications/outbox/${history ? '?history=1' : ''}`, { auth: true }),
+  // Staff send it from their own WhatsApp first; this only records that it went.
+  markSent: (id: string) =>
+    request<{ id: string; status: string; sent_at: string }>(`/management/notifications/outbox/${id}/sent/`, { method: 'POST', auth: true }),
 
   // FUL-07. "Not completed" is set by the deadline process, not here.
   recordResult: (id: string, result: 'PASSED' | 'PROBLEM_FOUND', riskAssessment: string, notChecked: string[]) =>
