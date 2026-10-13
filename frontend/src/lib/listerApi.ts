@@ -82,6 +82,8 @@ export type ListerIdentity = {
   review_reason: string
   expires_at: string | null
   created_at: string
+  // ACC-01: the account's WhatsApp number has been confirmed by link.
+  whatsapp_confirmed: boolean
 }
 
 export type EvidenceKind = 'national_id_photo' | 'live_selfie'
@@ -213,6 +215,9 @@ export const listerApi = {
     })
   },
   submitIdentity: () => request<ListerIdentity>('/lister-identity/me/submit/', { method: 'POST', body: {}, auth: true }),
+  // ACC-T1: a fresh WhatsApp confirmation link; Oweru staff send it from the outbox.
+  requestWhatsAppLink: () =>
+    request<{ delivery_id: string; status: string }>('/payments/confirmation-requests/', { method: 'POST', body: { purpose: 'PHONE' }, auth: true }),
 
   leads: () => request<Lead[]>('/leads/', { auth: true }),
   metrics: () => request<LeadMetrics>('/leads/metrics/', { auth: true }),

@@ -65,6 +65,38 @@ export type PaymentConfirmation = {
 
 type Page<T> = { count: number; next: string | null; previous: string | null; results: T[] }
 
+// IDV-03: lister identities waiting for Management, oldest first.
+export type IdentityQueueItem = {
+  id: string
+  user_id: string
+  user_full_name: string
+  status: 'PENDING'
+  submitted_at: string
+  created_at: string
+  updated_at: string
+}
+
+// Mirrors lister_identity ListerIdentityManagementSerializer.
+export type IdentityReview = {
+  id: string
+  user_id: string
+  user_full_name: string
+  national_id_number: string
+  national_id_photo_ref: string
+  live_selfie_ref: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  submitted_at: string | null
+  reviewed_at: string | null
+  reviewed_by_id: string | null
+  review_reason: string
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+  whatsapp_confirmed: boolean
+}
+
+export type IdentityPhoto = 'national_id_photo' | 'live_selfie'
+
 export const staffApi = {
   complaints: () => request<DeskComplaint[]>('/management/complaints/', { auth: true }),
 
@@ -102,6 +134,15 @@ export const staffApi = {
 
   assignVerifier: (id: string, verifierId: string) =>
     request<FullCheck>(`/full-checks/${id}/verifier/`, { method: 'POST', body: { verifier: verifierId }, auth: true }),
+
+  identities: () => request<IdentityQueueItem[]>('/management/lister-identities/', { auth: true }),
+  identity: (id: string) => request<IdentityReview>(`/management/lister-identities/${id}/`, { auth: true }),
+  // A short-lived signed link; ask again when it runs out.
+  identityPhoto: (id: string, kind: IdentityPhoto) =>
+    request<{ url: string; expires_in: number }>(`/management/lister-identities/${id}/evidence/${kind}/`, { auth: true }),
+  approveIdentity: (id: string) => request<IdentityReview>(`/management/lister-identities/${id}/approve/`, { method: 'POST', body: {}, auth: true }),
+  rejectIdentity: (id: string, reason: string) =>
+    request<IdentityReview>(`/management/lister-identities/${id}/reject/`, { method: 'POST', body: { reason }, auth: true }),
 
   // FUL-07. "Not completed" is set by the deadline process, not here.
   recordResult: (id: string, result: 'PASSED' | 'PROBLEM_FOUND', riskAssessment: string, notChecked: string[]) =>

@@ -146,7 +146,9 @@ export async function loadAccess(): Promise<Access> {
   }
   if (lists) {
     access.roles.push('lister')
-    access.permissions.push('listing.create', 'lead.view')
+    // 'lister.area' is the UI's own marker: Management also holds listing.create,
+    // but only Owners and Agents get the seller menus.
+    access.permissions.push('lister.area', 'listing.create', 'lead.view')
   }
   return { roles: access.roles, permissions: [...new Set(access.permissions)] }
 }

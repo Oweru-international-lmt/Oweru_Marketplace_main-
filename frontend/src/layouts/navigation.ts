@@ -8,8 +8,8 @@ export type NavItem = {
   labelKey: string
   icon: ComponentType<SVGProps<SVGSVGElement>>
   permission?: string
-  // Hidden from people who hold this permission (e.g. "become a lister").
-  hiddenWith?: string
+  // Hidden from people who hold any of these (e.g. "become a lister").
+  hiddenWith?: string[]
   // After L11: a status submenu under the item while it is open.
   children?: { search: string; labelKey: string }[]
 }
@@ -26,18 +26,19 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/staff', labelKey: 'nav.overview', icon: DashboardIcon, permission: 'complaint.handle' },
       { to: '/staff/complaints', labelKey: 'nav.complaints', icon: ChatIcon, permission: 'complaint.handle' },
       { to: '/staff/full-checks', labelKey: 'nav.fullChecks', icon: ShieldIcon, permission: 'complaint.handle' },
+      { to: '/staff/identities', labelKey: 'nav.identities', icon: IdCardIcon, permission: 'identity.review' },
     ],
   },
   {
     // The lister's own work: listings, enquiries and identity (SRD 15 to 18).
     titleKey: 'nav.groupListing',
     items: [
-      { to: '/lister', labelKey: 'nav.listerHome', icon: DashboardIcon, permission: 'listing.create' },
+      { to: '/lister', labelKey: 'nav.listerHome', icon: DashboardIcon, permission: 'lister.area' },
       {
         to: '/lister/listings',
         labelKey: 'nav.myListings',
         icon: ListIcon,
-        permission: 'listing.create',
+        permission: 'lister.area',
         children: [
           { search: '', labelKey: 'lister.filters.all' },
           { search: '?status=draft', labelKey: 'lister.filters.draft' },
@@ -46,9 +47,9 @@ const NAV_GROUPS: NavGroup[] = [
           { search: '?status=sold', labelKey: 'lister.filters.sold' },
         ],
       },
-      { to: '/lister/listings/new', labelKey: 'nav.addListing', icon: PlusCircleIcon, permission: 'listing.create' },
-      { to: '/lister/enquiries', labelKey: 'nav.enquiries', icon: InboxIcon, permission: 'listing.create' },
-      { to: '/lister/identity', labelKey: 'nav.identity', icon: IdCardIcon, permission: 'listing.create' },
+      { to: '/lister/listings/new', labelKey: 'nav.addListing', icon: PlusCircleIcon, permission: 'lister.area' },
+      { to: '/lister/enquiries', labelKey: 'nav.enquiries', icon: InboxIcon, permission: 'lister.area' },
+      { to: '/lister/identity', labelKey: 'nav.identity', icon: IdCardIcon, permission: 'lister.area' },
     ],
   },
   {
@@ -56,7 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/account', labelKey: 'nav.account', icon: UserIcon },
       { to: '/listings', labelKey: 'site.browse', icon: SearchIcon },
-      { to: '/sell', labelKey: 'nav.sell', icon: HomeIcon, hiddenWith: 'listing.create' },
+      { to: '/sell', labelKey: 'nav.sell', icon: HomeIcon, hiddenWith: ['lister.area', 'complaint.handle', 'authorization.view'] },
     ],
   },
   {
@@ -72,7 +73,7 @@ export function visibleGroups(user: User | null): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
-      (item) => (!item.permission || can(user, item.permission)) && !(item.hiddenWith && can(user, item.hiddenWith)),
+      (item) => (!item.permission || can(user, item.permission)) && !item.hiddenWith?.some((permission) => can(user, permission)),
     ),
   })).filter((group) => group.items.length > 0)
 }

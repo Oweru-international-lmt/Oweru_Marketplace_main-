@@ -33,6 +33,8 @@ import { FullCheckDeskPage } from './pages/staff/ops/FullCheckDeskPage'
 import { FullChecksDeskPage } from './pages/staff/ops/FullChecksDeskPage'
 import { OverviewPage } from './pages/staff/ops/OverviewPage'
 import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
+import { IdentityReviewPage } from './pages/staff/ops/IdentityReviewPage'
+import { ConfirmLinkPage } from './pages/public/ConfirmLinkPage'
 import { BecomeListerPage } from './pages/lister/BecomeListerPage'
 import { EnquiriesPage } from './pages/lister/EnquiriesPage'
 import { IdentityPage } from './pages/lister/IdentityPage'
@@ -47,7 +49,7 @@ const MyListingsPage = lazy(() => import('./pages/lister/MyListingsPage').then((
 // else is shown how to become one.
 function Lister({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  if (!can(user, 'listing.create')) return <Navigate to="/sell" replace />
+  if (!can(user, 'lister.area')) return <Navigate to="/sell" replace />
   return <Suspense fallback={<FullPageLoader inline />}>{children}</Suspense>
 }
 
@@ -74,6 +76,8 @@ export default function App() {
               <Route path="/free-check/:checkId" element={<FreeCheckResultPage />} />
               <Route path="/complaints/new" element={<ComplaintPage />} />
               <Route path="/complaints/:complaintId" element={<ComplaintStatusPage />} />
+              {/* OWNER_CONFIRMATION_URL: WhatsApp confirmation links (ACC-01). */}
+              <Route path="/confirm" element={<ConfirmLinkPage />} />
               <Route path="/listings/:listingId/full-check" element={<RequireAuth><FullCheckOrderPage /></RequireAuth>} />
               <Route path="/full-checks" element={<RequireAuth><FullChecksPage /></RequireAuth>} />
               <Route path="/full-checks/:jobId" element={<RequireAuth><FullCheckPage /></RequireAuth>} />
@@ -103,6 +107,9 @@ export default function App() {
               <Route path="/staff/full-checks" element={<RequirePermission permission="complaint.handle"><FullChecksDeskPage /></RequirePermission>} />
               <Route path="/staff/full-checks/:jobId" element={<RequirePermission permission="complaint.handle"><FullCheckDeskPage /></RequirePermission>} />
               <Route path="/staff/full-checks/:jobId/result" element={<RequirePermission permission="complaint.handle"><ResultFormPage /></RequirePermission>} />
+              {/* IDV-03: Management reviews lister identities. */}
+              <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
+              <Route path="/staff/identities/:identityId" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
               <Route
                 path="/management/roles"
                 element={<RequirePermission permission="authorization.view"><ManagementRolesPage /></RequirePermission>}

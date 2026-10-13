@@ -12,7 +12,7 @@ import { formatDate } from '../../lib/format'
 import { listerApi, type EvidenceKind, type ListerIdentity } from '../../lib/listerApi'
 import { FaceSample, IdSample, StartArt } from './identityArt'
 
-type View = 'start' | 'idGuide' | 'idConfirm' | 'selfieGuide' | 'selfieConfirm'
+type View = 'start' | 'idGuide' | 'idConfirm' | 'selfieGuide' | 'selfieCamera' | 'selfieConfirm'
 
 // After L7 and L9, as one phone-sized panel: the start screen lists the two
 // photos with "Why is this needed?" under them; each photo first shows how
@@ -137,12 +137,13 @@ export function IdentityPage() {
                   />
                 )}
                 {view === 'idGuide' && <IdGuide onClose={() => setView('start')} onPick={(next) => pick(next, 'idConfirm')} error={error} />}
-                {view === 'selfieGuide' && <SelfieGuide onClose={() => setView('start')} onPick={(next) => pick(next, 'selfieConfirm')} error={error} />}
+                {view === 'selfieGuide' && <SelfieGuide onClose={() => setView('start')} onProceed={() => setView('selfieCamera')} error={error} />}
+                {view === 'selfieCamera' && <SelfieCamera onClose={() => setView('selfieGuide')} onCapture={(shot) => pick(shot, 'selfieConfirm')} />}
                 {view === 'idConfirm' && file && (
                   <IdConfirm file={file} busy={busy} error={error} onBack={() => setView('idGuide')} onUse={() => void upload('national_id_photo')} />
                 )}
                 {view === 'selfieConfirm' && file && (
-                  <SelfieConfirm file={file} busy={busy} error={error} onBack={() => setView('selfieGuide')} onUse={() => void upload('live_selfie')} />
+                  <SelfieConfirm file={file} busy={busy} error={error} onBack={() => setView('selfieCamera')} onUse={() => void upload('live_selfie')} />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -260,13 +261,15 @@ function StepRow({ icon: Icon, title, body, done, onOpen }: { icon: typeof IdCar
 
 // L9's guide screens: close top left, a centred title and rule, a 2x2 grid of
 // examples, then the privacy line and a full-width "Proceed".
-function Guide({ title, body, examples, capture, onClose, onPick, error }: {
+function Guide({ title, body, examples, capture, onClose, onPick, onProceed, error }: {
   title: string
   body: string
   examples: { art: ReactNode; label: string; good: boolean }[]
-  capture: 'user' | 'environment'
+  capture?: 'user' | 'environment'
   onClose: () => void
-  onPick: (file: File | null) => void
+  // The ID photo is picked or photographed; the selfie opens the live camera.
+  onPick?: (file: File | null) => void
+  onProceed?: () => void
   error: string | null
 }) {
   const { t } = useTranslation()
@@ -303,21 +306,29 @@ function Guide({ title, body, examples, capture, onClose, onPick, error }: {
           <LockIcon className="size-5 shrink-0 text-gold" />
           <span>{t('lister.identity.privacy')}</span>
         </p>
-        <input
-          ref={input}
-          id={id}
-          type="file"
-          accept={PHOTO_TYPES.join(',')}
-          capture={capture}
-          className="sr-only"
-          onChange={(event) => {
-            onPick(event.target.files?.[0] ?? null)
-            event.target.value = ''
-          }}
-        />
-        <label htmlFor={id} className="mt-4 flex h-11 cursor-pointer items-center justify-center rounded-md bg-gold text-[15px] font-semibold text-navy hover:bg-gold-light">
-          {t('lister.identity.proceed')}
-        </label>
+        {onProceed ? (
+          <button type="button" onClick={onProceed} className="mt-4 flex h-11 w-full items-center justify-center rounded-md bg-gold text-[15px] font-semibold text-navy hover:bg-gold-light">
+            {t('lister.identity.proceed')}
+          </button>
+        ) : (
+          <>
+            <input
+              ref={input}
+              id={id}
+              type="file"
+              accept={PHOTO_TYPES.join(',')}
+              capture={capture}
+              className="sr-only"
+              onChange={(event) => {
+                onPick?.(event.target.files?.[0] ?? null)
+                event.target.value = ''
+              }}
+            />
+            <label htmlFor={id} className="mt-4 flex h-11 cursor-pointer items-center justify-center rounded-md bg-gold text-[15px] font-semibold text-navy hover:bg-gold-light">
+              {t('lister.identity.proceed')}
+            </label>
+          </>
+        )}
       </div>
     </div>
   )
@@ -343,15 +354,14 @@ function IdGuide({ onClose, onPick, error }: { onClose: () => void; onPick: (fil
   )
 }
 
-function SelfieGuide({ onClose, onPick, error }: { onClose: () => void; onPick: (file: File | null) => void; error: string | null }) {
+function SelfieGuide({ onClose, onProceed, error }: { onClose: () => void; onProceed: () => void; error: string | null }) {
   const { t } = useTranslation()
   return (
     <Guide
       title={t('lister.identity.selfieGuideTitle')}
       body={t('lister.identity.selfieGuideBody')}
-      capture="user"
       onClose={onClose}
-      onPick={onPick}
+      onProceed={onProceed}
       error={error}
       examples={[
         { art: <FaceSample variant="good" />, label: t('lister.identity.faceGood'), good: true },
@@ -404,43 +414,137 @@ function IdConfirm({ file, busy, error, onBack, onUse }: { file: File; busy: boo
   )
 }
 
-// L7's middle screen: dark, the face in a dashed oval, a line of guidance,
-// and a round shutter-style button to use the picture.
+type CameraState = 'starting' | 'live' | 'blocked' | 'missing'
+
+// Older browsers, and pages not served over HTTPS, have no camera API.
+function cameraAvailable(): boolean {
+  return typeof navigator.mediaDevices?.getUserMedia === 'function'
+}
+
+// IDV-01: the selfie comes from the live camera only (IDV-T1), never from the
+// gallery. L7's middle screen: dark, the camera inside a dashed oval, one line
+// of guidance and a round shutter.
+function SelfieCamera({ onClose, onCapture }: { onClose: () => void; onCapture: (file: File) => void }) {
+  const { t } = useTranslation()
+  const video = useRef<HTMLVideoElement>(null)
+  const [state, setState] = useState<CameraState>(() => (cameraAvailable() ? 'starting' : 'missing'))
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    if (!cameraAvailable()) return
+    let stream: MediaStream | null = null
+    let live = true
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+      .then((opened) => {
+        stream = opened
+        if (!live || !video.current) {
+          opened.getTracks().forEach((track) => track.stop())
+          return
+        }
+        video.current.srcObject = opened
+        void video.current.play()
+        setState('live')
+      })
+      .catch((caught: DOMException) => {
+        if (live) setState(caught.name === 'NotFoundError' || caught.name === 'OverconstrainedError' ? 'missing' : 'blocked')
+      })
+    return () => {
+      live = false
+      stream?.getTracks().forEach((track) => track.stop())
+    }
+  }, [attempt])
+
+  function shoot() {
+    const element = video.current
+    if (!element || !element.videoWidth) return
+    const canvas = document.createElement('canvas')
+    canvas.width = element.videoWidth
+    canvas.height = element.videoHeight
+    canvas.getContext('2d')?.drawImage(element, 0, 0)
+    canvas.toBlob((blob) => blob && onCapture(new File([blob], 'selfie.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.9)
+  }
+
+  return (
+    <div className="relative flex min-h-[680px] flex-col items-center bg-[#140e0b] px-6 pt-6 pb-8 text-white">
+      <div className="flex w-full items-center">
+        <button type="button" onClick={onClose} aria-label={t('lister.identity.back')} className="grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20">
+          <CloseIcon className="size-5" />
+        </button>
+        <h2 className="flex-1 pr-10 text-center text-[21px] font-semibold">{t('lister.identity.cameraTitle')}</h2>
+      </div>
+      <div className="relative mt-10 h-[330px] w-[250px] overflow-hidden rounded-[50%] bg-white/5">
+        {/* Shown like a mirror; the saved photo is not mirrored. */}
+        <video ref={video} muted playsInline aria-label={t('lister.identity.cameraLabel')} className={`size-full -scale-x-100 object-cover ${state === 'live' ? '' : 'invisible'}`} />
+        {state !== 'live' && (
+          <span className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-white/75">
+            {state === 'starting' ? (
+              <span className="size-6 animate-spin rounded-full border-2 border-white/25 border-t-white" aria-label={t('common.loading')} />
+            ) : (
+              <SelfieIcon className="size-10 text-white/50" />
+            )}
+          </span>
+        )}
+        <span aria-hidden="true" className="absolute inset-0 rounded-[50%] border-2 border-dashed border-white/90" />
+      </div>
+      {state === 'blocked' || state === 'missing' ? (
+        <div className="mt-8 max-w-[310px] text-center" role="alert">
+          <p className="text-[16px] font-semibold">{t(`lister.identity.camera.${state}.title`)}</p>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-white/75">{t(`lister.identity.camera.${state}.body`)}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setState('starting')
+              setAttempt((value) => value + 1)
+            }}
+            className="mt-5 inline-flex h-11 items-center rounded-xl bg-white px-6 text-[14px] font-semibold text-navy"
+          >
+            {t('lister.identity.camera.retry')}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-8 max-w-[300px] text-center text-[16px] leading-snug">{t('lister.identity.cameraBody')}</p>
+      )}
+      <div className="mt-auto flex w-full items-center justify-center pt-6">
+        <button
+          type="button"
+          onClick={shoot}
+          disabled={state !== 'live'}
+          aria-label={t('lister.identity.shoot')}
+          className="grid size-[64px] place-items-center rounded-full border-[3px] border-white/90 disabled:opacity-40"
+        >
+          <span className="size-[50px] rounded-full bg-white" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// R11's last screen: check the picture, then retake or use it.
 function SelfieConfirm({ file, busy, error, onBack, onUse }: { file: File; busy: boolean; error: string | null; onBack: () => void; onUse: () => void }) {
   const { t } = useTranslation()
   const url = usePreview(file)
   return (
-    <div className="relative flex min-h-[680px] flex-col items-center bg-[#140e0b] px-6 pt-6 pb-8 text-white">
-      <div className="flex w-full items-center">
-        <button type="button" onClick={onBack} aria-label={t('lister.identity.back')} className="grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20">
-          <CloseIcon className="size-5" />
-        </button>
-        <h2 className="flex-1 pr-10 text-center text-[21px] font-semibold">{t('lister.identity.selfieConfirmTitle')}</h2>
-      </div>
-      <div className="relative mt-10 h-[330px] w-[250px]">
-        <img src={url} alt={t('lister.identity.selfiePreview')} className="size-full rounded-[50%] object-cover" />
-        <span aria-hidden="true" className="absolute inset-0 rounded-[50%] border-2 border-dashed border-white/90" />
-      </div>
-      <p className="mt-8 max-w-[300px] text-center text-[16px] leading-snug">{t('lister.identity.selfieConfirmBody')}</p>
+    <div className="flex min-h-[680px] flex-col px-6 pt-6 pb-7">
+      <button type="button" onClick={onBack} aria-label={t('lister.identity.back')} className="grid size-10 place-items-center rounded-full bg-paper text-navy hover:bg-mist/60">
+        <ArrowLeftIcon className="size-5" />
+      </button>
+      <h2 className="mt-5 text-center text-[22px] font-semibold text-navy">{t('lister.identity.checkTitle')}</h2>
+      <p className="mx-auto mt-2 max-w-[300px] text-center text-[14px] leading-snug text-navy-soft">{t('lister.identity.checkBody')}</p>
+      <img src={url} alt={t('lister.identity.selfiePreview')} className="mx-auto mt-6 aspect-[4/5] w-full max-w-[300px] rounded-2xl object-cover" />
       {error && (
-        <div className="mt-4 w-full">
+        <div className="mt-4">
           <Alert tone="error">{error}</Alert>
         </div>
       )}
-      <div className="mt-auto flex w-full items-center justify-center gap-10 pt-6">
-        <button type="button" onClick={onBack} disabled={busy} className="w-20 whitespace-nowrap text-[13px] text-white/75 hover:text-white">
+      <div className="mt-auto flex items-center justify-between gap-4 pt-6">
+        <button type="button" onClick={onBack} disabled={busy} className="h-12 px-3 text-[14.5px] font-medium text-navy underline underline-offset-4">
           {t('lister.identity.retake')}
         </button>
-        <button
-          type="button"
-          onClick={onUse}
-          disabled={busy}
-          aria-label={t('lister.identity.usePhoto')}
-          className="grid size-[60px] place-items-center rounded-full border-[3px] border-white/90 disabled:opacity-60"
-        >
-          <span className={`size-[46px] rounded-full ${busy ? 'animate-pulse bg-gold' : 'bg-white'}`} />
+        <button type="button" onClick={onUse} disabled={busy} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-gold text-[15px] font-semibold text-navy hover:bg-gold-light disabled:opacity-70">
+          {busy && <span className="size-4 animate-spin rounded-full border-2 border-navy/25 border-t-navy" aria-hidden="true" />}
+          {t('lister.identity.usePhoto')}
         </button>
-        <span className="w-20 whitespace-nowrap text-[13px] text-white/75">{t('lister.identity.use')}</span>
       </div>
     </div>
   )
@@ -457,12 +561,16 @@ function Status({ identity }: { identity: ListerIdentity | null }) {
         {approved ? <TickIcon className="size-9" /> : waiting ? <ClockIcon className="size-9" /> : <CloseIcon className="size-9" />}
       </span>
       <h2 className="mt-7 text-[24px] leading-tight font-bold text-navy">{t(`lister.identity.status.${identity.status}.title`)}</h2>
-      <p className="mt-3 max-w-[310px] text-[14.5px] leading-relaxed text-navy-soft">{t(`lister.identity.status.${identity.status}.body`)}</p>
+      <p className="mt-3 max-w-[310px] text-[14.5px] leading-relaxed text-navy-soft">
+        {approved && !identity.whatsapp_confirmed ? t('lister.identity.status.APPROVED.bodyAfterWhatsApp') : t(`lister.identity.status.${identity.status}.body`)}
+      </p>
       <dl className="mt-7 w-full divide-y divide-mist/80 rounded-xl border border-mist text-left text-[13.5px]">
         {identity.submitted_at && <Row label={t('lister.identity.sentOn')} value={formatDate(identity.submitted_at, i18n.language)} />}
         {identity.expires_at && approved && <Row label={t('lister.identity.validUntil')} value={formatDate(identity.expires_at, i18n.language)} />}
         {identity.review_reason && !approved && <Row label={t('lister.identity.reason')} value={identity.review_reason} />}
+        <Row label={t('lister.identity.whatsapp')} value={identity.whatsapp_confirmed ? t('lister.identity.whatsappConfirmed') : t('lister.identity.whatsappWaiting')} />
       </dl>
+      {!identity.whatsapp_confirmed && <WhatsAppLink />}
       {!approved && (
         <a
           href={whatsappLink(t('lister.identity.helpMessage'))}
@@ -473,6 +581,48 @@ function Status({ identity }: { identity: ListerIdentity | null }) {
           <WhatsAppIcon className="size-4" />
           {t('nav.helpAction')}
         </a>
+      )}
+    </div>
+  )
+}
+
+// ACC-01 and ACC-T1: the number is confirmed by opening a WhatsApp link from
+// Oweru; a lister who lost it asks for a new one.
+function WhatsAppLink() {
+  const { t } = useTranslation()
+  const [state, setState] = useState<'idle' | 'busy' | 'sent'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  async function request() {
+    setState('busy')
+    setError(null)
+    try {
+      await listerApi.requestWhatsAppLink()
+      setState('sent')
+    } catch (caught) {
+      setError(errorMessage(t, caught))
+      setState('idle')
+    }
+  }
+
+  return (
+    <div className="mt-4 w-full rounded-xl border border-gold/35 bg-[#fdf7ec] px-4 py-4 text-left">
+      <p className="flex items-center gap-2 text-[14px] font-semibold text-navy">
+        <WhatsAppIcon className="size-4 text-success" />
+        {t('lister.identity.linkTitle')}
+      </p>
+      <p className="mt-1 text-[13px] leading-relaxed text-navy-soft">{state === 'sent' ? t('lister.identity.linkRequested') : t('lister.identity.linkBody')}</p>
+      {error && <p className="mt-2 text-[12.5px] text-danger">{error}</p>}
+      {state !== 'sent' && (
+        <button
+          type="button"
+          onClick={() => void request()}
+          disabled={state === 'busy'}
+          className="mt-3 inline-flex h-10 items-center gap-2 rounded-lg bg-navy px-4 text-[13px] font-semibold text-white hover:bg-navy-soft disabled:opacity-60"
+        >
+          {state === 'busy' && <span className="size-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />}
+          {t('lister.identity.linkAgain')}
+        </button>
       )}
     </div>
   )

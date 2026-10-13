@@ -724,12 +724,9 @@ function Review({ listing, identity, photos, blockers, rows, preview }: {
     { key: 'listing_required_media', ok: blockers ? !blockers.includes('listing_required_media') : photos >= MINIMUM_PHOTOS },
     {
       key: 'lister_phone_confirmed',
-      ok: blockers ? !blockers.includes('lister_phone_confirmed') : null,
-      action: (
-        <a href={whatsappLink(t('lister.review.phoneMessage'))} target="_blank" rel="noopener noreferrer" className="font-semibold text-navy underline underline-offset-2">
-          {t('lister.review.phoneAction')}
-        </a>
-      ),
+      ok: blockers ? !blockers.includes('lister_phone_confirmed') : identity ? identity.whatsapp_confirmed : null,
+      // ACC-T1: offer a new WhatsApp link rather than a dead end.
+      action: <NewLinkButton />,
     },
   ]
   if (blockers?.includes('listing_frozen_rate_version')) checks.push({ key: 'listing_frozen_rate_version', ok: false })
@@ -776,5 +773,27 @@ function Review({ listing, identity, photos, blockers, rows, preview }: {
       )}
       {preview}
     </div>
+  )
+}
+
+function NewLinkButton() {
+  const { t } = useTranslation()
+  const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'failed'>('idle')
+  if (state === 'sent') return <span className="font-semibold text-success">{t('lister.review.linkRequested')}</span>
+  return (
+    <button
+      type="button"
+      disabled={state === 'busy'}
+      onClick={() => {
+        setState('busy')
+        listerApi.requestWhatsAppLink().then(
+          () => setState('sent'),
+          () => setState('failed'),
+        )
+      }}
+      className="font-semibold text-navy underline underline-offset-2 disabled:opacity-60"
+    >
+      {state === 'failed' ? t('lister.review.linkFailed') : t('lister.review.linkAction')}
+    </button>
   )
 }

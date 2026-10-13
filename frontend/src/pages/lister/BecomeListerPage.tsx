@@ -12,7 +12,7 @@ import { StartArt } from './identityArt'
 export function BecomeListerPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  if (can(user, 'listing.create')) return <Navigate to="/lister" replace />
+  if (can(user, 'lister.area')) return <Navigate to="/lister" replace />
   const steps = t('lister.become.steps', { returnObjects: true }) as string[]
 
   return (
