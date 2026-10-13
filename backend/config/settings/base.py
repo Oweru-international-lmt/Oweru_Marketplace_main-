@@ -6,6 +6,18 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parents[2]
 if os.getenv("DJANGO_SETTINGS_MODULE") != "config.settings.production":
     load_dotenv(BASE_DIR / ".env")
+    # Django's standard GIS settings, shared by development and PostGIS tests.
+    # Explicit paths support Windows GIS installs without a Docker runtime.
+    GDAL_LIBRARY_PATH = os.getenv("GDAL_LIBRARY_PATH") or None
+    GEOS_LIBRARY_PATH = os.getenv("GEOS_LIBRARY_PATH") or None
+    if os.name == "nt":
+        # Retain handles: closing them removes the DLL dependency search path.
+        _gis_dll_directories = []
+        for directory in dict.fromkeys(
+            str(Path(library).resolve().parent)
+            for library in (GDAL_LIBRARY_PATH, GEOS_LIBRARY_PATH) if library
+        ):
+            _gis_dll_directories.append(os.add_dll_directory(directory))
 
 
 def env_bool(name, default=False):
