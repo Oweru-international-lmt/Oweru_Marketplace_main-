@@ -5,18 +5,22 @@ M10–M13 backend workflows and operational contracts are documented in
 The current default test configuration is PostgreSQL/PostGIS; run it in a
 GIS-capable environment. Earlier foundation-only descriptions below are historical.
 
-This repository contains the Marketplace M01–M03 backend foundation. It is separate from Oweru PA System. Property/listing and transaction workflows are intentionally outside this stage.
+This repository contains the Marketplace M01–M26 backend implementation. It is
+separate from Oweru PA System. See the
+[M23–M26 implementation report](docs/M23_M26_IMPLEMENTATION_AND_VALIDATION.md)
+for the current scope and validation boundaries.
 
 ## Local setup
 
-1. Create and activate a Python virtual environment.
-2. Install `backend/requirements.txt`.
-3. Copy `backend/.env.example` to `backend/.env` and replace `SECRET_KEY` with a private random value.
-4. Start PostGIS and Redis with `docker compose up -d db redis` (or configure equivalent services).
-5. Apply the initial migrations from `backend/` with `python manage.py migrate`.
-6. Start Django from `backend/` with `python manage.py runserver`.
+Follow [Non-Docker local development on Windows](docs/NON_DOCKER_LOCAL_DEVELOPMENT.md)
+for the existing virtual environment, native PostgreSQL/PostGIS, Windows GIS
+libraries, native Windows Memurai (Redis-compatible) or hosted Redis, a development
+Celery solo worker, migration review, Django and npm commands. Local development
+uses native Windows only. Existing production deployment files are preserved.
 
-The development database is PostgreSQL with the PostGIS extension enabled; there is no SQLite fallback. The test settings use in-memory SQLite for fast API and model tests. A successful SQLite test run does not establish that a PostGIS server is reachable; `/api/v1/health/ready/` checks both PostGIS and Redis. GeoDjango geometry fields are not used in M01–M03; enabling its backend for later geospatial models also requires native GDAL/GEOS libraries in the runtime image.
+Development and the default test suite use PostgreSQL/PostGIS. GeoDjango requires
+native GDAL/GEOS libraries. `/api/v1/health/ready/` checks PostGIS and the Redis
+cache; separate checks are required for asynchronous Celery execution and storage.
 
 ## API routes
 
@@ -36,10 +40,14 @@ The frontend lives in `frontend/` (see its README).
 
 Roles and permissions extend the existing M03 foundation. Public registration assigns Buyer; public and operational accounts remain separate. JWT-protected Management APIs live under `/api/v1/management/authorization/`. The canonical permission matrix is fixed; only the SRD's optional Verifier/Marketer outbox-send grants can be toggled. Assignment and audit writes are atomic. Admin mutation remains disabled.
 
-See [Backend authorization](docs/backend_authorization/BACKEND_AUTHORIZATION.md) for the full catalog/matrix, API contracts, setup command, migration preflight rules, security tests, SRD traceability and deferred object policies. No future Marketplace domain workflows are implemented by these permission codes.
+See [Backend authorization](docs/backend_authorization/BACKEND_AUTHORIZATION.md) for the catalog/matrix, API contracts, setup command, migration preflight rules, security tests and SRD traceability. Domain workflows extend this foundation through the existing backend apps.
 
 ## Tests
 
 From `backend/`, run `pytest`. Django's standard settings check can be run after `backend/.env` is configured with `python manage.py check`. Migrations are kept in each app's `migrations/` directory.
 
-For isolated PostgreSQL integration tests, configure a local test-capable PostgreSQL account and run `pytest --ds=config.settings.test_postgresql` from `backend/`. The default suite remains in-memory SQLite; PostgreSQL-only audit-trigger cases are skipped there.
+For isolated PostgreSQL integration tests, configure a test-capable PostgreSQL
+account and run `pytest --ds=config.settings.test_postgresql` from `backend/`.
+This is also the default test settings module. Tests use a separate disposable
+database, an in-memory cache and eager Celery; they do not establish live worker
+or Redis readiness. Follow the guide's isolation checks before running them.
