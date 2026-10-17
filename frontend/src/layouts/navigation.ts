@@ -52,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/lister/listings/new', labelKey: 'nav.addListing', icon: PlusCircleIcon, permission: 'lister.area' },
       { to: '/lister/enquiries', labelKey: 'nav.enquiries', icon: InboxIcon, permission: 'lister.area' },
       { to: '/lister/identity', labelKey: 'nav.identity', icon: IdCardIcon, permission: 'lister.area' },
+      { to: '/lister/checks', labelKey: 'nav.locationRequest', icon: MapPinIcon, permission: 'lister.area' },
     ],
   },
   {

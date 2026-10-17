@@ -62,6 +62,18 @@ export type ListingInput = {
 
 export type ListingPhoto = { id: string; media_id: string; position: number; created_at: string }
 
+// Mirrors verification.serializers.PropertyVerificationListerSerializer.
+export type PropertyCheck = {
+  id: string
+  kind: 'DOCUMENT' | 'FIELD'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'REVOKED'
+  submitted_at: string
+  reviewed_at: string | null
+  expires_at: string | null
+  reason?: string | null
+}
+export type PropertyCheckStatus = { effective_verification_level: number; verifications: PropertyCheck[] }
+
 // activate_listing's refusal codes.
 export type ActivationBlocker = 'lister_identity_verified' | 'listing_required_media' | 'lister_phone_confirmed' | 'listing_frozen_rate_version'
 export const MINIMUM_PHOTOS = 3
@@ -196,6 +208,30 @@ export const listerApi = {
     request<null>(`/listings/${encodeURIComponent(id)}/photos/${photoId}/`, { method: 'DELETE', auth: true }),
   reorderPhotos: (id: string, photoIds: string[]) =>
     request<ListingPhoto[]>(`/listings/${encodeURIComponent(id)}/photos/reorder/`, { method: 'POST', body: { photo_ids: photoIds }, auth: true }),
+
+  // VER-02: the property's level and its location checks, newest first.
+  checkStatus: (propertyId: string) =>
+    request<PropertyCheckStatus>(`/verifications/properties/${encodeURIComponent(propertyId)}/`, { auth: true }),
+  // The title document photo is the property's own private media; only the
+  // verifier on the check can open it.
+  uploadTitleDocument: (propertyId: string, image: File) => {
+    const form = new FormData()
+    form.append('image', image)
+    form.append('owner_type', 'property_record')
+    form.append('owner_id', propertyId)
+    return request<{ media_id: string; size_bytes: number; created_at: string }>('/media/images/', {
+      method: 'POST',
+      body: form,
+      auth: true,
+      headers: { 'Idempotency-Key': idempotencyKey() },
+    })
+  },
+  requestCheck: (propertyId: string, mediaId: string) =>
+    request<PropertyCheck>(`/verifications/properties/${encodeURIComponent(propertyId)}/documents/`, {
+      method: 'POST',
+      body: { evidence: [{ evidence_type: 'TITLE_DOCUMENT', evidence_ref: mediaId }] },
+      auth: true,
+    }),
 
   // 404 until the lister starts; 403 for accounts without an Owner or Agent role.
   identity: () => request<ListerIdentity>('/lister-identity/me/', { auth: true }),

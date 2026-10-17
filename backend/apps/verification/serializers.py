@@ -60,9 +60,22 @@ class PropertyVerificationPrivateSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class PropertyVerificationListerSerializer(PropertyVerificationPrivateSerializer):
+    """The lister's own view: a failed check carries the verifier's reason so they can fix it."""
+
+    reason = serializers.SerializerMethodField()
+
+    class Meta(PropertyVerificationPrivateSerializer.Meta):
+        fields = PropertyVerificationPrivateSerializer.Meta.fields + ("reason",)
+        read_only_fields = fields
+
+    def get_reason(self, obj):
+        return obj.rejection_reason if obj.status == PropertyVerification.Status.REJECTED else None
+
+
 class PropertyVerificationStatusSerializer(serializers.Serializer):
     effective_verification_level = serializers.IntegerField(read_only=True)
-    verifications = PropertyVerificationPrivateSerializer(many=True, read_only=True)
+    verifications = PropertyVerificationListerSerializer(many=True, read_only=True)
 
 
 class PropertyVerificationReviewSerializer(PropertyVerificationPrivateSerializer):

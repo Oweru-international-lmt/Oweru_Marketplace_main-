@@ -42,6 +42,7 @@ import { BecomeListerPage } from './pages/lister/BecomeListerPage'
 import { EnquiriesPage } from './pages/lister/EnquiriesPage'
 import { IdentityPage } from './pages/lister/IdentityPage'
 import { ListerHomePage } from './pages/lister/ListerHomePage'
+import { LocationCheckPage as ListerLocationCheckPage } from './pages/lister/LocationCheckPage'
 
 // The map library is only needed on this page; keep it out of the first load.
 const FreeCheckPage = lazy(() => import('./pages/public/FreeCheckPage').then((module) => ({ default: module.FreeCheckPage })))
@@ -103,6 +104,7 @@ export default function App() {
               <Route path="/lister/listings/:listingId" element={<Lister><ListingEditorPage /></Lister>} />
               <Route path="/lister/enquiries" element={<Lister><EnquiriesPage /></Lister>} />
               <Route path="/lister/identity" element={<Lister><IdentityPage /></Lister>} />
+              <Route path="/lister/checks" element={<Lister><ListerLocationCheckPage /></Lister>} />
               {/* Staff work (CMP-02 to CMP-08, PAY-13, FUL-07): Verifiers and Management. */}
               <Route path="/staff" element={<RequirePermission permission="complaint.handle"><OverviewPage /></RequirePermission>} />
               <Route path="/staff/complaints" element={<RequirePermission permission="complaint.handle"><ComplaintsDeskPage /></RequirePermission>} />

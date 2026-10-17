@@ -167,3 +167,21 @@ def test_fail_keeps_the_reason_and_the_answers():
     assert failed.data["reason"] == "Same plot as OWR-1."
     log = AuditLog.objects.get(entity_id=str(verification.pk), action__endswith="rejected")
     assert log.after["checklist"] == answers
+
+
+def test_lister_reads_the_reason_for_a_failed_check_and_can_send_again():
+    owner, property_record, verification = submitted_check()
+    status_url = f"/api/v1/verifications/properties/{property_record.property_id}/"
+    assert client(owner).get(status_url).data["verifications"][0]["reason"] is None
+
+    client(verifier()).post(f"{DESK}{verification.pk}/reject/", {"reason": "Pin is in the sea."}, format="json")
+
+    latest = client(owner).get(status_url).data["verifications"][0]
+    assert latest["status"] == PropertyVerification.Status.REJECTED
+    assert latest["reason"] == "Pin is in the sea."
+    retry = client(owner).post(
+        f"/api/v1/verifications/properties/{property_record.property_id}/documents/",
+        {"evidence": document_evidence("private/retry")},
+        format="json",
+    )
+    assert retry.status_code == 201
