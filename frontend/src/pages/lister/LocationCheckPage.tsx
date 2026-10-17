@@ -9,9 +9,9 @@ import {
   CameraIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
-  CloseIcon,
   DocumentIcon,
   IdCardIcon,
   MapPinIcon,
@@ -117,6 +117,23 @@ function PropertyPanel({ row, properties, onChoose, identityOk }: {
 
   return (
     <>
+      {/* L1: back, the screen name centred, and help on the right. */}
+      <div className="mb-6 grid grid-cols-[40px_1fr_40px] items-center">
+        <Link to="/lister" aria-label={t('lister.checks.back')} className="grid size-10 place-items-center rounded-full text-navy hover:bg-white">
+          <ChevronLeftIcon className="size-6" />
+        </Link>
+        <p className="text-center text-[17px] font-semibold text-navy">{t('lister.checks.title')}</p>
+        <a
+          href={whatsappLink(t('lister.checks.helpMessage', { property: property.property_id }))}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t('lister.checks.help')}
+          className="grid size-10 place-items-center rounded-full text-navy hover:bg-white"
+        >
+          <HelpIcon className="size-6" />
+        </a>
+      </div>
+
       {/* L7: the subject in the title, with a chevron to switch. */}
       <header>
         <label className="relative inline-flex max-w-full items-center gap-2">
@@ -137,7 +154,7 @@ function PropertyPanel({ row, properties, onChoose, identityOk }: {
           </select>
         </label>
         <p className="mt-1 text-[14px] text-navy-soft">
-          {t('lister.checks.title')} · <span className="tabular-nums">{property.property_id}</span>
+          <span className="tabular-nums">{property.property_id}</span>
           {status && <> · {t('lister.checks.currentLevel', { level: t(`levels.short.${status.effective_verification_level}`) })}</>}
         </p>
       </header>
@@ -197,9 +214,9 @@ function LevelBlock({ check, row, identityOk, canRequest, onRequest }: {
   const tag = check?.status ?? 'none'
   const hasPin = Boolean(row.property?.pin)
   const requirements = [
-    { key: 'document', icon: DocumentIcon, met: check !== null && check.status !== 'REJECTED' },
-    { key: 'pin', icon: MapPinIcon, met: hasPin },
-    { key: 'identity', icon: IdCardIcon, met: identityOk === true },
+    { key: 'document', icon: DocumentIcon },
+    { key: 'pin', icon: MapPinIcon },
+    { key: 'identity', icon: IdCardIcon },
   ] as const
   return (
     <section aria-labelledby="level-title">
@@ -236,15 +253,13 @@ function LevelBlock({ check, row, identityOk, canRequest, onRequest }: {
             ))}
           </tbody>
         </table>
-        <p className="mt-3 rounded-lg bg-white/[0.07] px-3 py-2 text-[12.5px] leading-relaxed text-white/75">{t('levels.label2')}</p>
 
-        <h3 className="mt-7 text-[17px] font-medium">{t('lister.checks.requirementsTitle')}</h3>
+        <h3 className="mt-10 text-[17px] font-medium">{t('lister.checks.requirementsTitle')}</h3>
         <ul className="mt-3 space-y-3 text-[15px]">
-          {requirements.map(({ key, icon: Icon, met }) => (
+          {requirements.map(({ key, icon: Icon }) => (
             <li key={key} className="flex items-center gap-3">
               <Icon className="size-5 shrink-0 text-white/80" />
-              <span className="flex-1">{t(`lister.checks.requirements.${key}`)}</span>
-              {met && <CheckIcon className="size-4 text-gold-light" />}
+              {t(`lister.checks.requirements.${key}`)}
             </li>
           ))}
           <li className="flex items-center gap-3">
@@ -288,6 +303,37 @@ function Gate({ icon: Icon, title, body, to, action }: { icon: ComponentType<SVG
       </div>
       <Link to={to} className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-[13.5px] font-semibold text-white">{action}</Link>
     </div>
+  )
+}
+
+function HelpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01" />
+    </svg>
+  )
+}
+
+function Sparkle(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M6 0c.4 3.2 2.8 5.6 6 6-3.2.4-5.6 2.8-6 6-.4-3.2-2.8-5.6-6-6 3.2-.4 5.6-2.8 6-6Z" />
+    </svg>
+  )
+}
+
+// L9's wavy badge.
+function Rosette(props: SVGProps<SVGSVGElement>) {
+  const points = Array.from({ length: 24 }, (_, index) => {
+    const angle = (index / 24) * Math.PI * 2
+    const radius = index % 2 ? 21 : 24
+    return `${24 + radius * Math.cos(angle)},${24 + radius * Math.sin(angle)}`
+  }).join(' ')
+  return (
+    <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true" {...props}>
+      <polygon points={points} strokeLinejoin="round" stroke="currentColor" strokeWidth="3" />
+    </svg>
   )
 }
 
@@ -359,6 +405,11 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
 
   return (
     <section className="mx-auto mt-8 max-w-[640px]">
+      <div className="mb-4 flex items-center justify-end">
+        <span className="h-2 w-[42%] overflow-hidden rounded-full bg-mist">
+          <span className="block h-full rounded-full bg-gold transition-[width] duration-500" style={{ width: upload?.mediaId ? '90%' : '60%' }} />
+        </span>
+      </div>
       <nav aria-label={t('lister.checks.steps.label')} className="rounded-2xl border border-mist bg-white p-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
         <ol className="flex items-center justify-between gap-1">
           {steps.map(({ key, icon: Icon, done }, index) => (
@@ -381,14 +432,14 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
       <h2 className="mt-7 text-[22px] font-semibold text-navy">{t('lister.checks.upload.title')}</h2>
       <p className="mt-1 text-[14px] text-navy-soft">{t('lister.checks.upload.subtitle')}</p>
 
-      <ul className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-5">
+      <ul className="-mx-4 mt-5 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:px-0">
         {TITLE_TILES.map((type) => {
           const on = property.title_type === type
           return (
             <li
               key={type}
               aria-current={on ? 'true' : undefined}
-              className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-4 text-center ${on ? 'border-gold bg-gold/10 text-navy' : 'border-mist bg-paper/60 text-muted'}`}
+              className={`flex w-[104px] shrink-0 flex-col items-center gap-2 rounded-2xl border px-2 py-4 text-center sm:w-auto ${on ? 'border-gold bg-gold/10 text-navy' : 'border-mist bg-paper/60 text-muted'}`}
             >
               <span className={`grid size-11 place-items-center rounded-full ${on ? 'bg-white text-[#9a6c12]' : 'bg-white/80 text-muted'}`}>
                 <DocumentIcon className="size-5" />
@@ -403,10 +454,16 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
       <button
         type="button"
         onClick={() => setSheet(true)}
-        className="mt-5 flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-gold/50 bg-white px-6 py-9 text-center transition-colors hover:bg-gold/5"
+        className="mt-5 flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-gold/50 bg-white px-6 py-9 text-center transition-colors hover:bg-[#fffaf1]"
       >
-        <span className="grid size-20 place-items-center rounded-full bg-gold/12 text-[#9a6c12]">
-          <UploadIcon className="size-9" />
+        <span className="relative grid size-24 place-items-center">
+          <span aria-hidden="true" className="absolute inset-0 rounded-full bg-gold/10" />
+          <span className="relative grid size-16 place-items-center rounded-full bg-gold/20 text-[#9a6c12]">
+            <UploadIcon className="size-9" />
+          </span>
+          {[['-left-5 top-7', 'size-2.5'], ['-right-4 top-3', 'size-3'], ['-right-6 bottom-6', 'size-2'], ['-left-2 -top-1', 'size-1.5'], ['left-1 bottom-0', 'size-1.5']].map(([where, size]) => (
+            <Sparkle key={where} className={`absolute text-gold/60 ${where} ${size}`} />
+          ))}
         </span>
         <span className="mt-4 text-[17px] font-semibold text-navy">{t('lister.checks.upload.dropTitle')}</span>
         <span className="mt-1 text-[13.5px] text-muted">{t('lister.checks.upload.dropHint')}</span>
@@ -450,7 +507,7 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
             type="button"
             onClick={() => setUpload(null)}
             aria-label={t('lister.checks.upload.remove')}
-            className="grid size-10 shrink-0 place-items-center rounded-xl bg-danger-soft/70 text-danger hover:bg-danger-soft"
+            className="grid size-11 shrink-0 place-items-center rounded-xl border border-mist bg-paper text-danger hover:bg-danger-soft"
           >
             <TrashIcon className="size-[18px]" />
           </button>
@@ -516,9 +573,6 @@ function AddSheet({ onClose, onCamera, onLibrary }: { onClose: () => void; onCam
         className="relative w-full max-w-[460px] rounded-t-[28px] bg-white px-6 pt-3 pb-8 shadow-[0_-10px_40px_rgba(15,23,42,0.2)] sm:rounded-[28px]"
       >
         <span aria-hidden="true" className="mx-auto block h-1.5 w-11 rounded-full bg-mist" />
-        <button type="button" onClick={onClose} aria-label={t('lister.checks.sheet.close')} className="absolute top-3 right-3 grid size-9 place-items-center rounded-full text-navy-soft hover:bg-paper">
-          <CloseIcon className="size-4" />
-        </button>
         <h2 id="sheet-title" className="mt-5 text-center text-[22px] font-semibold text-navy">{t('lister.checks.sheet.title')}</h2>
         <p className="mt-2 text-center text-[15px] leading-relaxed text-navy-soft">{t('lister.checks.sheet.body')}</p>
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -533,6 +587,18 @@ function AddSheet({ onClose, onCamera, onLibrary }: { onClose: () => void; onCam
             <span className="mt-1.5 text-[13px] leading-snug text-muted">{t('lister.checks.sheet.cameraBody')}</span>
           </button>
         </div>
+        <p className="mt-6 flex items-center gap-3 text-[12px] font-medium tracking-[0.08em] text-muted uppercase">
+          <span className="h-px flex-1 bg-mist" />
+          {t('lister.checks.sheet.or')}
+          <span className="h-px flex-1 bg-mist" />
+        </p>
+        <p className="mt-4 text-center text-[15px] leading-relaxed text-navy">
+          {t('lister.checks.sheet.whatsappBefore')}{' '}
+          <a href={whatsappLink(t('lister.checks.sheet.whatsappMessage'))} target="_blank" rel="noopener noreferrer" className="font-medium text-[#9a6c12] underline-offset-2 hover:underline">
+            {t('lister.checks.sheet.whatsappLink')}
+          </a>{' '}
+          {t('lister.checks.sheet.whatsappAfter')}
+        </p>
       </motion.div>
     </motion.div>
   )
@@ -557,13 +623,17 @@ function CheckStatusPanel({ check, row, canRequest, onRequest }: { check: Proper
 
   return (
     <section className="space-y-5">
+      <h2 className="text-center text-[19px] font-semibold text-navy tabular-nums">{t('lister.checks.requestNumber', { number: check.id.slice(0, 8).toUpperCase() })}</h2>
       <div className="rounded-3xl border border-mist bg-white p-5 shadow-[0_2px_14px_rgba(15,23,42,0.06)]">
         <div className="flex items-start gap-4">
-          <span className={`grid size-12 shrink-0 place-items-center rounded-2xl text-white ${passed ? 'bg-success' : failed ? 'bg-danger' : 'bg-gold'}`}>
-            {passed ? <CheckIcon className="size-6" /> : failed ? <AlertIcon className="size-6" /> : <ClockIcon className="size-6" />}
+          <span className={`relative grid size-12 shrink-0 place-items-center ${passed ? 'text-success' : failed ? 'text-danger' : 'text-gold'}`}>
+            <Rosette className="absolute inset-0 size-full" />
+            <span className="relative text-white">
+              {passed ? <CheckIcon className="size-5" /> : failed ? <AlertIcon className="size-5" /> : <ClockIcon className="size-5" />}
+            </span>
           </span>
           <div>
-            <h2 className="text-[20px] font-semibold text-navy">{t(`lister.checks.status.${check.status}.title`)}</h2>
+            <h3 className="text-[20px] font-semibold text-navy">{t(`lister.checks.status.${check.status}.title`)}</h3>
             <p className="mt-0.5 text-[14px] text-navy-soft">{t(`lister.checks.status.${check.status}.body`)}</p>
           </div>
         </div>

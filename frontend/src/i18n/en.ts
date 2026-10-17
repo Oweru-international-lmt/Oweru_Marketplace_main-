@@ -1406,6 +1406,11 @@ const en: Messages = {
         files: 'Choose a photo',
         filesBody: 'Pick a photo on your phone or computer.',
         close: 'Close',
+        or: 'Or use WhatsApp',
+        whatsappBefore: 'Send the document photo to',
+        whatsappLink: 'Oweru on WhatsApp',
+        whatsappAfter: 'and the team will attach it to your property.',
+        whatsappMessage: 'Hello Oweru, I would like to send a title document photo for the location check.',
       },
       status: {
         PENDING: {
@@ -1452,6 +1457,8 @@ const en: Messages = {
       help: 'Need help? Chat with Oweru',
       helpMessage: 'Hello Oweru, I need help with the location check for property {{property}}.',
       sent: 'Request sent. An Oweru verifier will start checking.',
+      back: 'Back to the overview',
+      requestNumber: 'Request #{{number}}',
     },
     addListing: 'Add listing',
     untitled: 'New listing',

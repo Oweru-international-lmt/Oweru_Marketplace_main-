@@ -1404,6 +1404,11 @@ const sw = {
         files: 'Chagua picha',
         filesBody: 'Chagua picha iliyo kwenye simu au kompyuta.',
         close: 'Funga',
+        or: 'Au tumia WhatsApp',
+        whatsappBefore: 'Tuma picha ya hati kwa',
+        whatsappLink: 'WhatsApp ya Oweru',
+        whatsappAfter: 'na timu itaiambatanisha kwenye mali yako.',
+        whatsappMessage: 'Habari Oweru, naomba kutuma picha ya hati ya umiliki kwa ukaguzi wa mahali.',
       },
       status: {
         PENDING: {
@@ -1450,6 +1455,8 @@ const sw = {
       help: 'Unahitaji msaada? Ongea na Oweru',
       helpMessage: 'Habari Oweru, naomba msaada kuhusu ukaguzi wa mahali wa mali {{property}}.',
       sent: 'Ombi limetumwa. Mhakiki wa Oweru ataanza kukagua.',
+      back: 'Rudi kwenye muhtasari',
+      requestNumber: 'Ombi #{{number}}',
     },
     addListing: 'Ongeza tangazo',
     untitled: 'Tangazo jipya',
