@@ -114,7 +114,72 @@ export type OutboxMessage = {
   whatsapp_link: string
 }
 
+// VER-02: the verifier's location check desk (verification.review_desk).
+export type CheckPoint = 'pin_on_land' | 'photos_match' | 'no_conflicting_duplicate' | 'description_fits'
+export type CheckStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'REVOKED'
+export type LatLng = { lat: number; lng: number }
+
+export type LocationCheckRow = {
+  id: string
+  property_id: string
+  status: CheckStatus
+  submitted_at: string
+  reviewed_at: string | null
+  expires_at: string | null
+  category: 'LAND' | 'HOUSE' | 'COMMERCIAL'
+  title_type: string
+  stated_size: string
+  size_unit: string
+  area: string
+  lister_name: string
+  cover_url: string | null
+  duplicate_count: number
+  late: boolean
+}
+
+export type PossibleDuplicate = {
+  id: string
+  property_id: string
+  status: 'PENDING' | 'CONFIRMED_DUPLICATE' | 'NOT_DUPLICATE'
+  signals: string[]
+  distance_meters: number | null
+  size_difference_percent: number | null
+  category: string
+  stated_size: number
+  size_unit: string
+  area: string
+  pin: LatLng | null
+  cover_url: string | null
+}
+
+export type LocationCheck = LocationCheckRow & {
+  reason: string | null
+  reviewer_name: string | null
+  pin: LatLng | null
+  boundary: LatLng[] | null
+  listing: { listing_id: string; status: string; lister_kind: 'OWNER' | 'AGENT'; description: string; features: string[]; photo_count: number } | null
+  documents: { id: string; evidence_type: string; created_at: string }[]
+  duplicates: PossibleDuplicate[]
+  checklist: CheckPoint[]
+}
+
+export type CheckSummary = { waiting: number; late: number; passed_this_month: number; failed_this_month: number }
+export type Checklist = Record<CheckPoint, boolean>
+
 export const staffApi = {
+  checkSummary: () => request<CheckSummary>('/management/verifications/documents/summary/', { auth: true }),
+  checks: (state: 'waiting' | 'decided') =>
+    request<Page<LocationCheckRow>>(`/management/verifications/documents/?page_size=100${state === 'decided' ? '&state=decided' : ''}`, { auth: true }),
+  check: (id: string) => request<LocationCheck>(`/management/verifications/documents/${id}/`, { auth: true }),
+  checkPhotos: (id: string) => request<{ position: number; url: string }[]>(`/management/verifications/documents/${id}/photos/`, { auth: true }),
+  // Each opening is recorded as sensitive access; the link is short-lived.
+  checkDocument: (id: string, documentId: string) =>
+    request<{ url: string; expires_in: number; mime_type: string }>(`/management/verifications/documents/${id}/evidence/${documentId}/`, { auth: true }),
+  passCheck: (id: string, checklist: Checklist) =>
+    request<LocationCheck>(`/management/verifications/documents/${id}/approve/`, { method: 'POST', body: { checklist }, auth: true }),
+  failCheck: (id: string, reason: string, checklist?: Checklist) =>
+    request<LocationCheck>(`/management/verifications/documents/${id}/reject/`, { method: 'POST', body: checklist ? { reason, checklist } : { reason }, auth: true }),
+
   complaints: () => request<DeskComplaint[]>('/management/complaints/', { auth: true }),
 
   complaint: (id: string) => request<DeskComplaintDetail>(`/management/complaints/${id}/`, { auth: true }),

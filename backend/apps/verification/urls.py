@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .review_desk import DocumentEvidenceView, DocumentPhotosView, DocumentSummaryView
+
 from .views import (
     DocumentVerificationApproveView,
     DocumentVerificationRejectView,
@@ -37,6 +39,17 @@ urlpatterns = [
 
 management_urlpatterns = [
     path("documents/", DocumentVerificationReviewQueueView.as_view(), name="document-verification-review-list"),
+    path("documents/summary/", DocumentSummaryView.as_view(), name="document-verification-summary"),
+    path(
+        "documents/<uuid:verification_id>/photos/",
+        DocumentPhotosView.as_view(),
+        name="document-verification-photos",
+    ),
+    path(
+        "documents/<uuid:verification_id>/evidence/<uuid:evidence_id>/",
+        DocumentEvidenceView.as_view(),
+        name="document-verification-evidence",
+    ),
     path(
         "documents/<uuid:verification_id>/",
         DocumentVerificationReviewDetailView.as_view(),

@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { can } from '../auth/access'
-import { ChatIcon, DashboardIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
+import { ChatIcon, DashboardIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
 import type { User } from '../lib/authApi'
 
 export type NavItem = {
@@ -25,6 +25,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/staff', labelKey: 'nav.overview', icon: DashboardIcon, permission: 'complaint.handle' },
       { to: '/staff/complaints', labelKey: 'nav.complaints', icon: ChatIcon, permission: 'complaint.handle' },
+      { to: '/staff/checks', labelKey: 'nav.locationChecks', icon: MapPinIcon, permission: 'verification.record_result' },
       { to: '/staff/full-checks', labelKey: 'nav.fullChecks', icon: ShieldIcon, permission: 'complaint.handle' },
       { to: '/staff/identities', labelKey: 'nav.identities', icon: IdCardIcon, permission: 'identity.review' },
       { to: '/staff/outbox', labelKey: 'nav.outbox', icon: WhatsAppIcon, permission: 'outbox.send' },

@@ -11,6 +11,13 @@ from apps.roles.permissions import IsVerifier
 
 from .models import PropertyVerification
 from .pagination import VerificationReviewPagination
+from .review_desk import (
+    DocumentApproveSerializer,
+    DocumentDeskSerializer,
+    DocumentQueueRowSerializer,
+    DocumentRejectSerializer,
+    document_queue,
+)
 from .serializers import (
     DocumentVerificationSubmissionSerializer,
     EmptyVerificationActionSerializer,
@@ -130,26 +137,42 @@ class VerificationReviewDetailView(generics.GenericAPIView):
 
 
 class DocumentVerificationReviewQueueView(VerificationReviewQueueView):
+    """Waiting checks oldest first; ?state=decided lists the latest decisions."""
+
     permission_classes = [IsAuthenticated, IsVerifier]
+    serializer_class = DocumentQueueRowSerializer
     verification_kind = PropertyVerification.Kind.DOCUMENT
+
+    def get_queryset(self):
+        return document_queue(self.request.query_params.get("state"))
+
+    @extend_schema(responses={200: DocumentQueueRowSerializer(many=True)})
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 class DocumentVerificationReviewDetailView(VerificationReviewDetailView):
     permission_classes = [IsAuthenticated, IsVerifier]
+    serializer_class = DocumentDeskSerializer
     verification_kind = PropertyVerification.Kind.DOCUMENT
+
+    @extend_schema(responses={200: DocumentDeskSerializer})
+    def get(self, request, verification_id, *args, **kwargs):
+        return super().get(request, verification_id, *args, **kwargs)
 
 
 class DocumentVerificationApproveView(DocumentVerificationReviewDetailView):
     http_method_names = ["post", "options"]
 
-    @extend_schema(request=EmptyVerificationActionSerializer, responses={200: PropertyVerificationReviewSerializer})
+    @extend_schema(request=DocumentApproveSerializer, responses={200: DocumentDeskSerializer})
     def post(self, request, verification_id, *args, **kwargs):
-        serializer = EmptyVerificationActionSerializer(data=request.data)
+        serializer = DocumentApproveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         verification = approve_document_verification(
             verification=self.get_verification(verification_id),
             reviewer=request.user,
             request=request,
+            checklist=serializer.validated_data.get("checklist"),
         )
         return Response(self.get_serializer(verification).data)
 
@@ -157,15 +180,16 @@ class DocumentVerificationApproveView(DocumentVerificationReviewDetailView):
 class DocumentVerificationRejectView(DocumentVerificationReviewDetailView):
     http_method_names = ["post", "options"]
 
-    @extend_schema(request=VerificationRejectSerializer, responses={200: PropertyVerificationReviewSerializer})
+    @extend_schema(request=DocumentRejectSerializer, responses={200: DocumentDeskSerializer})
     def post(self, request, verification_id, *args, **kwargs):
-        serializer = VerificationRejectSerializer(data=request.data)
+        serializer = DocumentRejectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         verification = reject_document_verification(
             verification=self.get_verification(verification_id),
             reviewer=request.user,
             reason=serializer.validated_data["reason"],
             request=request,
+            checklist=serializer.validated_data.get("checklist"),
         )
         return Response(self.get_serializer(verification).data)
 

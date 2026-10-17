@@ -35,6 +35,8 @@ import { OverviewPage } from './pages/staff/ops/OverviewPage'
 import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
 import { IdentityReviewPage } from './pages/staff/ops/IdentityReviewPage'
 import { OutboxPage } from './pages/staff/ops/OutboxPage'
+import { LocationCheckPage } from './pages/staff/ops/LocationCheckPage'
+import { LocationChecksPage } from './pages/staff/ops/LocationChecksPage'
 import { ConfirmLinkPage } from './pages/public/ConfirmLinkPage'
 import { BecomeListerPage } from './pages/lister/BecomeListerPage'
 import { EnquiriesPage } from './pages/lister/EnquiriesPage'
@@ -109,6 +111,8 @@ export default function App() {
               <Route path="/staff/full-checks/:jobId" element={<RequirePermission permission="complaint.handle"><FullCheckDeskPage /></RequirePermission>} />
               <Route path="/staff/full-checks/:jobId/result" element={<RequirePermission permission="complaint.handle"><ResultFormPage /></RequirePermission>} />
               {/* NTF-02: WhatsApp messages Oweru staff send by hand. */}
+              <Route path="/staff/checks" element={<RequirePermission permission="verification.record_result"><LocationChecksPage /></RequirePermission>} />
+              <Route path="/staff/checks/:checkId" element={<RequirePermission permission="verification.record_result"><LocationCheckPage /></RequirePermission>} />
               <Route path="/staff/outbox" element={<RequirePermission permission="outbox.send"><OutboxPage /></RequirePermission>} />
               {/* IDV-03: Management reviews lister identities. */}
               <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />

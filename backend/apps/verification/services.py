@@ -203,16 +203,35 @@ def _audit_state(verification):
     }
 
 
-def _audit_transition(*, action, actor, verification, before, request=None):
+def _audit_transition(*, action, actor, verification, before, request=None, checklist=None):
+    after = _audit_state(verification)
+    if checklist is not None:
+        after["checklist"] = checklist
     create_audit_log(
         actor=actor,
         action=action,
         entity_type="PropertyVerification",
         entity_id=verification.pk,
         before=before,
-        after=_audit_state(verification),
+        after=after,
         request=request,
     )
+
+
+# VER-02: the four points a verifier answers on the location check screen.
+LOCATION_CHECKLIST = ("pin_on_land", "photos_match", "no_conflicting_duplicate", "description_fits")
+
+
+def _normalize_checklist(checklist, *, require_all=False):
+    if checklist is None:
+        return None
+    if not isinstance(checklist, Mapping) or set(checklist) != set(LOCATION_CHECKLIST):
+        raise ValidationError({"checklist": "Answer each of the four location check points."})
+    if not all(isinstance(checklist[key], bool) for key in LOCATION_CHECKLIST):
+        raise ValidationError({"checklist": "Each answer must be yes or no."})
+    if require_all and not all(checklist.values()):
+        raise ValidationError({"checklist": "A location check can only pass when every point is met."})
+    return {key: checklist[key] for key in LOCATION_CHECKLIST}
 
 
 @transaction.atomic
@@ -445,8 +464,9 @@ def submit_field_verification(*, property_record, submitted_by, evidence, reques
 
 
 @transaction.atomic
-def approve_document_verification(*, verification, reviewer, request=None):
+def approve_document_verification(*, verification, reviewer, request=None, checklist=None):
     reviewer = _require_document_verifier(reviewer)
+    checklist = _normalize_checklist(checklist, require_all=True)
     document = _document_verification_for_update(verification)
     if document.status != PropertyVerification.Status.PENDING:
         raise ValidationError("Only pending document verification can be approved.")
@@ -474,6 +494,7 @@ def approve_document_verification(*, verification, reviewer, request=None):
         verification=document,
         before=before,
         request=request,
+        checklist=checklist,
     )
     return document
 
@@ -518,8 +539,9 @@ def approve_field_verification(*, verification, reviewer, request=None):
 
 
 @transaction.atomic
-def reject_document_verification(*, verification, reviewer, reason, request=None):
+def reject_document_verification(*, verification, reviewer, reason, request=None, checklist=None):
     reviewer = _require_document_verifier(reviewer)
+    checklist = _normalize_checklist(checklist)
     document = _document_verification_for_update(verification)
     if document.status != PropertyVerification.Status.PENDING:
         raise ValidationError("Only pending document verification can be rejected.")
@@ -542,6 +564,7 @@ def reject_document_verification(*, verification, reviewer, reason, request=None
         verification=document,
         before=before,
         request=request,
+        checklist=checklist,
     )
     return document
 
