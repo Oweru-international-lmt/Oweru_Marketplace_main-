@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .review_desk import DocumentEvidenceView, DocumentPhotosView, DocumentSummaryView
+from .title_documents import TitleDocumentView
 
 from .views import (
     DocumentVerificationApproveView,
@@ -24,6 +25,11 @@ urlpatterns = [
         "properties/<str:property_id>/documents/",
         PropertyDocumentVerificationSubmissionView.as_view(),
         name="property-document-verification-submit",
+    ),
+    path(
+        "properties/<str:property_id>/title-documents/",
+        TitleDocumentView.as_view(),
+        name="property-title-document-upload",
     ),
     path(
         "properties/<str:property_id>/field/",

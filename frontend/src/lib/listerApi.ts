@@ -212,14 +212,12 @@ export const listerApi = {
   // VER-02: the property's level and its location checks, newest first.
   checkStatus: (propertyId: string) =>
     request<PropertyCheckStatus>(`/verifications/properties/${encodeURIComponent(propertyId)}/`, { auth: true }),
-  // The title document photo is the property's own private media; only the
-  // verifier on the check can open it.
-  uploadTitleDocument: (propertyId: string, image: File) => {
+  // A photo or a scanned PDF of the title document, kept as the property's own
+  // private media; only the verifier on the check can open it.
+  uploadTitleDocument: (propertyId: string, document: File) => {
     const form = new FormData()
-    form.append('image', image)
-    form.append('owner_type', 'property_record')
-    form.append('owner_id', propertyId)
-    return request<{ media_id: string; size_bytes: number; created_at: string }>('/media/images/', {
+    form.append('document', document)
+    return request<{ media_id: string; mime_type: string; size_bytes: number; created_at: string }>(`/verifications/properties/${encodeURIComponent(propertyId)}/title-documents/`, {
       method: 'POST',
       body: form,
       auth: true,

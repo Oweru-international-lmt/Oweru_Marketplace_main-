@@ -185,3 +185,50 @@ def test_lister_reads_the_reason_for_a_failed_check_and_can_send_again():
         format="json",
     )
     assert retry.status_code == 201
+
+
+SCANNED_PDF = b"%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
+
+
+def jpeg_bytes():
+    from PIL import Image
+
+    buffer = BytesIO()
+    Image.new("RGB", (8, 8), "white").save(buffer, "JPEG")
+    return buffer.getvalue()
+
+
+def test_lister_uploads_a_scanned_pdf_or_a_photo_and_the_verifier_opens_it():
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    owner = owner_with_level_one()
+    property_record = create_property(owner)
+    url = f"/api/v1/verifications/properties/{property_record.property_id}/title-documents/"
+
+    stranger = owner_with_level_one()
+    pdf = SimpleUploadedFile("hati.pdf", SCANNED_PDF, content_type="application/pdf")
+    assert client(stranger).post(url, {"document": pdf}, format="multipart").status_code == 403
+
+    renamed = SimpleUploadedFile("hati.jpg", SCANNED_PDF, content_type="image/jpeg")
+    assert client(owner).post(url, {"document": renamed}, format="multipart").status_code == 400
+    broken = SimpleUploadedFile("hati.pdf", b"%PDF-1.4 no end marker", content_type="application/pdf")
+    assert client(owner).post(url, {"document": broken}, format="multipart").status_code == 400
+
+    photo = SimpleUploadedFile("hati.jpg", jpeg_bytes(), content_type="image/jpeg")
+    assert client(owner).post(url, {"document": photo}, format="multipart").data["mime_type"] == "image/jpeg"
+
+    pdf = SimpleUploadedFile("hati.pdf", SCANNED_PDF, content_type="application/pdf")
+    uploaded = client(owner).post(url, {"document": pdf}, format="multipart")
+    assert uploaded.status_code == 201
+    assert uploaded.data["mime_type"] == "application/pdf"
+
+    sent = client(owner).post(
+        f"/api/v1/verifications/properties/{property_record.property_id}/documents/",
+        {"evidence": document_evidence(uploaded.data["media_id"])},
+        format="json",
+    )
+    assert sent.status_code == 201
+    verification = PropertyVerification.objects.get(pk=sent.data["id"])
+    opened = client(verifier()).get(f"{DESK}{verification.pk}/evidence/{verification.evidence.get().pk}/")
+    assert opened.status_code == 200
+    assert opened.data["mime_type"] == "application/pdf"

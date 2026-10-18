@@ -26,7 +26,7 @@ import { CheckMap, type CheckMapHandle, type MapView } from './CheckMap'
 
 type Answers = Partial<Record<CheckPoint, boolean>>
 type PanelTab = 'document' | 'duplicates' | 'listing' | 'history'
-type Viewer = { src: string; title: string }
+type Viewer = { src: string; title: string; pdf?: boolean }
 
 // VER-02 check screen, after C5, C6 and C9: the trail and title with the two
 // decisions on top; the four checks on the left (C9: counts, then one card
@@ -520,8 +520,8 @@ function DocumentCards({ check, onView }: { check: LocationCheck; onView: (viewe
     setOpening(documentId)
     setError(null)
     try {
-      const { url } = await staffApi.checkDocument(check.id, documentId)
-      onView({ src: url, title: t('staff.locationChecks.desk.document.title') })
+      const { url, mime_type } = await staffApi.checkDocument(check.id, documentId)
+      onView({ src: url, title: t('staff.locationChecks.desk.document.title'), pdf: mime_type === 'application/pdf' })
     } catch (caught) {
       setError(errorMessage(t, caught))
     } finally {
@@ -667,6 +667,7 @@ function ImageViewer({ viewer, onClose }: { viewer: Viewer; onClose: () => void 
       <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
         <p className="truncate text-[14px] font-medium">{viewer.title}</p>
         <div className="flex items-center gap-1">
+          {!viewer.pdf && (<>
           <button type="button" onClick={() => setZoom((value) => Math.max(1, value - 0.5))} aria-label={t('staff.locationChecks.desk.document.zoomOut')} className="grid size-10 place-items-center rounded-lg hover:bg-white/10">
             <MinusIcon className="size-5" />
           </button>
@@ -674,21 +675,63 @@ function ImageViewer({ viewer, onClose }: { viewer: Viewer; onClose: () => void 
           <button type="button" onClick={() => setZoom((value) => Math.min(4, value + 0.5))} aria-label={t('staff.locationChecks.desk.document.zoomIn')} className="grid size-10 place-items-center rounded-lg hover:bg-white/10">
             <PlusIcon className="size-5" />
           </button>
+          </>)}
           <button ref={close} type="button" onClick={onClose} aria-label={t('staff.locationChecks.desk.document.close')} className="ml-2 grid size-10 place-items-center rounded-lg hover:bg-white/10">
             <CloseIcon className="size-5" />
           </button>
         </div>
       </div>
+      {/* A PDF opens in the browser's own viewer; a photo fits the screen at
+          100% and widens as it zooms. */}
       <div className="flex-1 overflow-auto p-4">
-        {/* At 100% the whole page fits the screen; zooming in widens it. */}
-        <img
-          src={viewer.src}
-          alt={viewer.title}
-          style={zoom > 1 ? { width: `${zoom * 50}%` } : undefined}
-          className={`mx-auto rounded-lg bg-white object-contain ${zoom > 1 ? 'max-w-none' : 'max-h-[calc(100vh-6.5rem)] max-w-full'}`}
-        />
+        {viewer.pdf ? (
+          <PdfFrame src={viewer.src} title={viewer.title} />
+        ) : (
+          <img
+            src={viewer.src}
+            alt={viewer.title}
+            style={zoom > 1 ? { width: `${zoom * 50}%` } : undefined}
+            className={`mx-auto rounded-lg bg-white object-contain ${zoom > 1 ? 'max-w-none' : 'max-h-[calc(100vh-6.5rem)] max-w-full'}`}
+          />
+        )}
       </div>
     </motion.div>
+  )
+}
+
+// Storage links may refuse to be framed, so the PDF is fetched and shown from
+// a local copy; if that fails, the browser opens it in a new tab instead.
+function PdfFrame({ src, title }: { src: string; title: string }) {
+  const { t } = useTranslation()
+  const [local, setLocal] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let url: string | null = null
+    let live = true
+    fetch(src)
+      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(String(response.status)))))
+      .then((blob) => {
+        url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
+        if (live) setLocal(url)
+      })
+      .catch(() => live && setFailed(true))
+    return () => {
+      live = false
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [src])
+  if (local) return <iframe src={local} title={title} className="mx-auto block h-full w-full max-w-[1000px] rounded-lg bg-white" />
+  return (
+    <div className="grid h-full place-items-center">
+      {failed ? (
+        <a href={src} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-5 text-[14px] font-semibold text-navy">
+          <DocumentIcon className="size-5 text-gold" />
+          {t('staff.locationChecks.desk.document.openPdf')}
+        </a>
+      ) : (
+        <span className="size-8 animate-spin rounded-full border-2 border-white/25 border-t-white" aria-label={t('common.loading')} />
+      )}
+    </div>
   )
 }
 

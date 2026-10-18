@@ -362,7 +362,7 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
   const library = useRef<HTMLInputElement>(null)
 
   useEffect(() => () => {
-    if (upload) URL.revokeObjectURL(upload.preview)
+    if (upload?.preview) URL.revokeObjectURL(upload.preview)
   }, [upload])
 
   async function choose(file: File | undefined) {
@@ -373,7 +373,7 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
       setError(t('lister.checks.upload.tooBig'))
       return
     }
-    const next: Upload = { file, preview: URL.createObjectURL(file), mediaId: null, size: file.size, at: null, error: null }
+    const next: Upload = { file, preview: file.type === 'application/pdf' ? '' : URL.createObjectURL(file), mediaId: null, size: file.size, at: null, error: null }
     setUpload(next)
     try {
       const media = await listerApi.uploadTitleDocument(property.property_id, file)
@@ -469,7 +469,7 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
         <span className="mt-1 text-[13.5px] text-muted">{t('lister.checks.upload.dropHint')}</span>
       </button>
       <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => void choose(event.target.files?.[0])} />
-      <input ref={library} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void choose(event.target.files?.[0])} />
+      <input ref={library} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void choose(event.target.files?.[0])} />
 
       <div className="mt-6 flex items-baseline justify-between">
         <h3 className="text-[17px] font-semibold text-navy">{t('lister.checks.upload.listTitle')}</h3>
@@ -479,7 +479,16 @@ function RequestFlow({ row, onCancel, onSent }: { row: ListingRow; onCancel: () 
       </div>
       {upload && (
         <div className="mt-3 flex items-center gap-4 rounded-2xl border border-mist bg-white p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
-          <img src={upload.preview} alt="" className="h-[72px] w-[104px] shrink-0 rounded-lg border border-mist object-cover" />
+          {upload.preview ? (
+            <img src={upload.preview} alt="" className="h-[72px] w-[104px] shrink-0 rounded-lg border border-mist object-cover" />
+          ) : (
+            <span className="grid h-[72px] w-[104px] shrink-0 place-items-center rounded-lg border border-mist bg-paper text-danger">
+              <span className="flex flex-col items-center gap-1">
+                <DocumentIcon className="size-6" />
+                <span className="text-[11px] font-semibold tracking-wide">PDF</span>
+              </span>
+            </span>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-medium text-navy">{upload.file.name}</p>
             <p className="text-[12.5px] text-navy-soft">
