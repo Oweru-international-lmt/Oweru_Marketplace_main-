@@ -93,6 +93,11 @@ class FeaturedView(ItemView):
     model = FeaturedListing
     input_class = FeaturedInput
 
+    @extend_schema(responses={200: {"type": "array", "items": {"type": "object"}}}, description="Featured periods with the public listing card: place, price and cover photo; no lister details.")
+    def get(self, request, item_id=None):
+        services.staff(request.user)
+        return Response(services.featured_rows())
+
     @extend_schema(request=FeaturedInput, responses={200: OpenApiTypes.OBJECT, 201: OpenApiTypes.OBJECT})
     def post(self, request, item_id=None):
         return super().post(request, item_id)

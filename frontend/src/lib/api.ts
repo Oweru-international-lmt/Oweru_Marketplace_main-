@@ -114,6 +114,20 @@ export async function request<T>(path: string, { method = 'GET', body, auth = fa
   return parse<T>(response)
 }
 
+// A signed-in file download (e.g. the market panel's Excel export).
+export async function requestBlob(path: string): Promise<Blob> {
+  const tokens = getTokens()
+  if (!tokens) throw new ApiError(401, null)
+  let response = await send(path, 'GET', undefined, tokens.access)
+  if (response.status === 401) {
+    const fresh = await refreshTokens()
+    if (!fresh) throw new ApiError(401, null)
+    response = await send(path, 'GET', undefined, fresh.access)
+  }
+  if (!response.ok) return parse<never>(response)
+  return response.blob()
+}
+
 // One key per user action, so a retried request is not applied twice.
 export function idempotencyKey(): string {
   return crypto.randomUUID()

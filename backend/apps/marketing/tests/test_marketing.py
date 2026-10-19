@@ -170,3 +170,18 @@ def test_concurrent_campaign_workers_submit_once():
     with patch("apps.notifications.services.SMTPAdapter.deliver_message") as send:
         assert concurrent(lambda: services.deliver(delivery.pk).status) == ("SENT", "SENT")
     assert send.call_count == 1 and CampaignAttempt.objects.count() == 1
+
+
+def test_staff_lists_show_featured_cards_and_campaign_subjects():
+    actor, owner = account("marketer"), account("owner")
+    listing = create_listing_for(owner, status="ACTIVE")
+    services.save_item(actor=actor, model=FeaturedListing, values=dict(listing_id=listing.listing_id, **period()))
+    client = APIClient()
+    client.force_authenticate(actor)
+    featured = client.get("/api/v1/marketing/staff/featured/").data
+    assert featured[0]["listing_id"] == listing.listing_id
+    assert featured[0]["category"] == listing.property.category
+    assert "lister" not in str(featured) and "phone" not in str(featured)
+    services.create_campaign(actor=actor, values=dict(subject_en="Homes", subject_sw="Nyumba", body_en="See homes", body_sw="Ona nyumba", target_path="/listings", source_tag="homes-oct"))
+    campaigns = client.get("/api/v1/marketing/staff/campaigns/").data
+    assert campaigns[0]["subject_sw"] == "Nyumba" and campaigns[0]["target_path"] == "/listings"

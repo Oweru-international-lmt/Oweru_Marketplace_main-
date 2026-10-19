@@ -133,3 +133,12 @@ def test_unknown_area_is_not_assigned_from_raw_coordinates():
     row = MarketAggregate.objects.get(kind="ACTIVITY")
     assert row.region is None and row.district is None and row.category == ""
     assert row.metrics["searches"] == 1
+
+
+def test_panel_names_the_areas_of_its_cells():
+    client = APIClient()
+    client.force_authenticate(account("management"))
+    payload = client.get("/api/v1/analytics/").data
+    assert payload["areas"] == {}
+    for row in payload["rows"]:
+        assert row["region"] is None or str(row["region"]) in payload["areas"]

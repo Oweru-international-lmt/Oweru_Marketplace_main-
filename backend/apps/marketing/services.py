@@ -152,6 +152,26 @@ def click(token):
     return tagged_link(row.campaign.target_path, row.campaign.source_tag)
 
 
+def featured_rows():
+    from apps.listings.services import get_public_listing_photo_display_accesses
+    rows = []
+    for row in FeaturedListing.objects.select_related("listing__property__region", "listing__property__district", "listing__property__ward").order_by("-starts_at")[:100]:
+        listing, prop = row.listing, row.listing.property
+        try:
+            photos = get_public_listing_photo_display_accesses(listing=listing)
+        except Exception:  # noqa: BLE001 - a listing no longer public shows without a photo
+            photos = []
+        rows.append({
+            "id": str(row.pk), "version": row.version, "enabled": row.enabled,
+            "starts_at": row.starts_at, "ends_at": row.ends_at,
+            "listing_id": listing.listing_id, "listing_status": listing.status,
+            "category": prop.category, "selling_price": listing.selling_price,
+            "area": ", ".join(part.name for part in (prop.ward, prop.district, prop.region) if part is not None),
+            "cover_url": photos[0]["url"] if photos else None,
+        })
+    return rows
+
+
 def results(actor):
     staff(actor, "marketing.send_campaign")
-    return list(Campaign.objects.annotate(recipients=Count("deliveries"), sent=Count("deliveries", filter=Q(deliveries__status="SENT")), failed=Count("deliveries", filter=Q(deliveries__status="FAILED")), cancelled=Count("deliveries", filter=Q(deliveries__status="CANCELLED")), clicks=Count("deliveries", filter=Q(deliveries__clicked_at__isnull=False))).values("id", "source_tag", "created_at", "recipients", "sent", "failed", "cancelled", "clicks")[:100])
+    return list(Campaign.objects.annotate(recipients=Count("deliveries"), sent=Count("deliveries", filter=Q(deliveries__status="SENT")), failed=Count("deliveries", filter=Q(deliveries__status="FAILED")), cancelled=Count("deliveries", filter=Q(deliveries__status="CANCELLED")), clicks=Count("deliveries", filter=Q(deliveries__clicked_at__isnull=False))).order_by("-created_at").values("id", "source_tag", "subject_en", "subject_sw", "target_path", "created_at", "recipients", "sent", "failed", "cancelled", "clicks")[:100])

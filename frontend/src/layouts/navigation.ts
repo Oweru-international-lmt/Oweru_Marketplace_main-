@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { can } from '../auth/access'
-import { ChatIcon, DashboardIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
+import { BarsIcon, ChatIcon, DashboardIcon, DocumentIcon, MailIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
 import type { User } from '../lib/authApi'
 
 export type NavItem = {
@@ -29,6 +29,16 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/staff/full-checks', labelKey: 'nav.fullChecks', icon: ShieldIcon, permission: 'complaint.handle' },
       { to: '/staff/identities', labelKey: 'nav.identities', icon: IdCardIcon, permission: 'identity.review' },
       { to: '/staff/outbox', labelKey: 'nav.outbox', icon: WhatsAppIcon, permission: 'outbox.send' },
+    ],
+  },
+  {
+    // SRD 18 and 19: the market panel and the Marketer's tools.
+    titleKey: 'nav.groupMarketing',
+    items: [
+      { to: '/staff/market', labelKey: 'nav.marketPanel', icon: BarsIcon, permission: 'analytics.view' },
+      { to: '/staff/marketing/campaigns', labelKey: 'nav.campaigns', icon: MailIcon, permission: 'marketing.send_campaign' },
+      { to: '/staff/marketing/featured', labelKey: 'nav.featured', icon: HomeIcon, permission: 'marketing.manage' },
+      { to: '/staff/marketing/content', labelKey: 'nav.content', icon: DocumentIcon, permission: 'marketing.manage' },
     ],
   },
   {

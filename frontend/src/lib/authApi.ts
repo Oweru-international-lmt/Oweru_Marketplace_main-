@@ -124,13 +124,16 @@ export const authApi = {
 // - the complaints desk answers only for complaint.handle, which Verifiers
 //   and Management hold (roles catalog);
 // - the lister's identity answers 200, or 404 before they start, only for an
-//   active Owner or Agent; everyone else gets 403.
+//   active Owner or Agent; everyone else gets 403;
+// - the Marketer's featured listings answer only for an operational Marketer
+//   or Management (MAR-01); that list is not an audited read.
 // Any failure just hides those menus; the API still checks every request.
 export async function loadAccess(): Promise<Access> {
-  const [grants, desk, identity] = await Promise.allSettled([
+  const [grants, desk, identity, marketing] = await Promise.allSettled([
     request<{ code: string }[]>('/management/authorization/roles/management/permissions/', { auth: true }),
     request<unknown[]>('/management/complaints/', { auth: true }),
     request<unknown>('/lister-identity/me/', { auth: true }),
+    request<unknown[]>('/marketing/staff/featured/', { auth: true }),
   ])
   const handlesComplaints = desk.status === 'fulfilled'
   const lists =
@@ -143,6 +146,10 @@ export async function loadAccess(): Promise<Access> {
   } else if (handlesComplaints) {
     access.roles.push('verifier')
     access.permissions.push('complaint.handle', 'verification.record_result')
+  }
+  if (marketing.status === 'fulfilled') {
+    if (!access.roles.includes('management')) access.roles.push('marketer')
+    access.permissions.push('analytics.view', 'analytics.export', 'marketing.manage', 'marketing.send_campaign')
   }
   if (lists) {
     access.roles.push('lister')

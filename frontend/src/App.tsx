@@ -35,6 +35,11 @@ import { OverviewPage } from './pages/staff/ops/OverviewPage'
 import { ResultFormPage } from './pages/staff/ops/ResultFormPage'
 import { IdentityReviewPage } from './pages/staff/ops/IdentityReviewPage'
 import { OutboxPage } from './pages/staff/ops/OutboxPage'
+import { MarketPanelPage } from './pages/staff/market/MarketPanelPage'
+import { CampaignComposerPage } from './pages/staff/marketing/CampaignComposerPage'
+import { CampaignsPage } from './pages/staff/marketing/CampaignsPage'
+import { ContentPage } from './pages/staff/marketing/ContentPage'
+import { FeaturedPage } from './pages/staff/marketing/FeaturedPage'
 import { LocationCheckPage } from './pages/staff/ops/LocationCheckPage'
 import { LocationChecksPage } from './pages/staff/ops/LocationChecksPage'
 import { ConfirmLinkPage } from './pages/public/ConfirmLinkPage'
@@ -115,6 +120,12 @@ export default function App() {
               {/* NTF-02: WhatsApp messages Oweru staff send by hand. */}
               <Route path="/staff/checks" element={<RequirePermission permission="verification.record_result"><LocationChecksPage /></RequirePermission>} />
               <Route path="/staff/checks/:checkId" element={<RequirePermission permission="verification.record_result"><LocationCheckPage /></RequirePermission>} />
+              {/* SRD 18 and 19: the market panel and the Marketer's tools. */}
+              <Route path="/staff/market" element={<RequirePermission permission="analytics.view"><MarketPanelPage /></RequirePermission>} />
+              <Route path="/staff/marketing/campaigns" element={<RequirePermission permission="marketing.send_campaign"><CampaignsPage /></RequirePermission>} />
+              <Route path="/staff/marketing/campaigns/new" element={<RequirePermission permission="marketing.send_campaign"><CampaignComposerPage /></RequirePermission>} />
+              <Route path="/staff/marketing/featured" element={<RequirePermission permission="marketing.manage"><FeaturedPage /></RequirePermission>} />
+              <Route path="/staff/marketing/content" element={<RequirePermission permission="marketing.manage"><ContentPage /></RequirePermission>} />
               <Route path="/staff/outbox" element={<RequirePermission permission="outbox.send"><OutboxPage /></RequirePermission>} />
               {/* IDV-03: Management reviews lister identities. */}
               <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
