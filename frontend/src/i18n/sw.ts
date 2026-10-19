@@ -1025,7 +1025,7 @@ const sw = {
         visitors: 'Wageni',
         views: 'Kuangalia tangazo',
         map: '{{metric}} kwa mkoa',
-        note: 'Kila mkoa unaonyeshwa katikati ya makao yake makuu; hakuna mali moja moja inayoonyeshwa.',
+        note: 'Mipaka ya mikoa: geoBoundaries (CC BY 4.0); Songwe imo ndani ya Mbeya. Hakuna mali moja moja inayoonyeshwa.',
       },
       sources: {
         kicker: 'Vyanzo',

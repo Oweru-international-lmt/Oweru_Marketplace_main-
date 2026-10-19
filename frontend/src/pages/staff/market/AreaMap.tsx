@@ -1,92 +1,122 @@
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BANDS } from './data'
 
-// Regional centres (the region's administrative town). The panel reports by
-// region only, so each region is one shaded area marker; no property pins.
-const CENTRES: Record<string, [number, number]> = {
-  Arusha: [-3.387, 36.683],
-  'Dar es Salaam': [-6.792, 39.208],
-  Dodoma: [-6.163, 35.752],
-  Geita: [-2.872, 32.23],
-  Iringa: [-7.77, 35.69],
-  Kagera: [-1.332, 31.812],
-  Katavi: [-6.35, 31.067],
-  Kigoma: [-4.877, 29.627],
-  Kilimanjaro: [-3.335, 37.34],
-  Lindi: [-9.997, 39.714],
-  Manyara: [-4.212, 35.748],
-  Mara: [-1.5, 33.8],
-  Mbeya: [-8.909, 33.461],
-  Morogoro: [-6.828, 37.659],
-  Mtwara: [-10.267, 40.183],
-  Mwanza: [-2.516, 32.918],
-  Njombe: [-9.333, 34.767],
-  Pwani: [-6.767, 38.917],
-  Rukwa: [-7.967, 31.617],
-  Ruvuma: [-10.683, 35.65],
-  Shinyanga: [-3.662, 33.423],
-  Simiyu: [-2.8, 33.983],
-  Singida: [-4.817, 34.75],
-  Songwe: [-9.1, 32.933],
-  Tabora: [-5.017, 32.8],
-  Tanga: [-5.069, 39.099],
-  'Mjini Magharibi': [-6.166, 39.203],
-  'Kaskazini Unguja': [-5.9, 39.28],
-  'Kusini Unguja': [-6.3, 39.45],
-  'Kaskazini Pemba': [-4.95, 39.75],
-  'Kusini Pemba': [-5.3, 39.75],
+// Region outlines: geoBoundaries gbOpen TZA ADM1 (CC BY 4.0), simplified and
+// served from /geo. Songwe is inside Mbeya in that release.
+type Ring = [number, number][]
+type Feature = { properties: { name: string }; geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: Ring[] | Ring[][] } }
+type Shape = { name: string; path: string; centre: [number, number]; area: number }
+
+const ALIASES: Record<string, string> = { Songwe: 'Mbeya' }
+const WIDTH = 640
+const HEIGHT = 640
+
+let outlines: Promise<Feature[]> | null = null
+function loadOutlines() {
+  outlines ??= fetch('/geo/tz-regions.json')
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+    .then((data: { features: Feature[] }) => data.features)
+  outlines.catch(() => {
+    outlines = null
+  })
+  return outlines
 }
 
 export type AreaValue = { name: string; value: number }
 
-// M3: areas shaded in three bands with their names; the legend sits under the map.
+// M3: the regions drawn as flat shapes, shaded in three bands, with white
+// borders and their names; regions with nothing recorded stay pale.
 export function AreaMap({ areas, bandOf, label }: { areas: AreaValue[]; bandOf: (value: number) => 0 | 1 | 2; label: string }) {
-  const element = useRef<HTMLDivElement>(null)
-  const map = useRef<L.Map | null>(null)
-  const layer = useRef<L.LayerGroup | null>(null)
+  const [features, setFeatures] = useState<Feature[] | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!element.current) return
-    const instance = L.map(element.current, { center: [-6.3, 35.0], zoom: 5.4, zoomSnap: 0.2, zoomControl: false, attributionControl: true, scrollWheelZoom: false })
-    instance.attributionControl.setPosition('bottomright')
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 12,
-      attribution: '&copy; OpenStreetMap',
-      className: 'oweru-faded-tiles',
-    }).addTo(instance)
-    layer.current = L.layerGroup().addTo(instance)
-    map.current = instance
+    let live = true
+    loadOutlines().then(
+      (loaded) => live && setFeatures(loaded),
+      () => live && setFailed(true),
+    )
     return () => {
-      instance.remove()
-      map.current = null
-      layer.current = null
+      live = false
     }
   }, [])
 
-  useEffect(() => {
-    const group = layer.current
-    if (!group) return
-    group.clearLayers()
-    const max = Math.max(...areas.map((area) => area.value), 1)
-    for (const area of areas) {
-      const centre = CENTRES[area.name]
-      if (!centre) continue
-      const colour = BANDS[bandOf(area.value)]
-      L.circle(centre, { radius: 55_000 + (area.value / max) * 85_000, color: '#ffffff', weight: 2, fillColor: colour, fillOpacity: 0.92 }).addTo(group)
-      L.marker(centre, {
-        interactive: false,
-        keyboard: false,
-        icon: L.divIcon({
-          className: '',
-          iconSize: [120, 34],
-          iconAnchor: [60, 17],
-          html: `<div style="text-align:center;font:600 11px Poppins,system-ui;color:${bandOf(area.value) === 0 ? '#fff' : '#0f172a'};line-height:1.15;text-shadow:${bandOf(area.value) === 0 ? 'none' : '0 0 2px #fff'}">${area.name}<br><span style="font-weight:500">${area.value.toLocaleString()}</span></div>`,
-        }),
-      }).addTo(group)
-    }
-  }, [areas, bandOf])
+  const shapes = useMemo<Shape[]>(() => {
+    if (!features) return []
+    const polygons = features.map((feature) => ({
+      name: feature.properties.name,
+      rings: feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates as Ring[]] : (feature.geometry.coordinates as Ring[][]),
+    }))
+    const points = polygons.flatMap((polygon) => polygon.rings.flatMap((rings) => rings.flat()))
+    const lons = points.map(([lon]) => lon)
+    const lats = points.map(([, lat]) => lat)
+    const [minLon, maxLon, minLat, maxLat] = [Math.min(...lons), Math.max(...lons), Math.min(...lats), Math.max(...lats)]
+    const squeeze = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180)
+    const scale = Math.min((WIDTH - 20) / ((maxLon - minLon) * squeeze), (HEIGHT - 20) / (maxLat - minLat))
+    const offsetX = (WIDTH - (maxLon - minLon) * squeeze * scale) / 2
+    const offsetY = (HEIGHT - (maxLat - minLat) * scale) / 2
+    const project = ([lon, lat]: [number, number]): [number, number] => [offsetX + (lon - minLon) * squeeze * scale, offsetY + (maxLat - lat) * scale]
+    return polygons.map(({ name, rings }) => {
+      let largest = 0
+      let centre: [number, number] = [0, 0]
+      const path = rings
+        .map((polygon) =>
+          polygon
+            .map((ring, index) => {
+              const projected = ring.map(project)
+              if (index === 0) {
+                const xs = projected.map(([x]) => x)
+                const ys = projected.map(([, y]) => y)
+                const size = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys))
+                if (size > largest) {
+                  largest = size
+                  centre = [(Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2]
+                }
+              }
+              return `M${projected.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`
+            })
+            .join(''),
+        )
+        .join('')
+      return { name, path, centre, area: largest }
+    })
+  }, [features])
 
-  return <div ref={element} role="img" aria-label={label} className="isolate h-[420px] w-full rounded-xl bg-[#f6f7f9] [&_.oweru-faded-tiles]:opacity-40 [&_.oweru-faded-tiles]:grayscale" />
+  const values = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const area of areas) {
+      const name = ALIASES[area.name] ?? area.name
+      out[name] = (out[name] ?? 0) + area.value
+    }
+    return out
+  }, [areas])
+
+  if (failed) return <p className="py-16 text-center text-[13px] text-muted">{label}</p>
+  if (!features) return <div className="h-[420px] animate-pulse rounded-xl bg-paper" />
+
+  return (
+    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto h-auto w-full max-w-[560px]" role="img" aria-label={label}>
+      {shapes.map((shape) => {
+        const value = values[shape.name]
+        const band = value ? bandOf(value) : null
+        return (
+          <path key={shape.name} d={shape.path} fill={band === null ? '#e8ebf2' : BANDS[band]} stroke="#fff" strokeWidth="1.4" strokeLinejoin="round">
+            <title>{`${shape.name}: ${(value ?? 0).toLocaleString()}`}</title>
+          </path>
+        )
+      })}
+      {shapes
+        .filter((shape) => shape.area > 1600)
+        .map((shape) => {
+          const value = values[shape.name]
+          const dark = value !== undefined && bandOf(value) === 0
+          return (
+            <text key={`label-${shape.name}`} x={shape.centre[0]} y={shape.centre[1]} textAnchor="middle" className={`pointer-events-none text-[11px] italic ${dark ? 'fill-white' : 'fill-[#1e293b]'}`}>
+              {shape.name}
+              {value ? <tspan x={shape.centre[0]} dy="13" className="font-semibold not-italic">{value.toLocaleString()}</tspan> : null}
+            </text>
+          )
+        })}
+    </svg>
+  )
 }

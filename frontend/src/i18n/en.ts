@@ -1027,7 +1027,7 @@ const en: Messages = {
         visitors: 'Visitors',
         views: 'Listing views',
         map: '{{metric}} by region',
-        note: 'Each region is drawn at its regional centre; no single property is shown.',
+        note: 'Region outlines: geoBoundaries (CC BY 4.0); Songwe is inside Mbeya. No single property is shown.',
       },
       sources: {
         kicker: 'Sources',
