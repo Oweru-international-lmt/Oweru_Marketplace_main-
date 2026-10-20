@@ -255,7 +255,7 @@ What the backend provides and what the frontend uses, as of the date at the top.
 | 20 Notifications (NTF) | Done | WhatsApp outbox; notifications list | Message template editor (NTF-04) and mark-as-read: API only |
 | 21 Administration (ADM) | Done | Overview (complaints and full checks only) | Dashboard queues (ADM-01), settings (ADM-04), audit log, listing suspend and restore (ADM-02): API only |
 
-Suggested order for the remaining screens: deals and money (the sale cannot reach Won without them), then partner work (site capture, tasks, official and professional dashboards, which a full check needs to finish), then management administration.
+The remaining work, its order, flows and finish lines are in [roadmap.md](roadmap.md).
 
 ## 11. Known technical debt
 

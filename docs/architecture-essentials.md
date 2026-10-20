@@ -29,6 +29,7 @@ The ten things to know before changing anything in Oweru Marketplace. The full p
 | Find the rule for a feature | [srd.md](srd.md), search the requirement ID |
 | See which endpoints exist | `/api/v1/docs/` (Swagger) or `backend/config/api_urls.py` |
 | Know what is built and what is missing | [architecture.md, section 10](architecture.md#10-status-by-module) |
+| Know what to build next and how | [roadmap.md](roadmap.md) |
 | Call the API from a page | `frontend/src/lib/*Api.ts` via `request()` in `lib/api.ts` |
 | Add a page | Route in `frontend/src/App.tsx`, sidebar item in `layouts/navigation.ts`, strings in both i18n files |
 | Add a message | `backend/apps/notifications/catalog.py`, a notice row, a signal in `notifications/signals.py` |

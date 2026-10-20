@@ -9,6 +9,7 @@ Start here:
 - [docs/prd.md](docs/prd.md): the product requirements (PRD v1.8)
 - [docs/architecture-essentials.md](docs/architecture-essentials.md) and [docs/architecture.md](docs/architecture.md): how the system is built and what is done
 - [docs/design.md](docs/design.md): the visual system and screen patterns
+- [docs/roadmap.md](docs/roadmap.md): the remaining phases, in order, with flows and finish lines
 
 M10–M13 backend workflows and operational contracts are documented in
 [Leads, Deals, Commission, Payments and Payouts](docs/M10_M13_BACKEND.md).

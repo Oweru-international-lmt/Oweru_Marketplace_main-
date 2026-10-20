@@ -18,6 +18,7 @@ Oweru Marketplace is a Tanzanian web marketplace for land, houses and commercial
 | [docs/architecture-essentials.md](docs/architecture-essentials.md) | One page: the ten things to know |
 | [docs/architecture.md](docs/architecture.md) | How it is built, shared patterns, and what is done per module |
 | [docs/design.md](docs/design.md) | Visual system, screen patterns, the process for new screens |
+| [docs/roadmap.md](docs/roadmap.md) | The remaining phases in order: flows, screens, endpoints, finish lines, and the step each phase is on |
 
 ## Commands
 
@@ -85,7 +86,7 @@ These come from the SRD and PRD. Code review rejects changes that break them.
 1. The SRD requirement and its acceptance test are met, including permissions, audit and the honesty rules above.
 2. Backend: tests for the change pass. Compare failures against the same tests without your change (`git stash`) so you only report what you broke.
 3. Frontend: `npx tsc -b` and `npm run lint` are clean. The screen works at phone width and in both languages.
-4. Docs: update [docs/architecture.md section 10](docs/architecture.md#10-status-by-module) when a module's status changes.
+4. Docs: update [docs/architecture.md section 10](docs/architecture.md#10-status-by-module) when a module's status changes, and the phase status in [docs/roadmap.md](docs/roadmap.md).
 
 ## Git
 
