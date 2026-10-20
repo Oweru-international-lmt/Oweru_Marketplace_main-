@@ -211,7 +211,8 @@ class ExternalOwnerConsentView(generics.GenericAPIView):
         from apps.payments.confirmations import check_token
         row = get_object_or_404(ConfirmationDelivery, pk=delivery_id, purpose="FULL_CHECK_CONSENT")
         check_token(row, request.query_params.get("token"))
-        return Response({"purpose": row.purpose, "context": row.context})
+        from apps.payments.confirmations import link_details
+        return Response({"purpose": row.purpose, "context": row.context, "details": link_details(row)})
     def post(self, request, delivery_id):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

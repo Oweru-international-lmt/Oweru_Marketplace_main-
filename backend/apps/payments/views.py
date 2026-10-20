@@ -212,7 +212,7 @@ class DecisionView(APIView):
     def get(self, request, pk):
         row = get_object_or_404(ConfirmationDelivery, pk=pk)
         confirmations.check_token(row, request.query_params.get("token"))
-        return Response({"purpose": row.purpose, "context": row.context})
+        return Response({"purpose": row.purpose, "context": row.context, "details": confirmations.link_details(row)})
 
     def post(self, request, pk):
         values = validated(serializers.DecisionSerializer, request)

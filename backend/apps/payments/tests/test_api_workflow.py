@@ -36,7 +36,11 @@ def test_api_full_acceptance(workflow):
     assert manager_client.post(f'/api/v1/management/finance/outbox/{delivery.pk}/sent/', {}).status_code == 200
     from rest_framework.test import APIClient
     external = APIClient()
-    assert external.get(f'/api/v1/payments/confirmations/{delivery.pk}/', {"token": token}).status_code == 200
+    opened = external.get(f'/api/v1/payments/confirmations/{delivery.pk}/', {"token": token})
+    assert opened.status_code == 200
+    details = opened.data["details"]
+    assert details["agent_name"] == deal.listing.lister.full_name and details["property_id"] == deal.property.property_id
+    assert details["expires_at"] and deal.buyer.email not in str(opened.data) and deal.buyer.phone not in str(opened.data)
     assert external.post(f'/api/v1/payments/confirmations/{delivery.pk}/', {"token": token, "decision": "CONFIRM", "bank_reference": "OWNER-B"}, format="json", HTTP_IDEMPOTENCY_KEY="owner").status_code == 200
     assert manager_client.post(f'/api/v1/payments/deals/{deal.pk}/confirm/oweru/', {"bank_reference": "OWERU-B"}, HTTP_IDEMPOTENCY_KEY="oweru").status_code == 200
     assert agent_client.post(f'/api/v1/deals/{deal.pk}/agreement/upload/', {"file": document(b"signed")}, format="multipart", HTTP_IDEMPOTENCY_KEY="agreement").status_code == 200

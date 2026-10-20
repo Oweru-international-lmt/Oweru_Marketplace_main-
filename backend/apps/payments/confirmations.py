@@ -155,3 +155,30 @@ def decide(*, delivery_id, token, decision, key, bank=None, bank_reference="", r
         audit(None, "confirmation.decided", row, after={"purpose": row.purpose, "decision": decision}, request=request)
         return {"delivery_id": str(row.pk), "decision": decision}
     return execute(actor_scope=f"delivery:{delivery_id}", operation="confirmation.decision", resource=resource, key=key, payload={"decision": decision, "bank": bank, "bank_reference": bank_reference.strip()}, lock=lock, authorize=policy, mutation=mutate)
+
+
+def link_details(row):
+    """What the confirmation page shows besides the frozen context: the
+    property's type and area, the agent who asked, and the reply deadline.
+    Nothing about buyers, and no exact location."""
+    from apps.properties.models import PropertyRecord
+    details = {"expires_at": row.expires_at.isoformat()}
+    property_id = row.context.get("property_id")
+    listing = row.listing
+    if row.deal_id:
+        from apps.deals.models import Deal
+        deal = Deal.objects.select_related("listing__lister", "property").filter(pk=row.deal_id).first()
+        if deal:
+            listing = deal.listing
+            property_id = property_id or deal.property.property_id
+    if listing is not None:
+        property_id = property_id or listing.property.property_id
+        details["selling_price"] = str(listing.selling_price)
+        if row.purpose in {"OWNER_PRICE", "OWNER_RECEIPT"}:
+            details["agent_name"] = listing.lister.full_name
+    record = PropertyRecord.objects.select_related("ward", "district", "region").filter(property_id=property_id).first() if property_id else None
+    if record:
+        details["property_id"] = record.property_id
+        details["category"] = record.category
+        details["area"] = ", ".join(part.name for part in (record.ward, record.district, record.region) if part is not None)
+    return details
