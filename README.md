@@ -1,5 +1,15 @@
 # Oweru Marketplace Backend Foundation
 
+## Documentation
+
+Start here:
+
+- [AGENTS.md](AGENTS.md): rules, commands and conventions for everyone changing this repository
+- [docs/srd.md](docs/srd.md): the build specification (SRD v1.3)
+- [docs/prd.md](docs/prd.md): the product requirements (PRD v1.8)
+- [docs/architecture-essentials.md](docs/architecture-essentials.md) and [docs/architecture.md](docs/architecture.md): how the system is built and what is done
+- [docs/design.md](docs/design.md): the visual system and screen patterns
+
 M10–M13 backend workflows and operational contracts are documented in
 [Leads, Deals, Commission, Payments and Payouts](docs/M10_M13_BACKEND.md).
 The current default test configuration is PostgreSQL/PostGIS; run it in a
