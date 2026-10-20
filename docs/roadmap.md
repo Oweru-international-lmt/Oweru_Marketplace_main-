@@ -6,7 +6,7 @@ Last updated: 21 October 2026.
 
 | Phase | Area | Status |
 |---|---|---|
-| 1 | Deals and money | **In progress: step 2 (references board)** |
+| 1 | Deals and money | **In progress: step 3 (waiting for the pick)** |
 | 2 | Partner work: site capture and verification tasks | Not started |
 | 3 | Partner management: local officials and professionals | Not started |
 | 4 | Rest of the full check | Not started |
@@ -84,6 +84,10 @@ Done 21 October 2026.
 - Financial notices and confirmation deliveries already flow into the central WhatsApp outbox (`apps/notifications/signals.py`), so no separate finance outbox screen is needed.
 - **Backend fix to make in step 4:** message links still point to `/api/v1/...` instead of frontend pages, the same fault fixed for complaints in `9d1215c`. Affected: new lead (`/lister/enquiries`), deal notices (the Phase 1 deal pages), payout paid (`/lister/payouts`), identity decision (`/lister/identity`), free check report (`/free-check/{id}?token=...`, page already exists). Verification task links follow in Phase 2.
 - Listers with only canonical roles cannot call the protected money actions until Management runs `enable_marketplace_lister_actions` (M10_M13_BACKEND.md). The UI must explain this state rather than fail silently.
+
+### Step 2: references board
+
+Published 21 October 2026 as "Oweru Deals Inspiration": 24 references (D1 to D24) from Dribbble and Pinterest in four groups: buyer payment (D1 to D5), the deal page (D6 to D11), agent money (D12 to D17), management desks (D18 to D24). Recommended picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
 
 ### Done when
 
