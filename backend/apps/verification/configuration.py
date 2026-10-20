@@ -26,7 +26,9 @@ DEFAULTS = {
     "full_check_reliance_days": 30, "full_check_refresh_months": 6,
     "full_check_fee": None,
     "full_check_scope": "Owner consent, site capture, local office, applicable professional and Land Registry checks, verifier review and report.",
+    "full_check_scope_sw": "Ridhaa ya mmiliki, picha na vipimo vya eneo, ofisi ya serikali ya mtaa, ukaguzi wa wataalamu husika na Msajili wa Ardhi, mapitio ya mkaguzi na ripoti.",
 }
+SCOPE_KEYS = {"full_check_scope", "full_check_scope_sw"}
 
 ENV_DEFAULTS = {
     "identity_expiry_months": "LISTER_IDENTITY_VALIDITY_MONTHS",
@@ -53,7 +55,7 @@ def change_setting(*, actor, key, value, request=None, expected_version=None):
         raise ValidationError("Unknown verification setting.")
     if key == "full_check_fee" and actor.management_position != "DIRECTOR":
         raise PermissionDenied("The Full Check fee requires Director approval.")
-    if key == "full_check_scope":
+    if key in SCOPE_KEYS:
         if not isinstance(value, str) or not value.strip() or len(value) > 4000:
             raise ValidationError("A nonempty scope is required.")
     else:

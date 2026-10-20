@@ -12,7 +12,7 @@ import { errorMessage } from '../../lib/errors'
 import { EVIDENCE_TYPES, firstFileProblem } from '../../lib/files'
 import { formatDate, formatNumber, formatTsh } from '../../lib/format'
 import { openSigned } from '../../lib/openSigned'
-import { servicesApi, type FullCheck, type FullCheckStatus, type PaymentInstructions, type PaymentProofs } from '../../lib/servicesApi'
+import { scopeText, servicesApi, type FullCheck, type FullCheckStatus, type PaymentInstructions, type PaymentProofs } from '../../lib/servicesApi'
 import { PhotoBox } from './services/fields'
 import { CopyButton } from './services/ServiceUi'
 import { TrackingCard, Timeline, type Stage } from './services/tracking'
@@ -115,7 +115,7 @@ function JobView({ job }: { job: FullCheck }) {
         <aside className="mt-5 space-y-5 lg:mt-0">
           <section className="rounded-2xl bg-white p-6 shadow-card lg:rounded-md">
             <h2 className="text-[13px] font-medium tracking-[0.14em] text-navy/80 uppercase">{t('fullCheck.scope')}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-navy/80">{job.scope_snapshot.scope}</p>
+            <p className="mt-3 text-sm leading-relaxed text-navy/80">{scopeText(job.scope_snapshot, i18n.language)}</p>
           </section>
           <Link
             to="/full-checks"

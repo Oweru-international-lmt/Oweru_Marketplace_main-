@@ -34,7 +34,8 @@ def quote():
     fee = setting("full_check_fee")
     if fee is None:
         raise ValidationError("Management must configure the Director-approved Full Check fee before ordering.")
-    payload = {"fee": str(Decimal(str(fee))), "scope": setting("full_check_scope")}
+    # Both languages are signed and frozen, so the owner reads the same scope in Swahili or English.
+    payload = {"fee": str(Decimal(str(fee))), "scope": setting("full_check_scope"), "scope_sw": setting("full_check_scope_sw")}
     return {**payload, "currency": "TZS", "quote": signing.dumps(payload, salt="oweru.full-check-quote")}
 
 
@@ -44,7 +45,7 @@ def check_quote(token):
     except signing.BadSignature as exc:
         raise ValidationError("A valid current fee/scope quote is required before ordering.") from exc
     current = quote()
-    if value != {"fee": current["fee"], "scope": current["scope"]}:
+    if value != {"fee": current["fee"], "scope": current["scope"], "scope_sw": current["scope_sw"]}:
         raise Conflict("Full Check fee or scope changed; review the new quote.")
     return value
 
@@ -121,7 +122,7 @@ def order_full_check(*, actor, quote_token, key, listing_id=None, outside=None, 
             raise ValidationError("Owner and Agent WhatsApp numbers must differ.")
         if VerificationJob.objects.filter(buyer=buyer, property=property_record, status__in=["AWAITING_PAYMENT", "AWAITING_CONSENT", "IN_PROGRESS", "UNDER_REVIEW"]).exists():
             raise Conflict("This Buyer already has an unfinished Full Check for the property.")
-        job = VerificationJob.objects.create(property=property_record, listing=listing, buyer=buyer, kind="FULL" if listing else "OUTSIDE_FULL", fee=Decimal(offered["fee"]), scope_snapshot={"scope": offered["scope"]}, subject_snapshot=subject_snapshot(property_record), owner_user=owner, owner_name=name, owner_phone=phone)
+        job = VerificationJob.objects.create(property=property_record, listing=listing, buyer=buyer, kind="FULL" if listing else "OUTSIDE_FULL", fee=Decimal(offered["fee"]), scope_snapshot={"scope": offered["scope"], "scope_sw": offered["scope_sw"]}, subject_snapshot=subject_snapshot(property_record), owner_user=owner, owner_name=name, owner_phone=phone)
         JobHistory.objects.create(job=job, actor=buyer, status=job.status)
         VerificationNotice.objects.get_or_create(job=job, recipient=buyer, purpose="FULL_CHECK_ORDERED", defaults={"channels": ["screen", "email"]})
         audit(buyer, "full_check.ordered", job, {"property_id": property_record.property_id, "fee": str(job.fee)}, request)

@@ -120,6 +120,17 @@ def test_complaint_and_free_check_intents_reach_correct_channels():
     assert not Notification.objects.filter(purpose="FREE_CHECK_REPORT", channel="outbox").exists()
 
 
+@override_settings(MARKETPLACE_PUBLIC_URL="https://market.example.test")
+def test_complaint_messages_name_the_status_and_link_the_status_page():
+    from apps.complaints.services import token_for
+    row = lodge(values=inputs(), source="WHATSAPP", actor=account("management"))
+    message = Notification.objects.get(purpose="COMPLAINT_NUMBER", channel="outbox").message
+    assert "Hali: Yamepokelewa." in message and "RECEIVED" not in message
+    assert f"https://market.example.test/complaints/{row.pk}?token={token_for(row)}" in message and "/api/v1/" not in message
+    row.language, row.status, row.outcome, row.reasons = "en", "UNDER_FINAL_REVIEW", "Refund approved.", "Payment was duplicated"
+    assert services.complaint_details(row) == "Status: Under final review. Outcome: Refund approved. Reasons: Payment was duplicated."
+
+
 def test_smtp_adapter_with_django_test_backend():
     from django.core import mail
     user = account("buyer")

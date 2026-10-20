@@ -8,7 +8,7 @@ from apps.complaints.models import ComplaintNotice
 from apps.free_checks.models import FreeCheckReport
 from apps.audit.models import AuditLog
 from .models import Notification
-from .services import emit, public_link
+from .services import complaint_details, complaint_link, emit, public_link
 from .catalog import DEFAULTS
 
 
@@ -49,8 +49,7 @@ def complaint_notice(sender, instance, created, **kwargs):
         return
     row = instance.complaint
     from apps.complaints.services import token_for
-    link = public_link(f"/api/v1/complaints/{row.pk}/status/?token={token_for(row)}")
-    emit(event_key=f"complaint:{instance.pk}", purpose=instance.purpose, channels=instance.channels, phone=row.phone, email=row.email, name=row.name, language=row.language, actor=row.created_by, context={"reference": row.reference, "details": f"{row.status}. {row.outcome} {row.reasons}".strip(), "link": link}, source=instance)
+    emit(event_key=f"complaint:{instance.pk}", purpose=instance.purpose, channels=instance.channels, phone=row.phone, email=row.email, name=row.name, language=row.language, actor=row.created_by, context={"reference": row.reference, "details": complaint_details(row), "link": complaint_link(row, token_for(row))}, source=instance)
 
 
 @receiver(post_save, sender=FreeCheckReport)

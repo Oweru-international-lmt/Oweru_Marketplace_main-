@@ -1,6 +1,6 @@
 from datetime import timedelta
 from string import Formatter
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction
@@ -119,6 +119,32 @@ def readable_context(context, language):
     index = 1 if language == "sw" else 0
     parts = [f"{labels[index]}: {context[key]}" for key, labels in CONTEXT_LABELS.items() if context.get(key) not in (None, "")]
     return ". ".join(parts) + ("." if parts else "")
+
+
+# Complaint notices name the status in the complainant's language, matching the
+# wording on the public complaint page, and label the decision text.
+COMPLAINT_STATUS_LABELS = {
+    "RECEIVED": ("Received", "Yamepokelewa"),
+    "IN_REVIEW": ("In review", "Yanashughulikiwa"),
+    "WAITING_INFORMATION": ("Waiting for your information", "Tunasubiri taarifa kutoka kwako"),
+    "RESOLVED": ("Resolved", "Yametatuliwa"),
+    "UNDER_FINAL_REVIEW": ("Under final review", "Mapitio ya mwisho"),
+    "CLOSED": ("Closed", "Yamefungwa"),
+}
+COMPLAINT_TEXT_LABELS = {"status": ("Status", "Hali"), "outcome": ("Outcome", "Matokeo"), "reasons": ("Reasons", "Sababu")}
+
+
+def complaint_details(complaint):
+    index = 1 if complaint.language == "sw" else 0
+    status = COMPLAINT_STATUS_LABELS.get(complaint.status, (complaint.status, complaint.status))[index]
+    values = {"status": status, "outcome": complaint.outcome.strip(), "reasons": complaint.reasons.strip()}
+    parts = [f"{COMPLAINT_TEXT_LABELS[key][index]}: {value.rstrip('.')}" for key, value in values.items() if value]
+    return ". ".join(parts) + "."
+
+
+def complaint_link(complaint, token):
+    # The public status page (frontend route /complaints/:id) reads the token from the query.
+    return public_link(f"/complaints/{complaint.pk}?{urlencode({'token': token})}")
 
 
 def outbox_payload(row, request):

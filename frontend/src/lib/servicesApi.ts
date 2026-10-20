@@ -76,7 +76,14 @@ export type ComplaintInput = {
 export const FULL_CHECK_STATUSES = ['AWAITING_PAYMENT', 'AWAITING_CONSENT', 'IN_PROGRESS', 'UNDER_REVIEW', 'PASSED', 'PROBLEM_FOUND', 'NOT_COMPLETED'] as const
 export type FullCheckStatus = (typeof FULL_CHECK_STATUSES)[number]
 
-export type FullCheckQuote = { fee: string; scope: string; currency: string; quote: string }
+export type FullCheckQuote = { fee: string; scope: string; scope_sw?: string; currency: string; quote: string }
+
+// The scope is frozen in English and Swahili; older checks froze English only.
+export type ScopeSnapshot = { scope?: string; scope_sw?: string }
+
+export function scopeText(scope: ScopeSnapshot | undefined, language: string) {
+  return (language.startsWith('sw') && scope?.scope_sw) || scope?.scope || ''
+}
 
 export type FullCheck = {
   id: string
@@ -84,7 +91,7 @@ export type FullCheck = {
   property_id: string
   status: FullCheckStatus
   fee: string
-  scope_snapshot: { scope?: string }
+  scope_snapshot: ScopeSnapshot
   payment_reference: string
   consent_due_at: string | null
   completed_at: string | null

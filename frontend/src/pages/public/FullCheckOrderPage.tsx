@@ -14,7 +14,7 @@ import { errorMessage } from '../../lib/errors'
 import { formatTsh } from '../../lib/format'
 import { placeName, sortedPhotos } from '../../lib/listingText'
 import { marketApi, type PublicListing } from '../../lib/marketApi'
-import { servicesApi, type FullCheckQuote } from '../../lib/servicesApi'
+import { scopeText, servicesApi, type FullCheckQuote } from '../../lib/servicesApi'
 import { Panel, ServiceColumns, ServiceHeader, ServicePage } from './services/ServiceUi'
 
 type Loaded = { id: string; listing?: PublicListing; quote?: FullCheckQuote | null; failed?: 'missing' | 'network' }
@@ -150,7 +150,7 @@ function OrderView({ listing, initialQuote }: { listing: PublicListing; initialQ
                   {t('fullCheck.scope')}
                 </p>
                 {/* The scope exactly as approved and frozen by the order. */}
-                <p className="mt-2 text-sm leading-relaxed text-navy/80">{quote.scope}</p>
+                <p className="mt-2 text-sm leading-relaxed text-navy/80">{scopeText(quote, i18n.language)}</p>
               </div>
 
               {refusal && (

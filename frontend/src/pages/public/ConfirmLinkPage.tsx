@@ -9,6 +9,7 @@ import { whatsappLink } from '../../lib/config'
 import { confirmApi, type Bank, type Confirmation, type Decision } from '../../lib/confirmApi'
 import { errorMessage } from '../../lib/errors'
 import { formatShortDate, formatTsh } from '../../lib/format'
+import { scopeText, type ScopeSnapshot } from '../../lib/servicesApi'
 
 type State =
   | { kind: 'loading' }
@@ -520,8 +521,7 @@ function Consent({ confirmation, onAnswer }: { confirmation: Confirmation; onAns
   const { t, i18n } = useTranslation()
   const [busy, setBusy] = useState<Decision | null>(null)
   const [open, setOpen] = useState(false)
-  const scopeValue = (confirmation.context.scope as { scope?: unknown } | undefined)?.scope
-  const scope = text(scopeValue)
+  const scope = scopeText(confirmation.context.scope as ScopeSnapshot | undefined, i18n.language)
   const deadline = confirmation.details?.expires_at
 
   async function send(decision: Decision) {
@@ -556,7 +556,7 @@ function Consent({ confirmation, onAnswer }: { confirmation: Confirmation; onAns
           {open && (
             <ol className="space-y-1.5 pb-4 text-[14px] text-navy-soft">
               {scope.split(/,\s*|\.\s*/).filter(Boolean).map((item, index) => (
-                <li key={item} className="flex gap-2"><span className="text-[#9a6c12] tabular-nums">{index + 1}.</span>{item}</li>
+                <li key={item} className="flex gap-2"><span className="text-[#9a6c12] tabular-nums">{index + 1}.</span>{item.charAt(0).toUpperCase() + item.slice(1)}</li>
               ))}
             </ol>
           )}

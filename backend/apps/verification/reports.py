@@ -25,7 +25,7 @@ def build_pdf(*, job, result, language, refresh_assessment=""):
     paragraph(f"{'Tarehe' if sw else 'Date'}: {timezone.localtime(job.completed_at or timezone.now()).date()}")
     paragraph(f"{'Mali' if sw else 'Property'}: {job.property.property_id} | {job.property.locality.name}")
     paragraph(f"{'Matokeo' if sw else 'Result'}: { {'PASSED': 'Imepita', 'PROBLEM_FOUND': 'Tatizo limepatikana', 'NOT_COMPLETED': 'Haijakamilika'}.get(result.result, result.result) if sw else result.get_result_display() }")
-    paragraph(f"{'Wigo' if sw else 'Scope'}: {job.scope_snapshot['scope']}")
+    paragraph(f"{'Wigo' if sw else 'Scope'}: {job.scope_snapshot.get('scope_sw') if sw and job.scope_snapshot.get('scope_sw') else job.scope_snapshot['scope']}")
     paragraph(f"{'Tathmini ya hatari' if sw else 'Risk assessment'}: {refresh_assessment or result.risk_assessment}")
     paragraph(f"{'Uhalali hadi' if sw else 'Valid until'}: {timezone.localtime(job.expires_at).date() if job.expires_at else ('Haitumiki' if sw else 'Not applicable')}")
     paragraph(f"{'Mhakiki' if sw else 'Verifier reference'}: {result.verifier_id}")

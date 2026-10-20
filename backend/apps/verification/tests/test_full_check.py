@@ -168,6 +168,18 @@ def test_fee_quote_changes_require_buyer_review(workflow):
         services.order_full_check(actor=workflow[2], listing_id=workflow[5].listing_id, quote_token=old, key="old-quote")
 
 
+def test_scope_is_frozen_in_both_languages(workflow):
+    old = services.quote()["quote"]
+    change_setting(actor=workflow[0], key="full_check_scope_sw", value="Ridhaa ya mmiliki, ukaguzi wa eneo.")
+    with pytest.raises(Conflict):
+        services.order_full_check(actor=workflow[2], listing_id=workflow[5].listing_id, quote_token=old, key="old-sw-quote")
+    offered = services.quote()
+    assert offered["scope_sw"] == "Ridhaa ya mmiliki, ukaguzi wa eneo."
+    assert order(workflow).scope_snapshot == {"scope": offered["scope"], "scope_sw": offered["scope_sw"]}
+    with pytest.raises(ValidationError):
+        change_setting(actor=workflow[0], key="full_check_scope_sw", value="  ")
+
+
 @pytest.mark.parametrize("phase", ["unpaid", "paid_without_consent", "consent_declined"])
 def test_verification_cannot_start_before_paid_consent(workflow, phase):
     manager, verifier, _, owner, _, _, _ = workflow
