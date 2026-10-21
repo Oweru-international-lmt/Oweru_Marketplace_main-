@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { can } from '../auth/access'
-import { BarsIcon, ChatIcon, DashboardIcon, DocumentIcon, MailIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
+import { BankIcon, BanknoteIcon, BarsIcon, ChatIcon, DashboardIcon, DocumentIcon, MailIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
 import type { User } from '../lib/authApi'
 
 export type NavItem = {
@@ -28,6 +28,8 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/staff/checks', labelKey: 'nav.locationChecks', icon: MapPinIcon, permission: 'verification.record_result' },
       { to: '/staff/full-checks', labelKey: 'nav.fullChecks', icon: ShieldIcon, permission: 'complaint.handle' },
       { to: '/staff/identities', labelKey: 'nav.identities', icon: IdCardIcon, permission: 'identity.review' },
+      { to: '/staff/deals', labelKey: 'nav.dealsDesk', icon: BanknoteIcon, permission: 'payment.confirm' },
+      { to: '/staff/payouts', labelKey: 'nav.payoutsDesk', icon: BankIcon, permission: 'payout.record' },
       { to: '/staff/outbox', labelKey: 'nav.outbox', icon: WhatsAppIcon, permission: 'outbox.send' },
     ],
   },
@@ -61,6 +63,8 @@ const NAV_GROUPS: NavGroup[] = [
       },
       { to: '/lister/listings/new', labelKey: 'nav.addListing', icon: PlusCircleIcon, permission: 'lister.area' },
       { to: '/lister/enquiries', labelKey: 'nav.enquiries', icon: InboxIcon, permission: 'lister.area' },
+      { to: '/lister/deals', labelKey: 'nav.deals', icon: BanknoteIcon, permission: 'lister.area' },
+      { to: '/lister/payouts', labelKey: 'nav.payouts', icon: BankIcon, permission: 'lister.area' },
       { to: '/lister/identity', labelKey: 'nav.identity', icon: IdCardIcon, permission: 'lister.area' },
       { to: '/lister/checks', labelKey: 'nav.locationRequest', icon: MapPinIcon, permission: 'lister.area' },
     ],
@@ -69,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     titleKey: 'nav.groupAccount',
     items: [
       { to: '/account', labelKey: 'nav.account', icon: UserIcon },
+      { to: '/purchases', labelKey: 'nav.purchases', icon: HomeIcon, hiddenWith: ['complaint.handle', 'authorization.view'] },
       { to: '/listings', labelKey: 'site.browse', icon: SearchIcon },
       { to: '/sell', labelKey: 'nav.sell', icon: HomeIcon, hiddenWith: ['lister.area', 'complaint.handle', 'authorization.view'] },
     ],

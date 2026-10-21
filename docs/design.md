@@ -71,7 +71,7 @@ Shared (`src/components/`):
 | `icons.tsx` | Line icons drawn for this project. Add new icons here in the same 24 px, stroke style. Never use emoji as icons |
 | `Stagger` | Entrance stagger for lists |
 
-Area kits: `pages/staff/ops/ui.tsx` (status chips, `RadioTabs`, `SearchBox`, `RowTable`), `pages/lister/ui.tsx` (status pills, `CountCard`, `Panel`, `Notice`, `RowMenu`), `pages/staff/marketing/ui.tsx`, `pages/public/services/ServiceUi.tsx` (free check, complaints, full check pages).
+Area kits: `pages/deals/ui.tsx` (`CountUp`, `CopyValue`, `ThreeStepBar`, `TickTimeline`, `NumberedProgress`, `SidePanel`, payment and payout chips), `pages/staff/ops/ui.tsx` (status chips, `RadioTabs`, `SearchBox`, `RowTable`), `pages/lister/ui.tsx` (status pills, `CountCard`, `Panel`, `Notice`, `RowMenu`), `pages/staff/marketing/ui.tsx`, `pages/public/services/ServiceUi.tsx` (free check, complaints, full check pages).
 
 ## 4. Layouts and page patterns
 
@@ -154,4 +154,4 @@ Every new screen goes through the same steps:
 4. **Build to match the picks.** Match the layout, structure and hierarchy of the picked references closely, recoloured to navy and gold and using the components above. Note the reference codes in a comment at the top of the screen (for example `// K8: read, then Accept or Decline`).
 5. **Check it on a phone width and in both languages**, then against sections 5, 8 and 9 of this document.
 
-Reference families already used: Horizon Realty (public pages and headline style), Zoopla (search structure), the W series (staff desks), the L series (lister area), the K series (confirmation links).
+Reference families already used: Horizon Realty (public pages and headline style), Zoopla (search structure), the W series (staff desks), the L series (lister area), the K series (confirmation links), the D series (deals and money).

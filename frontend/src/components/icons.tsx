@@ -436,3 +436,41 @@ export function SelfieIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
+    </Icon>
+  )
+}
+
+export function UploadIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 15.5V4.5" />
+      <path d="m7.5 9 4.5-4.5L16.5 9" />
+      <path d="M4.5 15v3A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5v-3" />
+    </Icon>
+  )
+}
+
+export function SendIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20.5 3.5 10 14" />
+      <path d="m20.5 3.5-6.5 17-4-6.5-6.5-4Z" />
+    </Icon>
+  )
+}
+
+export function BankIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m3.5 9 8.5-5 8.5 5" />
+      <path d="M5 9.5v8M9.5 9.5v8M14.5 9.5v8M19 9.5v8" />
+      <path d="M3.5 20h17" />
+    </Icon>
+  )
+}

@@ -2,7 +2,7 @@
 
 How the Phase 1 web system is built, how the parts talk to each other, and how far each SRD module has got. For the short version, read [architecture-essentials.md](architecture-essentials.md). For what to build, read [srd.md](srd.md).
 
-Last checked against the code: 21 October 2026, `main` at `9d1215c`.
+Last checked against the code: 21 October 2026, after Phase 1 (deals and money).
 
 ## 1. System at a glance
 
@@ -170,6 +170,7 @@ Signed-in users: 1,200 requests per hour. Sign-in 10 per minute, registration 5 
 - 401 means sign in again (the client refreshes once and retries), 403 a missing permission, 404 also hides objects the user may not know exist, 409 an idempotency or version conflict, 429 a throttle with a wait time in the message.
 - There is no global pagination setting. Views whose lists can grow set their own and return `{count, next, previous, results}`; others return a plain array. Check the endpoint before assuming either shape.
 - Owner details, bank details, exact pins and private verification data never appear in public serializers.
+- Deal reads are shaped by role (`apps/deals/serializers.py`): the buyer gets their slips and no commission split, the lister gets the split and payout but not the buyer's slips, management gets everything including the frozen receiving banks.
 
 ## 7. Background jobs (Celery beat)
 
@@ -200,7 +201,7 @@ Signed-in users: 1,200 requests per hour. Sign-in 10 per minute, registration 5 
 ### 8.2 Data access
 
 - `src/lib/api.ts` `request<T>(path, {method, body, auth, headers})` is the only fetch wrapper. It adds the JWT, refreshes once on 401 with a shared promise (refresh tokens rotate), and throws `ApiError`.
-- Each area has a client module: `authApi`, `listerApi`, `marketApi`, `servicesApi` (free check, complaints, full checks), `staffApi`, `panelApi`, `managementApi`, `confirmApi`. Pages call these, never `fetch` directly.
+- Each area has a client module: `authApi`, `listerApi`, `marketApi`, `servicesApi` (free check, complaints, full checks), `staffApi`, `panelApi`, `managementApi`, `confirmApi`, `dealsApi` (deals, payments, payouts, bank account, rate table). Pages call these, never `fetch` directly.
 - `idempotencyKey()` makes one key per user action. Pass it as `Idempotency-Key` on orders, uploads and money actions.
 - No global data library. Pages load with `useEffect` plus local state; keep `setState` calls in handlers and async callbacks, not synchronously in the effect body (lint rule).
 
@@ -240,8 +241,8 @@ What the backend provides and what the frontend uses, as of the date at the top.
 | 5.2 Lister identity (IDV) | Done | Identity submission with live selfie; management review | Done, except the public lister profile (IDV-06): API only |
 | 6 Listings (LST) | Done except bulk import | Listing editor with owner price and photos, my listings, lister home | LST-09 payout preview missing; LST-11 bulk import not built in the backend; duplicates queue (LST-12) and locality approval (LST-03) API only |
 | 7 Search (SRC) | Done | Home, search with filters, property page, featured area | Done |
-| 8 Leads and deals (LEAD) | Done | Lister enquiries pipeline and metrics | Lead notes and customer list (LEAD-06) API only; deal screens missing (LEAD-03 to 05) |
-| 9 Payments (PAY) | Done | Owner price and money received confirmation links | Deal page, payment instructions and slips, management confirmation, tax receipts, payouts and holds, bank account and rate tables: API only |
+| 8 Leads and deals (LEAD) | Done | Lister enquiries pipeline and metrics; deal pages for lister, buyer and management | Lead notes and customer list (LEAD-06) API only |
+| 9 Payments (PAY) | Done | Buyer purchase page with slips, lister deal page, agent payouts, bank account, payout preview on the listing form, management deals desk, deal review and payouts desk, owner confirmation links | Rate table editor and Oweru's receiving bank account (PAY-01, management): API only |
 | 10 Levels (LVL) | Done | Verification badge and panel on public pages | Done |
 | 11 Verification jobs (VER) | Done | Location check: lister request with title documents, staff desk with map and checklist | Field verification review and task endpoints: API only |
 | 12 Full check (FUL) | Done | Buyer order, payment and report; staff payment, verifier and result; owner consent link | In-app owner consent, owner contact, start, refresh, professional assignment: API only |
@@ -252,7 +253,7 @@ What the backend provides and what the frontend uses, as of the date at the top.
 | 17 Complaints (CMP) | Done | Lodge, status page with reply and final review; staff desk and detail | Done |
 | 18 Market panel (MON) | Done | Market panel with filters, charts, regions map, Excel export | Done |
 | 19 Marketing (MAR) | Done | Campaigns, composer, featured, content pages | Marketing emails link to an API consent address; check it opens a usable page |
-| 20 Notifications (NTF) | Done | WhatsApp outbox; notifications list | Message template editor (NTF-04) and mark-as-read: API only |
+| 20 Notifications (NTF) | Done | WhatsApp outbox; notifications list | Message template editor (NTF-04) and mark-as-read: API only. Message links open frontend pages; verification task links still point at the API until Phase 2 |
 | 21 Administration (ADM) | Done | Overview (complaints and full checks only) | Dashboard queues (ADM-01), settings (ADM-04), audit log, listing suspend and restore (ADM-02): API only |
 
 The remaining work, its order, flows and finish lines are in [roadmap.md](roadmap.md).

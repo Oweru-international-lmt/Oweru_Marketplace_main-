@@ -6,8 +6,8 @@ Last updated: 21 October 2026.
 
 | Phase | Area | Status |
 |---|---|---|
-| 1 | Deals and money | **In progress: step 3 (waiting for the pick)** |
-| 2 | Partner work: site capture and verification tasks | Not started |
+| 1 | Deals and money | Done (21 October 2026), except the rate table editor and Oweru's bank account form, moved to Phase 5 |
+| 2 | Partner work: site capture and verification tasks | **Next: step 1 (contract check)** |
 | 3 | Partner management: local officials and professionals | Not started |
 | 4 | Rest of the full check | Not started |
 | 5 | Management administration | Not started |
@@ -88,6 +88,18 @@ Done 21 October 2026.
 ### Step 2: references board
 
 Published 21 October 2026 as "Oweru Deals Inspiration": 24 references (D1 to D24) from Dribbble and Pinterest in four groups: buyer payment (D1 to D5), the deal page (D6 to D11), agent money (D12 to D17), management desks (D18 to D24). Recommended picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
+
+### Steps 3 to 6: what was built
+
+Picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
+
+- **Buyer:** `/purchases` and `/purchases/:dealId`. D3's steps over a receipt card, each transfer as a D1 bank card with copy buttons, and D2's slip upload, pending review and upload-another states.
+- **Lister:** `/lister/deals` and `/lister/deals/:dealId` (D8 receipt column, D6 numbered progress on wide screens, D7 tick timeline on phones, actions to share the payment page, get the owner's receipt confirmed, and upload and confirm the agreement); `/lister/payouts` (D12 on wide screens, D13 on phones); `/lister/bank` (D14 with a live card preview); the D16 payout preview inside the listing form.
+- **Management:** `/staff/deals` (D18), `/staff/deals/:dealId` (D20 with the D19 transfer panel: confirm Oweru's money, approve the agreement, record the tax receipt, complete the sale), `/staff/payouts` (D21 with hold, release and record payment in a side panel).
+- **Backend:** deal reads now carry the property summary, step times, documents, tax receipt and payout, shaped by role; the payout list names the agent and their bank only for management; message links for new leads, deals, payouts, identity decisions, free check reports and the lister's payment-page share now open frontend pages.
+- **Motion:** amounts count up, D3's lines draw in and its ticks pop in turn, the D6 current step pulses, timelines stagger in, copy buttons turn into ticks, transfer cards rise on scroll, the D19 panel slides in, the payouts card shimmers, filter pills slide, and the bank card fills in as the lister types. Everything respects reduced motion.
+- **Verified** in the preview with four seeded deals: a buyer uploaded a slip, then management confirmed Oweru's money, approved the agreement, recorded the tax receipt, completed the sale and paid the agent, all through the screens.
+- **Not built (no pick):** the rate table editor and Oweru's receiving bank account form. Both are management settings and move to Phase 5.
 
 ### Done when
 
@@ -186,6 +198,8 @@ Published 21 October 2026 as "Oweru Deals Inspiration": 24 references (D1 to D24
 | Street and village approval | `POST localities/{id}/approve/` |
 | Message templates in both languages | `management/notifications/message-templates/` |
 | Location check revoke | `POST management/verifications/documents/{id}/revoke/` |
+| Commission rate tables: draft bands, publish (moved from Phase 1) | `GET`/`POST commissions/rate-tables/`, `PUT .../{id}/`, `POST .../{id}/publish/` |
+| Oweru's receiving bank account (moved from Phase 1) | `PUT management/finance/oweru-bank/` |
 
 ---
 

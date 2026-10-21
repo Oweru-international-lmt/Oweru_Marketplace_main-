@@ -16,6 +16,14 @@ import { LoginPage } from './pages/LoginPage'
 import { ManagementRolesPage } from './pages/ManagementRolesPage'
 import { ManagementStaffPage } from './pages/ManagementStaffPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { BankPage } from './pages/deals/BankPage'
+import { DealPage } from './pages/deals/DealPage'
+import { DealReviewPage } from './pages/deals/DealReviewPage'
+import { DealsDeskPage } from './pages/deals/DealsDeskPage'
+import { DealsListPage } from './pages/deals/DealsListPage'
+import { PayoutsDeskPage } from './pages/deals/PayoutsDeskPage'
+import { PayoutsPage } from './pages/deals/PayoutsPage'
+import { PurchasePage } from './pages/deals/PurchasePage'
 import { ComplaintPage } from './pages/public/ComplaintPage'
 import { ComplaintStatusPage } from './pages/public/ComplaintStatusPage'
 import { FreeCheckResultPage } from './pages/public/FreeCheckResultPage'
@@ -110,6 +118,16 @@ export default function App() {
               <Route path="/lister/enquiries" element={<Lister><EnquiriesPage /></Lister>} />
               <Route path="/lister/identity" element={<Lister><IdentityPage /></Lister>} />
               <Route path="/lister/checks" element={<Lister><ListerLocationCheckPage /></Lister>} />
+              {/* Phase 1 money (LEAD-03 to 05, PAY-01 to 12). */}
+              <Route path="/lister/deals" element={<Lister><DealsListPage mode="lister" /></Lister>} />
+              <Route path="/lister/deals/:dealId" element={<Lister><DealPage /></Lister>} />
+              <Route path="/lister/payouts" element={<Lister><PayoutsPage /></Lister>} />
+              <Route path="/lister/bank" element={<Lister><BankPage /></Lister>} />
+              <Route path="/purchases" element={<DealsListPage mode="buyer" />} />
+              <Route path="/purchases/:dealId" element={<PurchasePage />} />
+              <Route path="/staff/deals" element={<RequirePermission permission="payment.confirm"><DealsDeskPage /></RequirePermission>} />
+              <Route path="/staff/deals/:dealId" element={<RequirePermission permission="payment.confirm"><DealReviewPage /></RequirePermission>} />
+              <Route path="/staff/payouts" element={<RequirePermission permission="payout.record"><PayoutsDeskPage /></RequirePermission>} />
               {/* Staff work (CMP-02 to CMP-08, PAY-13, FUL-07): Verifiers and Management. */}
               <Route path="/staff" element={<RequirePermission permission="complaint.handle"><OverviewPage /></RequirePermission>} />
               <Route path="/staff/complaints" element={<RequirePermission permission="complaint.handle"><ComplaintsDeskPage /></RequirePermission>} />

@@ -25,6 +25,7 @@ import {
 } from '../../lib/listerApi'
 import { CATEGORIES, marketApi, TITLE_TYPES, type Category, type Place, type TitleType } from '../../lib/marketApi'
 import { ChoiceTiles, FormSection, Input, Select, TextArea } from './fields'
+import { PayoutPreview } from '../deals/PayoutPreview'
 import { ListingPreview } from './ListingPreview'
 import { MediaPanel } from './MediaPanel'
 import { FEATURES, withUrls, type Feature, type Photo } from './rows'
@@ -515,6 +516,7 @@ export function ListingEditorPage() {
                             hint={t('lister.editor.ownerPriceHint')}
                           />
                         )}
+                        <PayoutPreview kind={basics.kind} price={basics.price} ownerPrice={basics.owner_price} />
                         <TextArea
                           label={t('lister.editor.description')}
                           placeholder={t('lister.editor.descriptionPlaceholder')}
