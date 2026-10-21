@@ -1,4 +1,5 @@
 """Bridge existing durable domain intents; do not replace confirmation tokens."""
+from urllib.parse import urlencode
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -28,7 +29,8 @@ def verification_notice(sender, instance, created, **kwargs):
 @receiver(post_save, sender=FinancialNotice)
 def financial_notice(sender, instance, created, **kwargs):
     if created and instance.purpose in DEFAULTS:
-        path = f"/api/v1/deals/{instance.deal_id}/" if instance.deal_id else f"/api/v1/leads/{instance.lead_id}/"
+        # Frontend pages: the buyer's purchase page, or the lister's enquiries.
+        path = f"/purchases/{instance.deal_id}" if instance.deal_id else "/lister/enquiries"
         emit(event_key=f"finance:{instance.pk}", purpose=instance.purpose, channels=["screen", "email"], recipient=instance.recipient, context={"reference": str(instance.deal_id or instance.lead_id), "link": public_link(path)}, source=instance)
 
 
@@ -58,7 +60,7 @@ def free_report(sender, instance, created, **kwargs):
         return
     row = instance.free_check
     from apps.free_checks.services import token_for
-    link = public_link(f"/api/v1/free-checks/{row.pk}/?token={token_for(row)}")
+    link = public_link(f"/free-check/{row.pk}?{urlencode({'token': token_for(row)})}")
     emit(event_key=f"free-report:{instance.pk}", purpose="FREE_CHECK_REPORT", channels=["screen", "self_service"] + (["email"] if row.email else []), phone=row.phone, email=row.email, language=row.language, context={"reference": row.reference, "link": link}, source=instance, expires_at=row.expires_at)
 
 
@@ -74,10 +76,10 @@ def identity_events(sender, instance, created, **kwargs):
         from apps.payments.confirmations import queue_identity_phone_confirmation
         queue_identity_phone_confirmation(row.user)
     else:
-        emit(event_key=f"identity:{instance.pk}", purpose="IDENTITY_DECISION", channels=["screen", "email"], recipient=row.user, actor=instance.actor, context={"reference": str(row.pk), "details": row.status, "link": public_link("/api/v1/lister-identity/")}, source=instance)
+        emit(event_key=f"identity:{instance.pk}", purpose="IDENTITY_DECISION", channels=["screen", "email"], recipient=row.user, actor=instance.actor, context={"reference": str(row.pk), "details": row.status, "link": public_link("/lister/identity")}, source=instance)
 
 
 @receiver(post_save, sender=Payout)
 def payout(sender, instance, created, **kwargs):
     if instance.status == "PAID":
-        emit(event_key=f"payout-paid:{instance.pk}", purpose="PAYOUT_PAID", channels=["screen", "email"], recipient=instance.agent, actor=instance.paid_by, context={"reference": str(instance.pk), "link": public_link(f"/api/v1/payouts/{instance.pk}/")}, source=instance)
+        emit(event_key=f"payout-paid:{instance.pk}", purpose="PAYOUT_PAID", channels=["screen", "email"], recipient=instance.agent, actor=instance.paid_by, context={"reference": str(instance.pk), "link": public_link("/lister/payouts")}, source=instance)

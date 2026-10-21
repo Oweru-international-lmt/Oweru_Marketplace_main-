@@ -10,7 +10,7 @@ from apps.accounts.models import User
 from apps.leads.policies import authorize, management
 from apps.leads.services import audit
 from apps.deals.models import Deal
-from apps.deals.serializers import DealSerializer, BuyerDealSerializer
+from apps.deals.serializers import DealSerializer, BuyerDealSerializer, ManagementDealSerializer
 from apps.deals.services import reprice, require_deal, lock_deal
 from apps.listings.serializers import EmptyActionSerializer
 from apps.media.models import Media
@@ -46,17 +46,24 @@ def deal_access(actor, queryset):
     return queryset.filter(condition)
 
 
+def deal_serializer(user, deal, staff):
+    if deal.buyer_id == user.pk:
+        return BuyerDealSerializer
+    return ManagementDealSerializer if staff else DealSerializer
+
+
 class DealListView(APIView):
     def get(self, request):
-        deals = deal_access(request.user, Deal.objects.select_related("listing").all())
-        return Response([(BuyerDealSerializer if d.buyer_id == request.user.pk else DealSerializer)(d).data for d in deals])
+        deals = deal_access(request.user, Deal.objects.select_related("listing", "lister", "property__ward", "property__district", "property__region").order_by("-created_at"))
+        staff = management(request.user)
+        return Response([deal_serializer(request.user, d, staff)(d).data for d in deals])
 
 
 class DealDetailView(APIView):
     def get(self, request, pk):
         deal = get_object_or_404(deal_access(request.user, Deal.objects.select_related("listing")), pk=pk)
         audit(request.user, "sensitive_data.accessed", deal, after={"purpose": "deal_financial_detail"}, request=request)
-        return Response((BuyerDealSerializer if deal.buyer_id == request.user.pk else DealSerializer)(deal).data)
+        return Response(deal_serializer(request.user, deal, management(request.user))(deal).data)
 
 
 class InstructionsView(APIView):
@@ -223,13 +230,22 @@ class DecisionView(APIView):
 class PayoutListView(APIView):
     def get(self, request):
         actor = User.objects.get(pk=request.user.pk, is_active=True)
-        if management(actor):
+        staff = management(actor)
+        if staff:
             authorize(actor, "payout.record")
             payouts = Payout.objects.all()
         else:
             authorize(actor, "deal.view")
             payouts = Payout.objects.filter(agent=actor)
-        return Response([{"id": str(p.pk), "deal_id": str(p.deal_id), "amount": str(p.amount), "status": p.status, "due_at": p.due_at, "paid_at": p.paid_at, "hold_reason": p.hold_reason} for p in payouts])
+        payouts = payouts.select_related("agent", "deal__listing", "deal__property").order_by("-created_at")
+        def row(p):
+            data = {"id": str(p.pk), "deal_id": str(p.deal_id), "amount": str(p.amount), "status": p.status, "due_at": p.due_at, "paid_at": p.paid_at, "hold_reason": p.hold_reason, "bank_reference": p.bank_reference, "listing_id": p.deal.listing.listing_id, "property_id": p.deal.property.property_id, "final_selling_price": str(p.deal.final_selling_price), "buyer_name": p.deal.buyer_name, "created_at": p.created_at}
+            if staff:
+                # The agent's account is read through the audited management bank view.
+                bank = BankAccount.objects.filter(user_id=p.agent_id).values_list("pk", flat=True).first()
+                data.update(agent_name=p.agent.full_name, agent_bank_id=str(bank) if bank else None)
+            return data
+        return Response([row(p) for p in payouts])
 
 
 class PayoutHistoryView(APIView):

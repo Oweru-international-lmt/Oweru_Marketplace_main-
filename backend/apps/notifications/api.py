@@ -57,7 +57,8 @@ class PaymentSelfServiceView(APIView):
         from apps.deals.services import require_deal
         row = get_object_or_404(Deal, pk=deal_id)
         actor = require_deal(request.user, row, "deal.view", lister=True)
-        link = services.public_link(f"/api/v1/deals/{row.pk}/payment-instructions/")
+        # The buyer's purchase page, where the two transfers are shown (PAY-06).
+        link = services.public_link(f"/purchases/{row.pk}")
         text, _ = services.render("PAYMENT_INSTRUCTIONS", row.buyer.preferred_language, {"reference": str(row.pk), "link": link})
         create_audit_log(actor=actor, action="notification.self_service_created", entity_type="Deal", entity_id=row.pk, request=request)
         return Response({"whatsapp_link": f"https://wa.me/{row.buyer.phone.lstrip('+')}?text={quote(text)}"})

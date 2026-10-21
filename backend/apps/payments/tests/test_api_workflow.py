@@ -50,6 +50,25 @@ def test_api_full_acceptance(workflow):
     payout = Payout.objects.get(deal=deal)
     services.mark_due_payouts(at=payout.due_at)
     assert manager_client.post(f'/api/v1/payouts/deals/{deal.pk}/paid/', {"bank_reference": "PAID-B", "file": document(b"paid")}, format="multipart", HTTP_IDEMPOTENCY_KEY="paid").status_code == 200
+    # Payout rows name the agent and their bank only for management.
+    staff_row = manager_client.get('/api/v1/payouts/').data[0]
+    agent_row = agent_client.get('/api/v1/payouts/').data[0]
+    assert staff_row["agent_name"] == agent.full_name and "agent_bank_id" in staff_row and staff_row["status"] == "PAID"
+    assert "agent_name" not in agent_row and "agent_bank_id" not in agent_row and agent_row["listing_id"] == listing.listing_id
+
+
+def test_deal_reads_are_shaped_by_role(closed):
+    buyer, agent, manager, deal = closed
+    buyer_client, agent_client, manager_client = map(client_for, [buyer, agent, manager])
+    assert buyer_client.post(f'/api/v1/payments/deals/{deal.pk}/proofs/', {"transfer": "OWNER", "file": document(b"slip")}, format="multipart", HTTP_IDEMPOTENCY_KEY="slip").status_code == 200
+    seen = {name: client.get(f'/api/v1/deals/{deal.pk}/').data for name, client in [("buyer", buyer_client), ("agent", agent_client), ("manager", manager_client)]}
+    for data in seen.values():
+        assert data["property"]["property_id"] == deal.property.property_id and data["property"]["area"]
+        assert data["steps"]["owner_paid_at"] and data["steps"]["oweru_paid_at"] is None
+    assert len(seen["buyer"]["proofs"]) == 1 and not {"oweru_keeps", "agent_payout", "payout", "banks"} & set(seen["buyer"])
+    assert "proofs" not in seen["agent"] and "banks" not in seen["agent"] and seen["agent"]["payout"] is None
+    assert seen["manager"]["banks"]["oweru"]["account_number"] == bank_values()["account_number"] and len(seen["manager"]["proofs"]) == 1
+    assert [row["id"] for row in buyer_client.get('/api/v1/deals/').data] == [str(deal.pk)]
 
 
 def test_unpaid_closing_can_be_lost(closed):
