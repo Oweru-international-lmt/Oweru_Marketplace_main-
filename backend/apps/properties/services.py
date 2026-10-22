@@ -1,5 +1,4 @@
 import logging
-import secrets
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
@@ -21,7 +20,6 @@ from .policies import can_create_property_record, can_update_property_record, ca
 
 logger = logging.getLogger(__name__)
 PROPERTY_ID_PREFIX = "OWR"
-PROPERTY_ID_TOKEN_BYTES = 8
 PROPERTY_ID_MAX_ATTEMPTS = 8
 
 PROPERTY_RECORD_MUTABLE_FIELDS = frozenset({
@@ -42,15 +40,39 @@ PROPERTY_RECORD_AUDITED_FIELDS = PROPERTY_RECORD_MUTABLE_FIELDS
 PROPERTY_DUPLICATE_RELEVANT_FIELDS = frozenset({"pin", "stated_size"})
 
 
-def _property_id_token():
-    return secrets.token_hex(PROPERTY_ID_TOKEN_BYTES).upper()
+# D4: the first two digits of each region's TCRA postcode (Government Notice
+# 240 of 2016, tcra.go.tz "Publication of Postcode List"). Zanzibar is not in
+# that list, so it and any unknown region use 00.
+REGION_POSTCODES = {
+    "arusha": "23", "dar es salaam": "11", "dodoma": "41", "geita": "30", "iringa": "51",
+    "kagera": "35", "katavi": "50", "kigoma": "47", "kilimanjaro": "25", "lindi": "65",
+    "manyara": "27", "mara": "31", "mbeya": "53", "morogoro": "67", "mtwara": "63",
+    "mwanza": "33", "njombe": "59", "pwani": "61", "rukwa": "55", "ruvuma": "57",
+    "shinyanga": "37", "simiyu": "39", "singida": "43", "songwe": "54", "tabora": "45",
+    "tanga": "21",
+}
+UNKNOWN_REGION_POSTCODE = "00"
 
 
-def generate_property_id():
+def region_postcode(region):
+    name = (getattr(region, "name", region) or "").strip().lower()
+    return REGION_POSTCODES.get(name, UNKNOWN_REGION_POSTCODE)
+
+
+def _next_number(prefix):
+    numbers = [int(value[len(prefix):]) for value in PropertyRecord.objects.filter(property_id__startswith=prefix).values_list("property_id", flat=True) if value[len(prefix):].isdigit()]
+    return max(numbers, default=0) + 1
+
+
+def generate_property_id(region=None):
+    """OWR-<region postcode>-<running number>, e.g. OWR-11-04217 (D4). Existing IDs are kept."""
+    prefix = f"{PROPERTY_ID_PREFIX}-{region_postcode(region)}-"
+    number = _next_number(prefix)
     for _ in range(PROPERTY_ID_MAX_ATTEMPTS):
-        candidate = f"{PROPERTY_ID_PREFIX}-{_property_id_token()}"
+        candidate = f"{prefix}{number:05d}"
         if not PropertyRecord.objects.filter(property_id=candidate).exists():
             return candidate
+        number += 1
     raise ValidationError({"property_id": "Could not generate a unique property identifier."})
 
 
@@ -236,7 +258,7 @@ def create_property_record(*, actor, request=None, **attrs):
     )
 
     for _ in range(PROPERTY_ID_MAX_ATTEMPTS):
-        property_record = PropertyRecord(property_id=generate_property_id(), created_by=actor, **values)
+        property_record = PropertyRecord(property_id=generate_property_id(values.get("region")), created_by=actor, **values)
         _validate_property_record(property_record)
         try:
             with transaction.atomic():

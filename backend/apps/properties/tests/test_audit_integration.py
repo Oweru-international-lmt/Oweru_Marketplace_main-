@@ -192,12 +192,12 @@ def test_property_id_collision_retry_creates_exactly_one_audit_event(monkeypatch
 
     owner = user_with_role(ROLE_OWNER)
     existing = create_property_record(actor=owner, **attrs("CollisionExisting"))
-    tokens = iter([existing.property_id.removeprefix("OWR-"), "ABCDEF1234567890"])
-    monkeypatch.setattr(services, "_property_id_token", lambda: next(tokens))
+    monkeypatch.setattr(services, "_next_number", lambda prefix: 1)
 
     record = create_property_record(actor=owner, **attrs("CollisionRetry"))
 
-    assert record.property_id == "OWR-ABCDEF1234567890"
+    assert existing.property_id.endswith("-00001")
+    assert record.property_id == existing.property_id.replace("-00001", "-00002")
     assert AuditLog.objects.filter(action=PROPERTY_CREATED, entity_id=str(record.pk)).count() == 1
 
 

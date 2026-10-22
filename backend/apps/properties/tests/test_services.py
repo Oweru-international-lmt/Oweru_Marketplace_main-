@@ -98,14 +98,14 @@ def create_record(actor=None, **overrides):
     return create_property_record(actor=actor or lister(), **valid_attrs(**overrides))
 
 
-def test_property_id_format_length_and_no_business_data(monkeypatch):
+def test_property_id_format_length_and_no_business_data():
+    import re
     actor = lister(email="format@example.test")
     attrs = valid_attrs(prefix="Format", category=PropertyRecord.Category.COMMERCIAL)
-    monkeypatch.setattr(services, "_property_id_token", lambda: "ABCDEF1234567890")
 
     record = create_property_record(actor=actor, **attrs)
 
-    assert record.property_id == "OWR-ABCDEF1234567890"
+    assert re.fullmatch(r"OWR-\d{2}-\d{5,}", record.property_id)
     assert len(record.property_id) <= 50
     assert actor.email not in record.property_id
     assert actor.phone not in record.property_id
@@ -113,27 +113,21 @@ def test_property_id_format_length_and_no_business_data(monkeypatch):
     assert attrs["category"] not in record.property_id
 
 
-def test_generate_property_id_retries_on_existing_candidate(monkeypatch):
+def test_property_id_uses_region_postcode_and_running_number():
     actor = lister(email="retry@example.test")
-    existing = create_property_record(actor=actor, **valid_attrs(prefix="RetryExisting"))
-
-    tokens = iter([existing.property_id.removeprefix("OWR-"), "NEW0000000000001"])
-    monkeypatch.setattr(services, "_property_id_token", lambda: next(tokens))
-
-    generated = generate_property_id()
-
-    assert generated == "OWR-NEW0000000000001"
+    first = create_property_record(actor=actor, **valid_attrs(prefix="RetryExisting"))
+    code = services.region_postcode(first.region)
+    assert first.property_id == f"OWR-{code}-00001"
+    second = create_property_record(actor=actor, **valid_attrs(prefix="RetryNext"))
+    assert second.property_id == f"OWR-{code}-00002"
+    assert services.region_postcode("Dar es Salaam") == "11" and services.region_postcode("Unknown") == "00"
 
 
-def test_exhausted_property_id_generation_raises(monkeypatch):
+def test_property_id_skips_a_taken_number_and_keeps_legacy_ids():
     actor = lister(email="exhaust@example.test")
-    token = "COLLISION000000"
-    create_property_record(actor=actor, **valid_attrs(prefix="Exhaust"))
-    PropertyRecord.objects.filter(created_by=actor).update(property_id=f"OWR-{token}")
-    monkeypatch.setattr(services, "_property_id_token", lambda: token)
-
-    with pytest.raises(ValidationError):
-        generate_property_id()
+    record = create_property_record(actor=actor, **valid_attrs(prefix="Exhaust"))
+    PropertyRecord.objects.filter(pk=record.pk).update(property_id="OWR-0A1B2C3D4E5F6789")
+    assert generate_property_id(record.region) == f"OWR-{services.region_postcode(record.region)}-00001"
 
 
 @pytest.mark.parametrize("role_code", [ROLE_OWNER, ROLE_AGENT])
