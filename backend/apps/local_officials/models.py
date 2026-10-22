@@ -36,6 +36,15 @@ def generate_assignment_id():
 
 
 class LocalOfficialProfile(TimeStampedModel):
+    class Position(models.TextChoices):
+        MWENYEKITI = "MWENYEKITI", "Mwenyekiti"
+        MTENDAJI = "MTENDAJI", "Mtendaji"
+
+    class Status(models.TextChoices):
+        AWAITING_APPROVAL = "AWAITING_APPROVAL", "Awaiting approval"
+        ACTIVE = "ACTIVE", "Active"
+        DEACTIVATED = "DEACTIVATED", "Deactivated"
+
     official_id = models.CharField(max_length=20, unique=True, editable=False, db_index=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -44,6 +53,16 @@ class LocalOfficialProfile(TimeStampedModel):
     )
     official_number = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
+    # LOC-01: the details the official gives through the registration link.
+    position = models.CharField(max_length=16, choices=Position.choices, blank=True)
+    national_id_number = models.CharField(max_length=100, blank=True)
+    locality = models.ForeignKey(Locality, on_delete=models.PROTECT, null=True, blank=True, related_name="registered_officials")
+    photo = models.ForeignKey("media.Media", on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    stamp_photo = models.ForeignKey("media.Media", on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="local_officials_confirmed")
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    deactivated_reason = models.CharField(max_length=1000, blank=True)
 
     class Meta:
         ordering = ["official_id"]
@@ -172,6 +191,34 @@ class OfficialJurisdictionAssignment(TimeStampedModel):
 
     def __str__(self):
         return self.assignment_id
+
+
+class LocalOfficialInvite(TimeStampedModel):
+    """SRD 14.2: a one-time registration link sent to the office WhatsApp number."""
+
+    locality = models.ForeignKey(Locality, on_delete=models.PROTECT, related_name="official_invites")
+    phone = models.CharField(max_length=30)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="official_invites_sent")
+    replaces = models.ForeignKey(LocalOfficialProfile, on_delete=models.PROTECT, null=True, blank=True, related_name="replacement_invites")
+    profile = models.OneToOneField(LocalOfficialProfile, on_delete=models.PROTECT, null=True, blank=True, related_name="invite")
+    used_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def status(self):
+        from django.utils import timezone
+        if self.used_at:
+            return "REGISTERED"
+        if self.cancelled_at:
+            return "CANCELLED"
+        if self.expires_at <= timezone.now():
+            return "EXPIRED"
+        return "INVITED"
 
 
 class OfficialLocalityCoverage(TimeStampedModel):

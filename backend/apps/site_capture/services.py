@@ -465,7 +465,6 @@ def submit_site_capture(*, site_capture, actor, request=None):
         flags.append("BOUNDARY_INTERSECTION_REVIEW")
     for asset in locked.assets.all():
         flags.extend(flag for flag in asset.flags if flag not in flags)
-    flags.append("SATELLITE_CHECK_UNAVAILABLE")
     locked.review_flags = flags
 
     previous_status = locked.status
@@ -500,6 +499,23 @@ def record_corner(*, actor, site_capture, point, accuracy_m, observed_at, device
     corner = CaptureCorner.objects.create(capture=locked, sequence=locked.corners.count() + 1, point=point, accuracy_m=accuracy, observed_at=observed_at, device=device.strip())
     create_audit_log(actor=actor, action="site_capture.corner_recorded", entity_type="SiteCapture", entity_id=locked.pk, before={}, after={"sequence": corner.sequence}, request=request)
     return corner
+
+
+@transaction.atomic
+def remove_last_corner(*, actor, site_capture, request=None):
+    """Undo on the capture screen: drafts only, the newest corner only."""
+    actor = _active_persisted_actor(actor)
+    locked = _resolve_locked_capture(site_capture)
+    _ensure_can_edit_capture(actor, locked)
+    if locked.status != "DRAFT":
+        raise ValidationError("Submitted capture is locked.")
+    corner = locked.corners.order_by("-sequence").first()
+    if corner is None:
+        raise ValidationError("There is no corner to remove.")
+    sequence = corner.sequence
+    corner.delete()
+    create_audit_log(actor=actor, action="site_capture.corner_removed", entity_type="SiteCapture", entity_id=locked.pk, before={"sequence": sequence}, after={}, request=request)
+    return sequence
 
 
 def require_full_check_capture(capture, property_record):

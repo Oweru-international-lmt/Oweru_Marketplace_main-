@@ -20,10 +20,17 @@ import { BankPage } from './pages/deals/BankPage'
 import { DealPage } from './pages/deals/DealPage'
 import { DealReviewPage } from './pages/deals/DealReviewPage'
 import { DealsDeskPage } from './pages/deals/DealsDeskPage'
+import { RegisterOfficialPage } from './pages/official/RegisterOfficialPage'
+import { OwnerRequestsPage } from './pages/account/OwnerRequestsPage'
+import { CoveragePage } from './pages/staff/partners/CoveragePage'
+import { PartnersPage } from './pages/staff/partners/PartnersPage'
 import { DealsListPage } from './pages/deals/DealsListPage'
 import { PayoutsDeskPage } from './pages/deals/PayoutsDeskPage'
 import { PayoutsPage } from './pages/deals/PayoutsPage'
 import { PurchasePage } from './pages/deals/PurchasePage'
+import { CapturePage } from './pages/field/CapturePage'
+import { TaskPage } from './pages/field/TaskPage'
+import { TasksPage } from './pages/field/TasksPage'
 import { ComplaintPage } from './pages/public/ComplaintPage'
 import { ComplaintStatusPage } from './pages/public/ComplaintStatusPage'
 import { FreeCheckResultPage } from './pages/public/FreeCheckResultPage'
@@ -110,6 +117,8 @@ export default function App() {
             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
               <Route path="/account" element={<AccountPage />} />
               <Route path="/sell" element={<BecomeListerPage />} />
+              {/* FUL-02: full checks waiting on this Owner's consent or this Agent's owner contact. */}
+              <Route path="/full-checks/requests" element={<OwnerRequestsPage />} />
               {/* SRD 15 to 18: the lister's listings, enquiries and identity. */}
               <Route path="/lister" element={<Lister><ListerHomePage /></Lister>} />
               <Route path="/lister/listings" element={<Lister><MyListingsPage /></Lister>} />
@@ -118,6 +127,9 @@ export default function App() {
               <Route path="/lister/enquiries" element={<Lister><EnquiriesPage /></Lister>} />
               <Route path="/lister/identity" element={<Lister><IdentityPage /></Lister>} />
               <Route path="/lister/checks" element={<Lister><ListerLocationCheckPage /></Lister>} />
+              {/* Phase 2: verification tasks for officials, professionals and listers. */}
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/tasks/:taskId" element={<TaskPage />} />
               {/* Phase 1 money (LEAD-03 to 05, PAY-01 to 12). */}
               <Route path="/lister/deals" element={<Lister><DealsListPage mode="lister" /></Lister>} />
               <Route path="/lister/deals/:dealId" element={<Lister><DealPage /></Lister>} />
@@ -145,6 +157,9 @@ export default function App() {
               <Route path="/staff/marketing/featured" element={<RequirePermission permission="marketing.manage"><FeaturedPage /></RequirePermission>} />
               <Route path="/staff/marketing/content" element={<RequirePermission permission="marketing.manage"><ContentPage /></RequirePermission>} />
               <Route path="/staff/outbox" element={<RequirePermission permission="outbox.send"><OutboxPage /></RequirePermission>} />
+              {/* Phase 3: officials, professionals and coverage (LOC-01, LOC-06, LOC-07, PRO-01). */}
+              <Route path="/staff/partners" element={<RequirePermission permission="partner.manage"><PartnersPage /></RequirePermission>} />
+              <Route path="/staff/coverage" element={<RequirePermission permission="partner.manage"><CoveragePage /></RequirePermission>} />
               {/* IDV-03: Management reviews lister identities. */}
               <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
               <Route path="/staff/identities/:identityId" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
@@ -157,6 +172,10 @@ export default function App() {
                 element={<RequirePermission permission="authorization.view"><ManagementStaffPage /></RequirePermission>}
               />
             </Route>
+            {/* MAP-01: full-screen boundary capture on the phone. */}
+            <Route path="/capture/:propertyId" element={<RequireAuth><CapturePage /></RequireAuth>} />
+            {/* SRD 14.2: the one-time registration link sent to an official's WhatsApp. */}
+            <Route path="/official/register/:token" element={<RegisterOfficialPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AuthProvider>

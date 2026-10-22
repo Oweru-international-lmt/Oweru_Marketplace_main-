@@ -129,11 +129,13 @@ export const authApi = {
 //   or Management (MAR-01); that list is not an audited read.
 // Any failure just hides those menus; the API still checks every request.
 export async function loadAccess(): Promise<Access> {
-  const [grants, desk, identity, marketing] = await Promise.allSettled([
+  const [grants, desk, identity, marketing, official, professional] = await Promise.allSettled([
     request<{ code: string }[]>('/management/authorization/roles/management/permissions/', { auth: true }),
     request<unknown[]>('/management/complaints/', { auth: true }),
     request<unknown>('/lister-identity/me/', { auth: true }),
     request<unknown[]>('/marketing/staff/featured/', { auth: true }),
+    request<unknown>('/local-official/me/', { auth: true }),
+    request<unknown>('/professionals/me/', { auth: true }),
   ])
   const handlesComplaints = desk.status === 'fulfilled'
   const lists =
@@ -157,5 +159,9 @@ export async function loadAccess(): Promise<Access> {
     // but only Owners and Agents get the seller menus.
     access.permissions.push('lister.area', 'listing.create', 'lead.view')
   }
+  // Partners (LOC-03, PRO-03) and listers doing site capture share one task list.
+  if (official.status === 'fulfilled') access.roles.push('local_official')
+  if (professional.status === 'fulfilled') access.roles.push('professional')
+  if (official.status === 'fulfilled' || professional.status === 'fulfilled' || lists) access.permissions.push('tasks.area')
   return { roles: access.roles, permissions: [...new Set(access.permissions)] }
 }

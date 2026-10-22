@@ -1,6 +1,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { placeLabelsLayer, satelliteLayer, streetLayer } from '../../../lib/maps'
 import type { LatLng, PossibleDuplicate } from '../../../lib/staffApi'
 
 export type MapView = 'satellite' | 'map'
@@ -89,18 +90,10 @@ export const CheckMap = forwardRef<CheckMapHandle, Props>(function CheckMap({ pi
     if (current.base) instance.removeLayer(current.base)
     current.overlays.clearLayers()
     if (view === 'satellite') {
-      current.base = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
-      }).addTo(instance)
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-      }).addTo(current.overlays)
+      current.base = satelliteLayer().addTo(instance)
+      placeLabelsLayer().addTo(current.overlays)
     } else {
-      current.base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(instance)
+      current.base = streetLayer().addTo(instance)
     }
     current.base.bringToBack()
   }, [view])

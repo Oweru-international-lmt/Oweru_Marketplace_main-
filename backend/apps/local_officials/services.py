@@ -158,6 +158,10 @@ def update_local_official_profile(*, actor, profile, request=None, **attrs):
     changed_fields = {field for field, value in values.items() if getattr(locked, field) != value}
     if not changed_fields:
         return locked
+    if "is_active" in changed_fields:
+        if locked.status == LocalOfficialProfile.Status.AWAITING_APPROVAL:
+            raise ValidationError({"is_active": "Approve the registration instead."})
+        values["status"] = LocalOfficialProfile.Status.ACTIVE if values["is_active"] else LocalOfficialProfile.Status.DEACTIVATED
     for field, value in values.items():
         setattr(locked, field, value)
     _validate_model(locked)

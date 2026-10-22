@@ -175,3 +175,9 @@ class SiteCaptureCornerView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         corner = record_corner(actor=request.user, site_capture=get_object_or_404(SiteCapture, capture_id=capture_id), request=request, **serializer.validated_data)
         return Response({"id": str(corner.pk), "sequence": corner.sequence, "accuracy_m": str(corner.accuracy_m)}, status=201)
+
+    def delete(self, request, capture_id):
+        from django.shortcuts import get_object_or_404
+        from .services import remove_last_corner
+        sequence = remove_last_corner(actor=request.user, site_capture=get_object_or_404(SiteCapture, capture_id=capture_id), request=request)
+        return Response({"removed_sequence": sequence})

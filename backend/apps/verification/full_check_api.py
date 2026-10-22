@@ -37,7 +37,7 @@ class FullCheckSerializer(serializers.ModelSerializer):
     property_id = serializers.CharField(source="property.property_id", read_only=True)
     class Meta:
         model = VerificationJob
-        fields = ["id", "kind", "property_id", "status", "fee", "scope_snapshot", "payment_reference", "consent_due_at", "completed_at", "expires_at", "invalidated_at", "created_at"]
+        fields = ["id", "kind", "property_id", "status", "fee", "scope_snapshot", "payment_reference", "consent_due_at", "completed_at", "expires_at", "refresh_limit_at", "invalidated_at", "created_at"]
         read_only_fields = fields
 
 
@@ -58,8 +58,8 @@ class ReceiptSerializer(StrictInputSerializer):
     amount = serializers.DecimalField(max_digits=18, decimal_places=0, min_value=1)
     reference = serializers.UUIDField()
     bank_reference = serializers.CharField(max_length=255)
-    tax_receipt_number = serializers.CharField(max_length=255)
-    tax_receipt = serializers.FileField()
+    tax_receipt_number = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    tax_receipt = serializers.FileField(required=False, allow_null=True)
 
 
 class ConsentSerializer(StrictInputSerializer):
@@ -143,7 +143,7 @@ class ProofView(generics.GenericAPIView):
         job = financial_job(request.user, job_id)
         services.audit(request.user, "sensitive_data.accessed", job, {"purpose": "full_check_payment_documents"}, request)
         receipt = getattr(job, "payment_receipt", None)
-        return Response({"proofs": [{"id": str(row.pk), "document_id": str(row.media_id), "created_at": row.created_at} for row in job.payment_proofs.order_by("created_at")], "tax_receipt": {"number": receipt.tax_receipt_number, "document_id": str(receipt.tax_receipt_id)} if receipt else None})
+        return Response({"proofs": [{"id": str(row.pk), "document_id": str(row.media_id), "created_at": row.created_at} for row in job.payment_proofs.order_by("created_at")], "tax_receipt": {"number": receipt.tax_receipt_number, "document_id": str(receipt.tax_receipt_id)} if receipt and receipt.tax_receipt_id else None})
     def post(self, request, job_id):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -169,7 +169,8 @@ class PaymentDocumentView(generics.GenericAPIView):
         ids = list(job.payment_proofs.values_list("media_id", flat=True))
         receipt = getattr(job, "payment_receipt", None)
         if receipt:
-            ids.append(receipt.tax_receipt_id)
+            if receipt.tax_receipt_id:
+                ids.append(receipt.tax_receipt_id)
         media = get_object_or_404(Media.objects.filter(pk__in=ids), pk=document_id)
         services.audit(request.user, "sensitive_data.accessed", media, {"purpose": "full_check_payment_document"}, request)
         return Response({"url": get_private_media_storage().generate_signed_read_url(key=media.file_key)})
@@ -217,6 +218,31 @@ class ExternalOwnerConsentView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(services.external_owner_consent(delivery_id=delivery_id, key=request.headers.get("Idempotency-Key"), request=request, **serializer.validated_data))
+
+
+class OwnerRequestsView(generics.GenericAPIView):
+    """FUL-02: full checks waiting on the signed-in Owner's consent or the Agent's owner contact."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.utils import timezone
+        actor = get_active_persisted_actor(request.user)
+        if actor is None:
+            return Response([])
+        now = timezone.now()
+        jobs = VerificationJob.objects.select_related("property__locality__ward__district", "listing").filter(status="AWAITING_CONSENT")
+        rows = []
+        for job in jobs.filter(owner_user=actor, consent_due_at__gt=now, owner_phone=actor.phone):
+            rows.append(("consent", job, job.consent_due_at))
+        for job in jobs.filter(listing__lister=actor, listing__lister_kind="AGENT", owner_phone="", contact_due_at__gt=now):
+            rows.append(("contact", job, job.contact_due_at))
+        def area(job):
+            locality = job.property.locality
+            return f"{locality.name}, {locality.ward.district.name}" if locality else ""
+        return Response([
+            {"kind": kind, "job_id": str(job.pk), "property_id": job.property.property_id, "area": area(job), "scope": job.scope_snapshot, "deadline": deadline, "owner_name": job.owner_name if kind == "contact" else ""}
+            for kind, job, deadline in sorted(rows, key=lambda row: row[2])
+        ])
 
 
 class OwnerContactView(generics.GenericAPIView):

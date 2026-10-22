@@ -70,6 +70,19 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // Phase 3: local officials, professionals and where they cover.
+    titleKey: 'nav.groupPartners',
+    items: [
+      { to: '/staff/partners', labelKey: 'nav.partners', icon: UsersIcon, permission: 'partner.manage' },
+      { to: '/staff/coverage', labelKey: 'nav.coverage', icon: MapPinIcon, permission: 'partner.manage' },
+    ],
+  },
+  {
+    // Phase 2: field work for officials, professionals and listers.
+    titleKey: 'nav.groupField',
+    items: [{ to: '/tasks', labelKey: 'nav.tasks', icon: MapPinIcon, permission: 'tasks.area' }],
+  },
+  {
     titleKey: 'nav.groupAccount',
     items: [
       { to: '/account', labelKey: 'nav.account', icon: UserIcon },

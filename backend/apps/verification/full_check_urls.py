@@ -2,11 +2,12 @@ from django.urls import path
 from .full_check_api import (
     QuoteView, FullCheckCollectionView, FullCheckDetailView, InstructionsView,
     ProofView, ReceiptView, OwnerConsentView, ExternalOwnerConsentView, OwnerContactView,
-    VerifierView, StartView, ResultView, RefreshView, ReportView, EligibleProfessionalsView, PaymentDocumentView,
+    VerifierView, StartView, OwnerRequestsView, ResultView, RefreshView, ReportView, EligibleProfessionalsView, PaymentDocumentView,
 )
 
 urlpatterns = [
     path("quote/", QuoteView.as_view()),
+    path("requests/", OwnerRequestsView.as_view()),
     path("", FullCheckCollectionView.as_view()),
     path("consent/<uuid:delivery_id>/", ExternalOwnerConsentView.as_view()),
     path("<uuid:job_id>/", FullCheckDetailView.as_view()),

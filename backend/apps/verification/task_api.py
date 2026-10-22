@@ -13,9 +13,27 @@ class TaskSerializer(serializers.ModelSerializer):
     property_id = serializers.CharField(source="job.property.property_id", read_only=True)
     locality = serializers.CharField(source="job.property.locality.name", read_only=True)
     owner_name = serializers.CharField(source="job.owner_name", read_only=True)
+    job_id = serializers.UUIDField(read_only=True)
+    area = serializers.SerializerMethodField()
+    assignee_name = serializers.CharField(source="assignee.full_name", read_only=True, default="")
+    submitted_versions = serializers.SerializerMethodField()
+    approx_point = serializers.SerializerMethodField()
+
+    def get_area(self, obj):
+        record = obj.job.property
+        return ", ".join(part.name for part in (record.ward, record.district, record.region) if part is not None)
+
+    def get_submitted_versions(self, obj):
+        return obj.submissions.count()
+
+    def get_approx_point(self, obj):
+        # LOC-03 approximate map: about 110 m, never the exact pin.
+        pin = obj.job.property.pin
+        return [round(pin.x, 3), round(pin.y, 3)] if pin else None
+
     class Meta:
         model = VerificationTask
-        fields = ["id", "kind", "status", "professional_type", "due_at", "property_id", "locality", "owner_name"]
+        fields = ["id", "job_id", "kind", "status", "professional_type", "due_at", "property_id", "locality", "area", "owner_name", "assignee_name", "submitted_versions", "approx_point"]
         read_only_fields = fields
 
 
@@ -46,6 +64,8 @@ class TaskCollectionView(generics.GenericAPIView):
     pagination_class = VerificationReviewPagination
     def get(self, request):
         queryset = visible_tasks(request.user)
+        if request.query_params.get("job"):
+            queryset = queryset.filter(job_id=request.query_params["job"])
         page = self.paginate_queryset(queryset)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)
 

@@ -28,7 +28,7 @@ class CaptureAssetView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         asset = upload_capture_asset(actor=request.user, site_capture=get_object_or_404(SiteCapture, capture_id=capture_id), request=request, **serializer.validated_data)
-        return Response({"media_id": asset.media.media_id, "source": asset.source, "flags": asset.flags, "distance_m": str(asset.distance_m) if asset.distance_m is not None else None}, status=201)
+        return Response({"media_id": asset.media.media_id, "mime_type": asset.media.mime_type, "source": asset.source, "flags": asset.flags, "distance_m": str(asset.distance_m) if asset.distance_m is not None else None}, status=201)
 
 
 class LayerInput(RejectUnknownFieldsMixin, serializers.Serializer):

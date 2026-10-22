@@ -160,8 +160,9 @@ class FullCheckReceipt(AppendOnly, TimeStampedModel):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=18, decimal_places=0)
     bank_reference = models.CharField(max_length=255)
-    tax_receipt_number = models.CharField(max_length=255, unique=True)
-    tax_receipt = models.ForeignKey("media.Media", on_delete=models.PROTECT)
+    # D3: recording a TRA receipt is optional and never blocks the check.
+    tax_receipt_number = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    tax_receipt = models.ForeignKey("media.Media", on_delete=models.PROTECT, null=True, blank=True)
 
     class Meta:
         constraints = [models.CheckConstraint(condition=Q(amount__gt=0), name="full_check_receipt_positive")]

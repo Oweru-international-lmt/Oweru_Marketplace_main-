@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { OwnerRequestsBanner } from '../pages/account/OwnerRequestsPage'
 import { MenuIcon, SidebarIcon } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Logo } from '../components/Logo'
@@ -62,6 +63,7 @@ export function AppLayout() {
       <div className={`transition-[padding] duration-300 ease-out ${collapsed ? 'lg:pl-20' : 'lg:pl-60'}`}>
         <TopBar onOpenMenu={() => setDrawerOpen(true)} onToggleCollapse={toggleCollapsed} onSignOut={handleSignOut} />
         <main className="mx-auto max-w-[1360px] px-4 py-6 sm:px-6 lg:py-7">
+          <OwnerRequestsBanner />
           <Outlet />
         </main>
       </div>

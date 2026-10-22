@@ -16,6 +16,7 @@ import { managementApi } from '../../../lib/managementApi'
 import { openSigned } from '../../../lib/openSigned'
 import { servicesApi, type FullCheck, type PaymentProofs } from '../../../lib/servicesApi'
 import { staffApi } from '../../../lib/staffApi'
+import { JobTasks } from './JobTasks'
 import { Card, CheckChip } from './ui'
 
 type Loaded = { id: string; job?: FullCheck; error?: string }
@@ -144,6 +145,8 @@ function Desk({ job, onChanged }: { job: FullCheck; onChanged: () => void }) {
             </dl>
           </Card>
 
+          {(job.status === 'IN_PROGRESS' || job.status === 'UNDER_REVIEW' || finished) && <JobTasks job={job} canAct={hasRole(user, 'verifier') && !finished} />}
+
           <Timeline job={job} proofs={proofs} />
         </div>
 
@@ -159,6 +162,8 @@ function Desk({ job, onChanged }: { job: FullCheck; onChanged: () => void }) {
           </Card>
 
           {canConfirm && <ConfirmPayment job={job} onConfirmed={onChanged} />}
+
+          {job.status === 'PASSED' && !job.invalidated_at && job.refresh_limit_at && hasRole(user, 'verifier') && <RefreshCheck job={job} onRefreshed={onChanged} />}
 
           {proofs && proofs.proofs.length > 0 && (
             <Card className="px-5 py-5">
@@ -188,6 +193,50 @@ function Desk({ job, onChanged }: { job: FullCheck; onChanged: () => void }) {
   )
 }
 
+// FUL-09: within the six-month ceiling the verifier may extend reliance with a
+// fresh assessment; a new report version is generated.
+function RefreshCheck({ job, onRefreshed }: { job: FullCheck; onRefreshed: () => void }) {
+  const { t, i18n } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [now] = useState(Date.now)
+  if (!job.refresh_limit_at || new Date(job.refresh_limit_at).getTime() <= now) return null
+  async function send() {
+    setBusy(true)
+    setError(null)
+    try {
+      await servicesApi.refreshFullCheck(job.id, text.trim())
+      onRefreshed()
+    } catch (failure) {
+      setBusy(false)
+      setError(errorMessage(t, failure))
+    }
+  }
+  return (
+    <Card className="px-5 py-5">
+      <h2 className="text-[15px] font-semibold text-navy">{t('staff.check.refreshTitle')}</h2>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        {t('staff.check.refreshBody', { expires: job.expires_at ? formatDate(job.expires_at, i18n.language) : '', limit: formatDate(job.refresh_limit_at as string, i18n.language) })}
+      </p>
+      {open ? (
+        <div className="mt-3 space-y-3">
+          <textarea rows={5} value={text} onChange={(event) => setText(event.target.value)} placeholder={t('staff.check.refreshPlaceholder')} className="w-full rounded-[6px] border border-mist px-3 py-2 text-[13px] text-navy outline-none focus:border-gold" />
+          {error && <Alert tone="error">{error}</Alert>}
+          <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className="h-10 w-full rounded-[6px] bg-gold text-[13px] font-semibold text-navy hover:bg-gold-light disabled:opacity-60">
+            {busy ? t('listing.sending') : t('staff.check.refreshSend')}
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="mt-3 h-10 w-full rounded-[6px] border border-mist text-[13px] font-medium text-navy hover:border-navy-soft/40">
+          {t('staff.check.refresh')}
+        </button>
+      )}
+    </Card>
+  )
+}
+
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-6">
@@ -197,7 +246,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
   )
 }
 
-// PAY-13: Management records Oweru's bank receipt with the official tax receipt.
+// PAY-13: Management records Oweru's bank receipt. D3: the tax receipt is optional.
 function ConfirmPayment({ job, onConfirmed }: { job: FullCheck; onConfirmed: () => void }) {
   const { t, i18n } = useTranslation()
   const [bankReference, setBankReference] = useState('')
@@ -209,11 +258,11 @@ function ConfirmPayment({ job, onConfirmed }: { job: FullCheck; onConfirmed: () 
   async function confirm(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    if (!bankReference.trim() || !taxNumber.trim() || !taxReceipt) {
+    if (!bankReference.trim() || (taxReceipt && !taxNumber.trim())) {
       setError(t('staff.check.receiptRequired'))
       return
     }
-    const problem = firstFileProblem([taxReceipt], EVIDENCE_TYPES)
+    const problem = taxReceipt ? firstFileProblem([taxReceipt], EVIDENCE_TYPES) : null
     if (problem) {
       setError(t(problem.kind === 'size' ? 'forms.fileTooBig' : 'forms.fileType', { name: problem.name }))
       return
@@ -249,12 +298,12 @@ function ConfirmPayment({ job, onConfirmed }: { job: FullCheck; onConfirmed: () 
           </div>
           <div>
             <label htmlFor="tax-number" className="mb-1 block text-xs font-medium text-navy">
-              {t('staff.check.taxNumber')}
+              {t('staff.check.taxNumber')} <span className="font-normal text-muted">{t('staff.check.optional')}</span>
             </label>
             <input id="tax-number" className={input} value={taxNumber} onChange={(event) => setTaxNumber(event.target.value)} />
           </div>
           <div>
-            <span className="mb-1 block text-xs font-medium text-navy">{t('staff.check.taxReceipt')}</span>
+            <span className="mb-1 block text-xs font-medium text-navy">{t('staff.check.taxReceipt')} <span className="font-normal text-muted">{t('staff.check.optional')}</span></span>
             <label className="flex h-10 cursor-pointer items-center gap-2 rounded-[6px] border border-dashed border-mist px-3 text-[13px] text-muted hover:border-gold">
               <DocumentIcon className="size-4 shrink-0" />
               <span className="truncate">{taxReceipt ? taxReceipt.name : t('staff.check.chooseFile')}</span>

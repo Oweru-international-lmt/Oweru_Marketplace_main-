@@ -22,7 +22,7 @@ export function reviewFor(deal: Deal): ReviewKind[] {
   const items: ReviewKind[] = []
   if (steps.oweru_paid_at && !steps.oweru_confirmed_at) items.push('oweruSlip')
   if (steps.agreement_price_confirmed_at && !steps.agreement_approved_at) items.push('agreement')
-  if (steps.oweru_confirmed_at && !deal.tax_receipt) items.push('taxReceipt')
+  // D3: the TRA receipt is optional, so it never waits in the review queue.
   if (steps.owner_confirmed_at && steps.oweru_confirmed_at && steps.agreement_approved_at) items.push('complete')
   return items
 }

@@ -27,5 +27,7 @@ CATALOG = {
     "FULL_CHECK_OFFER": ("You may order a Full Check before buying", "Unaweza kuagiza ukaguzi kamili kabla ya kununua"),
     "NON_TAX_ACKNOWLEDGEMENT": ("Receipt recorded. This is not a tax receipt", "Malipo yamerekodiwa. Hii si risiti ya kodi"),
     "NEEDS_OFFICIAL": ("A verification task needs an official", "Kazi ya ukaguzi inahitaji afisa"),
+    "OFFICIAL_AWAITING_APPROVAL": ("A local official registered and awaits approval", "Afisa wa serikali ya mtaa amejisajili na anasubiri kuidhinishwa"),
+    "OFFICIAL_APPROVED": ("Your local official account is approved. Sign in to see your tasks", "Akaunti yako ya afisa imeidhinishwa. Ingia uone kazi zako"),
 }
 DEFAULTS = {key: {lang: f"Oweru Marketplace: {title}. {{reference}} {{details}} {{link}}" for lang, title in zip(["en", "sw"], titles)} for key, titles in CATALOG.items()}

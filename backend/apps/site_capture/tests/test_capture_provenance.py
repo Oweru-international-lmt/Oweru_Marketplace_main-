@@ -85,9 +85,9 @@ def test_loaded_public_layer_overlap_is_frozen_with_geometry_and_osm_fallback():
     PublicMapLayer.objects.create(name="Road reserve", source_reference="Official public layer fixture", boundary=MultiPolygon(boundary, srid=4326), loaded_by=owner)
     capture = submit_site_capture(actor=owner, site_capture=capture)
     assert any(row["kind"] == "PUBLIC_LAYER" and row["geometry"]["type"] == "MultiPolygon" for row in capture.overlap_findings)
-    assert "SATELLITE_CHECK_UNAVAILABLE" in capture.review_flags
+    assert "SATELLITE_CHECK_UNAVAILABLE" not in capture.review_flags
     from apps.site_capture.serializers import SiteCapturePrivateSerializer
-    assert SiteCapturePrivateSerializer(capture).data["map_context"]["provider"] == "OPENSTREETMAP"
+    assert SiteCapturePrivateSerializer(capture).data["map_context"]["provider"] == "ESRI_WORLD_IMAGERY"
 
 
 def test_submitted_capture_media_and_variants_resist_direct_updates():
@@ -101,3 +101,18 @@ def test_submitted_capture_media_and_variants_resist_direct_updates():
     for sql, value in [("UPDATE media_media SET file_key='changed' WHERE id=%s", asset.media_id), ("DELETE FROM media_mediavariant WHERE media_id=%s", asset.media_id), ("DELETE FROM site_capture_captureasset WHERE id=%s", asset.pk)]:
         with pytest.raises(DatabaseError), transaction.atomic(), connection.cursor() as cursor:
             cursor.execute(sql, [value])
+
+
+def test_last_corner_can_be_undone_only_on_a_draft():
+    from apps.site_capture.services import record_corner, remove_last_corner
+    from apps.site_capture.serializers import SiteCapturePrivateSerializer
+    owner, _, capture = capture_fixture()
+    before = capture.corners.count()
+    record_corner(actor=owner, site_capture=capture, point=Point(39.2084, -6.7923, srid=4326), accuracy_m=3, observed_at=timezone.now(), device="test phone")
+    data = SiteCapturePrivateSerializer(capture).data
+    assert len(data["corners"]) == before + 1 and data["corners"][-1]["accuracy_m"] == "3.00"
+    assert remove_last_corner(actor=owner, site_capture=capture) == before + 1
+    assert capture.corners.count() == before
+    from apps.professionals.tests.test_professionals import account
+    with pytest.raises(PermissionDenied):
+        remove_last_corner(actor=account("buyer"), site_capture=capture)

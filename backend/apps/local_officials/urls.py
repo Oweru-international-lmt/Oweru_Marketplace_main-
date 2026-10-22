@@ -8,10 +8,12 @@ from apps.verification.views import (
     LocalOfficialFieldVerificationReviewQueueView,
 )
 
+from .partner_api import PublicRegistrationView
 from .views import LocalOfficialSelfJurisdictionView, LocalOfficialSelfProfileView
 
 
 urlpatterns = [
+    path("register/<str:token>/", PublicRegistrationView.as_view()),
     path("full-check-tasks/", TaskCollectionView.as_view()),
     path("me/", LocalOfficialSelfProfileView.as_view(), name="local-official-self"),
     path(

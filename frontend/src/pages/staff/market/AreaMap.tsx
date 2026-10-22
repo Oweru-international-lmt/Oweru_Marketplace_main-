@@ -23,10 +23,14 @@ function loadOutlines() {
 }
 
 export type AreaValue = { name: string; value: number }
+export type AreaPalette = { bands: readonly [string, string, string]; empty: string; stroke: string; text: string; darkText: string }
+
+const LIGHT: AreaPalette = { bands: BANDS, empty: '#e8ebf2', stroke: '#fff', text: 'fill-[#1e293b]', darkText: 'fill-white' }
 
 // M3: the regions drawn as flat shapes, shaded in three bands, with white
-// borders and their names; regions with nothing recorded stay pale.
-export function AreaMap({ areas, bandOf, label }: { areas: AreaValue[]; bandOf: (value: number) => 0 | 1 | 2; label: string }) {
+// borders and their names; regions with nothing recorded stay pale. R14 adds
+// a click to open a region, a highlighted region and a palette for dark panels.
+export function AreaMap({ areas, bandOf, label, palette = LIGHT, selected, onPick }: { areas: AreaValue[]; bandOf: (value: number) => 0 | 1 | 2; label: string; palette?: AreaPalette; selected?: string; onPick?: (name: string) => void }) {
   const [features, setFeatures] = useState<Feature[] | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -99,8 +103,19 @@ export function AreaMap({ areas, bandOf, label }: { areas: AreaValue[]; bandOf: 
       {shapes.map((shape) => {
         const value = values[shape.name]
         const band = value ? bandOf(value) : null
+        const dim = selected !== undefined && selected !== shape.name
         return (
-          <path key={shape.name} d={shape.path} fill={band === null ? '#e8ebf2' : BANDS[band]} stroke="#fff" strokeWidth="1.4" strokeLinejoin="round">
+          <path
+            key={shape.name}
+            d={shape.path}
+            fill={band === null ? palette.empty : palette.bands[band]}
+            stroke={selected === shape.name ? '#c89128' : palette.stroke}
+            strokeWidth={selected === shape.name ? 3 : 1.4}
+            strokeLinejoin="round"
+            opacity={dim ? 0.35 : 1}
+            onClick={onPick ? () => onPick(shape.name) : undefined}
+            className={onPick ? 'cursor-pointer transition-opacity duration-300 hover:opacity-80' : undefined}
+          >
             <title>{`${shape.name}: ${(value ?? 0).toLocaleString()}`}</title>
           </path>
         )
@@ -111,7 +126,7 @@ export function AreaMap({ areas, bandOf, label }: { areas: AreaValue[]; bandOf: 
           const value = values[shape.name]
           const dark = value !== undefined && bandOf(value) === 0
           return (
-            <text key={`label-${shape.name}`} x={shape.centre[0]} y={shape.centre[1]} textAnchor="middle" className={`pointer-events-none text-[11px] italic ${dark ? 'fill-white' : 'fill-[#1e293b]'}`}>
+            <text key={`label-${shape.name}`} x={shape.centre[0]} y={shape.centre[1]} textAnchor="middle" className={`pointer-events-none text-[11px] italic ${dark ? palette.darkText : palette.text}`}>
               {shape.name}
               {value ? <tspan x={shape.centre[0]} dy="13" className="font-semibold not-italic">{value.toLocaleString()}</tspan> : null}
             </text>

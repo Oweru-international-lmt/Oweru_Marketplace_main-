@@ -102,7 +102,7 @@ def order_full_check(*, actor, quote_token, key, listing_id=None, outside=None, 
             from apps.properties.services import resolve_property_locality, _audit_property_created, _run_duplicate_detection
             values = dict(serializer.validated_data)
             values["locality"] = resolve_property_locality(actor=buyer, region=values["region"], district=values["district"], ward=values["ward"], locality=values.pop("locality", None), locality_name=values.pop("locality_name", None), locality_kind=values.pop("locality_kind", None))
-            property_record = PropertyRecord(property_id=generate_property_id(), created_by=buyer, **values)
+            property_record = PropertyRecord(property_id=generate_property_id(values.get("region")), created_by=buyer, **values)
             try:
                 property_record.full_clean()
             except DjangoValidationError as exc:
@@ -174,10 +174,14 @@ def _queue_owner_consent(job, actor, request=None):
         audit(actor, "full_check.consent_queued", delivery, {"job_id": str(job.pk)}, request)
 
 
-def confirm_full_check_payment(*, actor, job_id, amount, reference, bank_reference, tax_receipt_number, tax_receipt, key, request=None):
-    _, _, digest = validate_document(tax_receipt)
-    if not bank_reference.strip() or not tax_receipt_number.strip():
-        raise ValidationError("Bank reference and official tax receipt number/copy are required.")
+def confirm_full_check_payment(*, actor, job_id, amount, reference, bank_reference, tax_receipt_number="", tax_receipt=None, key, request=None):
+    # D3: the TRA receipt is optional; when a copy is given its number must be too.
+    tax_receipt_number = (tax_receipt_number or "").strip()
+    digest = validate_document(tax_receipt)[2] if tax_receipt else ""
+    if not bank_reference.strip():
+        raise ValidationError("The bank reference is required.")
+    if tax_receipt and not tax_receipt_number:
+        raise ValidationError("Give the tax receipt number with its copy.")
     def policy(job):
         authorized = authorize(actor, "payment.confirm")
         if not management(authorized):
@@ -187,13 +191,13 @@ def confirm_full_check_payment(*, actor, job_id, amount, reference, bank_referen
             raise ValidationError("Payment reference must match the frozen order.")
         existing = FullCheckReceipt.objects.filter(job=job).first()
         if existing:
-            if existing.amount != Decimal(str(amount)) or existing.bank_reference != bank_reference.strip() or existing.tax_receipt_number != tax_receipt_number.strip() or existing.tax_receipt.file_hash != digest:
+            if existing.amount != Decimal(str(amount)) or existing.bank_reference != bank_reference.strip() or (existing.tax_receipt_number or "") != tax_receipt_number or (existing.tax_receipt.file_hash if existing.tax_receipt_id else "") != digest:
                 raise Conflict("Full Check already has a different receipt.")
             return {"receipt_id": str(existing.pk), "status": job.status}
         if job.status != "AWAITING_PAYMENT" or Decimal(str(amount)) != job.fee or str(reference) != str(job.payment_reference):
             raise ValidationError("Receipt amount and reference must match the unpaid order.")
-        media = save_document(actor=actor, owner=job, upload=tax_receipt)
-        receipt = FullCheckReceipt.objects.create(job=job, actor=actor, amount=job.fee, bank_reference=bank_reference.strip(), tax_receipt_number=tax_receipt_number.strip(), tax_receipt=media)
+        media = save_document(actor=actor, owner=job, upload=tax_receipt) if tax_receipt else None
+        receipt = FullCheckReceipt.objects.create(job=job, actor=actor, amount=job.fee, bank_reference=bank_reference.strip(), tax_receipt_number=tax_receipt_number or None, tax_receipt=media)
         transition(job, "AWAITING_CONSENT", actor, request=request)
         _queue_owner_consent(job, actor, request)
         audit(actor, "full_check.payment_confirmed", job, {"amount": str(job.fee), "receipt_id": str(receipt.pk)}, request)

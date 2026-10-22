@@ -96,10 +96,23 @@ export type FullCheck = {
   consent_due_at: string | null
   completed_at: string | null
   expires_at: string | null
+  refresh_limit_at?: string | null
   invalidated_at: string | null
   created_at: string
   result?: { result: 'PASSED' | 'PROBLEM_FOUND'; risk_assessment: string; not_checked: string[] }
   reports?: { id: string; version: number; language: string }[]
+}
+
+// FUL-02: a full check waiting on the signed-in Owner's consent, or on the
+// Agent to give the owner's contact.
+export type OwnerRequest = {
+  kind: 'consent' | 'contact'
+  job_id: string
+  property_id: string
+  area: string
+  scope: ScopeSnapshot
+  deadline: string
+  owner_name: string
 }
 
 export type PaymentInstructions = {
@@ -205,6 +218,17 @@ export const servicesApi = {
   },
 
   paymentDocument: (id: string, documentId: string) => request<{ url: string }>(`/full-checks/${id}/payment-documents/${documentId}/`, { auth: true }),
+
+  ownerRequests: () => request<OwnerRequest[]>('/full-checks/requests/', { auth: true }),
+
+  ownerConsent: (id: string, decision: 'CONFIRM' | 'DECLINE') =>
+    request<{ consent_id: string; status: FullCheckStatus }>(`/full-checks/${id}/owner-consent/`, { method: 'POST', body: { decision }, auth: true }),
+
+  ownerContact: (id: string, ownerName: string, ownerPhone: string) =>
+    request<{ job_id: string; status: FullCheckStatus }>(`/full-checks/${id}/owner-contact/`, { method: 'POST', body: { owner_name: ownerName, owner_phone: ownerPhone }, auth: true }),
+
+  refreshFullCheck: (id: string, riskAssessment: string) =>
+    request<FullCheck>(`/full-checks/${id}/refresh/`, { method: 'POST', body: { risk_assessment: riskAssessment }, auth: true }),
 
   fullCheckReport: (id: string, reportId: string) => request<{ url: string; version: number }>(`/full-checks/${id}/reports/${reportId}/`, { auth: true }),
 }

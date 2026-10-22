@@ -59,8 +59,9 @@ export type PaymentConfirmation = {
   amount: string
   reference: string
   bank_reference: string
-  tax_receipt_number: string
-  tax_receipt: File
+  // D3: optional; a copy needs its number.
+  tax_receipt_number?: string
+  tax_receipt?: File | null
 }
 
 type Page<T> = { count: number; next: string | null; previous: string | null; results: T[] }
@@ -205,7 +206,7 @@ export const staffApi = {
 
   confirmPayment: (id: string, input: PaymentConfirmation) => {
     const form = new FormData()
-    for (const [key, value] of Object.entries(input)) form.append(key, value)
+    for (const [key, value] of Object.entries(input)) if (value) form.append(key, value)
     return request<{ receipt_id: string; status: string }>(`/full-checks/${id}/payment-confirm/`, {
       method: 'POST',
       body: form,
