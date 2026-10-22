@@ -59,6 +59,7 @@ These come from the SRD and PRD. Code review rejects changes that break them.
 - **Nothing is deleted.** Property Records, evidence, submissions, deals, payments and audit rows are kept; corrections are new versions.
 - **The server enforces every permission.** Hiding a button is UX, never security.
 - **Settings, not constants.** Thresholds, expiries, limits and fees come from `setting(key)` (`backend/apps/verification/configuration.py`).
+- **Project decisions override the SRD where they differ** ([docs/roadmap.md](docs/roadmap.md#project-decisions-22-october-2026)): no bulk upload; free map imagery only (Esri through a free key, no paid provider); TRA tax receipts deferred; Property IDs look like `OWR-11-04217`; commission rates and the full check fee are editable settings seeded with example values.
 - **Swahili first.** No hard-coded user-facing text. Every string is in both `frontend/src/i18n/sw.ts` and `en.ts`, with the same keys.
 
 ## Backend conventions

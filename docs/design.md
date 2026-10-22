@@ -125,6 +125,7 @@ The level badge and panel follow SRD 10 exactly. These are product rules, not st
 
 - Photos of real Tanzanian places and properties. Credit free-licence photos in the frontend README. Never keep real people's camera images (selfies, ID photos) outside the identity flow.
 - Public maps show rounded positions only. Staff location checks show the exact pin with street and satellite layers. Maps never suggest they prove ownership (MAP-09).
+- Satellite and street layers come from free sources only (roadmap decision D2): Esri World Imagery and streets through the ArcGIS key, with the required "Powered by Esri" attribution visible on every map.
 - Listings maps may use the muted grey tile style (`map-tiles-muted`) so pins stand out.
 
 ## 8. Copy

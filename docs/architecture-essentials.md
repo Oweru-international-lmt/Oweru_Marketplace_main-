@@ -4,7 +4,7 @@ The ten things to know before changing anything in Oweru Marketplace. The full p
 
 1. **Two parts, one contract.** A React 19 single-page app (`frontend/`) and a Django REST API (`backend/`, `/api/v1/`). The API is the only source of truth and the only security boundary. The UI hides what a user cannot use; the API refuses it.
 
-2. **The SRD decides.** [srd.md](srd.md) v1.3 is the build specification. Every rule, status, threshold and screen traces to a requirement ID (`LST-05`, `PAY-08`). Where the PRD differs, the SRD wins. Never invent a business rule: if the SRD is silent, make it configurable and ask.
+2. **The SRD decides.** [srd.md](srd.md) v1.3 is the build specification. Every rule, status, threshold and screen traces to a requirement ID (`LST-05`, `PAY-08`). Where the PRD differs, the SRD wins. Never invent a business rule: if the SRD is silent, make it configurable and ask. The product owner's project decisions in [roadmap.md](roadmap.md#project-decisions-22-october-2026) override the SRD where they differ.
 
 3. **The Property Record is the centre.** Every listing, free check, full check and duplicate hangs off one permanent `PropertyRecord` with a Property ID. Records, evidence, payments and audit rows are never deleted; corrections are new versions.
 

@@ -66,7 +66,7 @@ docker/, docker-compose*.yml   production containers (web, worker, beat, release
 | Web app | React 19, TypeScript 6, Vite 8 | Single-page app, React Router 7 |
 | Styling | Tailwind CSS 4 | Brand tokens in `frontend/src/index.css` (see [design.md](design.md)) |
 | Motion | `motion/react` for component state, GSAP with `useGSAP` for page sequences | Both respect reduced motion |
-| Maps | Leaflet | OpenStreetMap tiles in development, Esri World Imagery for satellite views in staff screens; provider to be contracted (SRD 2.6) |
+| Maps | Leaflet | Free imagery only (roadmap decision D2): Esri World Imagery and streets through a free ArcGIS Location Platform key; OpenAerialMap drone imagery where it exists. No paid provider |
 | i18n | i18next | Swahili default, English second |
 | Lint | oxlint | Includes React hooks, purity and only-export-components rules |
 
@@ -239,7 +239,7 @@ What the backend provides and what the frontend uses, as of the date at the top.
 |---|---|---|---|
 | 5 Accounts (ACC) | Done | Sign up, sign in, reset, email confirmation, account page, staff accounts and roles | Done. `/auth/me/` still lacks roles (8.3) |
 | 5.2 Lister identity (IDV) | Done | Identity submission with live selfie; management review | Done, except the public lister profile (IDV-06): API only |
-| 6 Listings (LST) | Done except bulk import | Listing editor with owner price and photos, my listings, lister home | LST-09 payout preview missing; LST-11 bulk import not built in the backend; duplicates queue (LST-12) and locality approval (LST-03) API only |
+| 6 Listings (LST) | Done | Listing editor with owner price, photos and payout preview, my listings, lister home | Bulk import (LST-11) dropped by decision D1; duplicates queue (LST-12) and locality approval (LST-03) API only |
 | 7 Search (SRC) | Done | Home, search with filters, property page, featured area | Done |
 | 8 Leads and deals (LEAD) | Done | Lister enquiries pipeline and metrics; deal pages for lister, buyer and management | Lead notes and customer list (LEAD-06) API only |
 | 9 Payments (PAY) | Done | Buyer purchase page with slips, lister deal page, agent payouts, bank account, payout preview on the listing form, management deals desk, deal review and payouts desk, owner confirmation links | Rate table editor and Oweru's receiving bank account (PAY-01, management): API only |

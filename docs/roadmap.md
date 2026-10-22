@@ -2,7 +2,7 @@
 
 What is left to build for the Phase 1 launch, in order, with the user flow, screens, endpoints and finish line of each phase. Requirements are in [srd.md](srd.md); what already exists is in [architecture.md section 10](architecture.md#10-status-by-module).
 
-Last updated: 21 October 2026.
+Last updated: 22 October 2026.
 
 | Phase | Area | Status |
 |---|---|---|
@@ -12,10 +12,68 @@ Last updated: 21 October 2026.
 | 4 | Rest of the full check | Not started |
 | 5 | Management administration | Not started |
 | 6 | Smaller public and lister screens | Not started |
-| 7 | Backend gaps | Not started |
+| 7 | Backend gaps | Not started (bulk import dropped, see decision D1) |
 | 8 | Launch readiness | Not started |
 
 Why this order: a sale cannot reach Won without Phase 1, and a full check cannot finish without Phases 2 to 4. Management administration (Phase 5) is needed before launch but nothing else depends on it.
+
+## Project decisions (22 October 2026)
+
+Decisions by the product owner that change the SRD and PRD. They apply everywhere in the code and docs; where the SRD says otherwise, these win.
+
+| ID | Decision | What it means for the build |
+|---|---|---|
+| D1 | **No bulk upload.** LST-11 (Excel or CSV import with batch photos) is out of scope. | Listings are added one at a time. Remove bulk import from plans, screens and launch checks. |
+| D2 | **No paid map provider. Use free imagery that is good and accurate enough for plots.** | See [Maps and imagery](#maps-and-imagery) below. |
+| D3 | **Tax receipts through TRA are left out for now.** No TRA registration, no EFD or VFD integration (PAY-14). | Recording a tax receipt (PAY-11) stays available but optional: it does not block completing a sale and is not listed as waiting work. |
+| D4 | **Property ID format: `OWR-<region postcode>-<number>`**, for example `OWR-11-04217` for a property in Dar es Salaam. | See [Property ID](#property-id) below. |
+| D5 | **Commission rates and the full check fee start as example tables that the responsible people can change.** | Management edits the commission rate table; the Director sets the full check fee. Both screens are in Phase 5, seeded with the examples below. |
+
+### Maps and imagery
+
+Research (22 October 2026) of free sources that may legally be used in a commercial website:
+
+| Source | Detail and accuracy | Free allowance | Commercial use | Use in Oweru |
+|---|---|---|---|---|
+| Esri World Imagery through an ArcGIS Location Platform account | About 0.3 to 0.5 m in towns (commercial satellite and aerial), coarser in some rural areas | 2,000,000 basemap tiles a month, then USD 0.15 per 1,000 | Yes, it is Esri's pay-as-you-go platform for apps; needs a free account and an API key, and "Powered by Esri" attribution | **Main satellite layer** for staff location checks, full check review and boundary capture |
+| Mapbox Satellite | Similar city detail | 750,000 raster tile requests a month | Yes, pay-as-you-go | Backup if the Esri allowance is ever exceeded |
+| Google Map Tiles API (satellite) | Very good | 100,000 tiles a month, billing account required | Yes | Not used: smallest allowance and needs a card |
+| OpenAerialMap drone imagery (Dar es Salaam Ramani Huria, Zanzibar Mapping Initiative) | About 5 to 10 cm, but only some areas and years | Free | Openly licensed (check each image's licence, usually CC BY 4.0) | Optional extra layer where it exists |
+| EOX Sentinel-2 cloudless | 10 m, too coarse for plots | Free | Only the 2016 layer allows commercial use | Not used for checks |
+| MapTiler free plan | Good | Small | **No, non-commercial only** | Not used |
+| OpenStreetMap | Streets and place names | Free data (ODbL); the public tile server forbids heavy use | Yes for the data | Street view through Esri's free street basemap, not the public OSM server |
+
+Decision: Esri World Imagery and Esri streets with a free ArcGIS Location Platform key, stored as a setting (`VITE_ESRI_API_KEY`). 2,000,000 tiles a month is far more than Oweru's staff and site capture will use in Phase 1 (one map review is roughly 50 to 200 tiles). Never claim imagery proves ownership (MAP-09), and always show the attribution.
+
+### Property ID
+
+- Tanzania has no common format for listing references on property websites. Officially, land is identified by its certificate of title number (CT No.), its plot and block number with the locality, and Land Office (L.O.) numbers. Those stay as separate fields on the Property Record; Oweru's own ID does not replace them.
+- Every ward has an official five-digit postcode (TCRA, Government Notice 240 of 2016), and the first two digits name the region: 11 Dar es Salaam, 23 Arusha, 41 Dodoma, and so on.
+- Format: `OWR-` + two-digit region postcode + `-` + a five-digit running number per region (six digits once a region passes 99,999). Example `OWR-11-04217`. Digits only after the prefix, so it is easy to read out on the phone, type on any keyboard and recognise by region. The current random IDs (`OWR-` + hex) move to this format for new records; existing records keep theirs.
+
+### Example values (editable)
+
+Commission rate table (total commission 10 percent of the owner's price, split by selling price; management edits it, PAY-01). The market reports agency fees of about 3 to 5 percent and informal dalali fees up to about 10 percent, so these are starting points only:
+
+| Selling price (TSh) | Oweru share | Agent share | Total |
+|---|---|---|---|
+| Up to 50,000,000 | 4% | 6% | 10% |
+| 50,000,001 to 200,000,000 | 3% | 7% | 10% |
+| 200,000,001 to 500,000,000 | 2.5% | 7.5% | 10% |
+| Above 500,000,000 | 2% | 8% | 10% |
+
+Full check fee (set by the Director). Example: **TSh 450,000**, built from:
+
+| Part | Example (TSh) | Basis |
+|---|---|---|
+| Land Registry official search | 40,000 | Fee on the Ministry of Lands search form |
+| Local office confirmation | 30,000 | Letter and stamp from the street or village office |
+| Boundary and site capture review | 130,000 | Government benchmark for surveying one plot (2021 regularization guideline) |
+| Land-use or planning check where needed | 100,000 | Professional's time |
+| Oweru verifier review and written report | 150,000 | Staff time, cheaper than a lawyer's TSh 300,000 to 1,500,000 checks |
+| **Total** | **450,000** | |
+
+Sources: [Esri pricing](https://location.arcgis.com/pricing/), [Esri Leaflet imagery tutorial](https://developers.arcgis.com/esri-leaflet/maps/raster-tile-basemaps/display-multiple-basemap-layers/), [Mapbox pricing](https://www.mapbox.com/pricing), [Google Maps pricing list](https://developers.google.com/maps/billing-and-pricing/pricing), [MapTiler terms](https://www.maptiler.com/terms/engine/), [EOX Sentinel-2 cloudless 2024](https://eox.at/2025/03/sentinel-2-cloudless-2024/), [Ramani Huria](https://en.wikipedia.org/wiki/Ramani_Huria), [TCRA postcode list](https://tcra.go.tz/services/publication-of-postcode-list), [Land Registry search form](https://www.lands.go.tz/uploads/documents/sw-1693126594-1463151589-Search%20Request.doc), [survey fee cut](https://www.tanzaniainvest.com/construction/land-survey-fee-cut), [agent fees](https://theafricanvestor.com/blogs/news/tanzania-property-taxes-fees), [Coldwell Banker Tanzania](https://coldwellbanker.tz/investing-guides/smart-buyer-tips-tanzania/), [legal check costs](https://globallawexperts.com/real-estate-lawyer-tanzania/).
 
 ## How every phase runs
 
@@ -49,7 +107,7 @@ Each phase goes through the same seven steps. The status table above names the s
 6. The buyer opens **My purchases**, sees two transfers (owner's account, Oweru's account with the reference), pays at the bank and uploads a slip for each.
 7. The owner confirms the money arrived through the WhatsApp link (built). Management confirms Oweru's money against the bank statement and records the bank reference.
 8. The lister uploads the signed sale agreement and confirms it states the exact final price. Management checks and approves it.
-9. Management records the official tax receipt number and copy.
+9. Management may record the official tax receipt number and copy (optional while TRA is deferred, decision D3).
 10. Management completes the deal: the lead becomes Won, the listing Sold, and an agent payout is created (due in 3 working days).
 11. Management pays the agent, records the bank reference and proof. The agent sees the payout as Paid. A complaint on the deal puts the payout on hold automatically.
 
@@ -191,7 +249,7 @@ Picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
 | Screen | Endpoints |
 |---|---|
 | Dashboard queues: identities, flagged listings, duplicates, partner approvals, tasks needing an official, payments to confirm, payouts due, complaints by status, outbox waiting | `GET management/dashboard/` |
-| Settings with change history (including both full check scope languages and the fee) | `management/settings/`, `management/verification-settings/{key}/` |
+| Settings with change history (including both full check scope languages and the full check fee, which only the Director can change; seeded with the example in decision D5) | `management/settings/`, `management/verification-settings/{key}/` |
 | Audit log | `GET management/audit/` |
 | Suspend and restore listings and accounts with a reason | `management/listings/{id}/suspend/`, `.../restore/`, `management/listing-actions/{id}/`, `management/accounts/{id}/` |
 | Duplicates queue | `management/property-duplicates/`, `.../confirm/`, `.../dismiss/` |
@@ -219,11 +277,12 @@ Picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
 
 | Item | Requirement | Note |
 |---|---|---|
-| Bulk import from Excel or CSV with batch photos and a validation report | LST-11 (Must) | Not in the backend. Needs models, parsing, matching photos by row reference, duplicate checks and a confirm step, then the screens |
 | `/auth/me/` returns roles, permissions and account category | ACC, NFR-03 | Lets the frontend drop the `loadAccess()` probes |
 | Face matching to assist identity review | IDV-05 (Should) | After launch unless promoted |
-| Automatic tax receipts through a VFD provider | PAY-14 (Should) | After TRA registration |
-| Historical imagery | MAP-07 (Should) | Depends on the map provider |
+| Automatic tax receipts through a VFD provider | PAY-14 (Should) | Deferred with TRA (decision D3) |
+| Historical imagery | MAP-07 (Should) | Not in the free Esri layer; Esri's World Imagery Wayback is a possible free source to check later |
+| New Property ID format | Decision D4 | Generate `OWR-<region postcode>-<number>` for new Property Records, keep existing IDs |
+| Free satellite key | Decision D2 | Move the staff map from the keyless Esri URL to the ArcGIS Location Platform key, with attribution |
 
 ---
 
@@ -232,6 +291,6 @@ Picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
 1. **Non-functional checks:** search under 2 s, property page under 3 s, market panel under 5 s on a throttled 3G profile; uploads that survive a dropped connection; forms that keep unsent entries; WCAG 2.1 AA pass on the main flows (NFR-01, NFR-02, NFR-10).
 2. **Full acceptance run** of every SRD Given, When, Then table on PostgreSQL/PostGIS.
 3. **Production configuration:** `production_preflight`, HTTPS, S3 bucket with public access blocked, backups and restore test, monitoring (NFR-06 to NFR-08). See [M26_PRODUCTION_RUNBOOK.md](M26_PRODUCTION_RUNBOOK.md).
-4. **Oweru's external services (SRD 2.6):** the dedicated WhatsApp number linked to WhatsApp Web on staff computers, the map and satellite provider contract and key, TRA registration for EFD or VFD receipts.
-5. **Director decisions (SRD 26):** rate table bands, full check fee, Property ID format, licence for receiving buyer money, legal review of wording.
+4. **Oweru's external services (SRD 2.6):** the dedicated WhatsApp number linked to WhatsApp Web on staff computers, and a free ArcGIS Location Platform account for the satellite key (decision D2). TRA registration is deferred (decision D3).
+5. **Director decisions (SRD 26):** confirm or edit the example rate table and full check fee in their settings screens (decision D5); the Property ID format is decided (D4). Still open: the licence for receiving buyer money and legal review of wording.
 6. **User acceptance** with real staff on each desk, then go-live.

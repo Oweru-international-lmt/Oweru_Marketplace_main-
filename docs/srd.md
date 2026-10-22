@@ -15,6 +15,18 @@ How to use it:
 - A feature is done only when its acceptance tests (the Given, When, Then tables) pass.
 - If the .docx is updated, regenerate this file from it rather than editing the text by hand, and note the new version above.
 
+## Project decisions that change this document (22 October 2026)
+
+The product owner decided the following; they win over the text below. Details and research are in [roadmap.md, Project decisions](roadmap.md#project-decisions-22-october-2026).
+
+| ID | Decision | Affects |
+|---|---|---|
+| D1 | No bulk upload of listings | LST-11, SRD 24 (bulk import screen) |
+| D2 | No paid map provider: free Esri World Imagery through a free ArcGIS key, plus open drone imagery where it exists | SRD 2.6, MAP-06, MAP-07 |
+| D3 | Tax receipts through TRA left out for now; recording a receipt is optional | SRD 2.6, PAY-11, PAY-14 |
+| D4 | Property ID format `OWR-<region postcode>-<number>`, e.g. `OWR-11-04217` | LST-01, SRD 26 |
+| D5 | Commission rate table and full check fee start as editable example tables | PAY-01, SRD 9.3, SRD 22, SRD 26 |
+
 ---
 
 | **Item** | **Detail** |

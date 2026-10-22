@@ -9,6 +9,18 @@ Phase 1 (web). The business view of what Oweru Marketplace is for, who uses it a
 | Read with | [srd.md](srd.md) (what to build, with requirement IDs and acceptance tests) |
 | Precedence | The SRD v1.3 is the build specification. Where the two differ, follow the SRD. |
 
+## Project decisions that change this document (22 October 2026)
+
+The product owner decided the following; they win over the text below. Details and research are in [roadmap.md, Project decisions](roadmap.md#project-decisions-22-october-2026).
+
+| ID | Decision | Affects |
+|---|---|---|
+| D1 | No bulk upload of listings | FR-12, journey 4.1 step 3 |
+| D2 | No paid map provider: free Esri World Imagery through a free ArcGIS key, plus open drone imagery where it exists | Section 10 (satellite imagery), section 13 |
+| D3 | Tax receipts through TRA left out for now; recording a receipt is optional | FR-24, section 10 (tax receipts), section 13 |
+| D4 | Property ID format `OWR-<region postcode>-<number>`, e.g. `OWR-11-04217` | Section 13 (Property ID format) |
+| D5 | Commission rate table and full check fee start as editable example tables | Sections 5.4, 11 and 13 |
+
 ## Where the SRD v1.3 overrides this PRD
 
 | PRD says | SRD v1.3 says (follow this) |
