@@ -20,7 +20,7 @@ export function RegisterOfficialPage() {
   const { token = '' } = useParams()
   const { t, i18n } = useTranslation()
   const reduce = useReducedMotion()
-  useDocumentTitle(t('register.title'))
+  useDocumentTitle(t('officialRegister.title'))
   const [invite, setInvite] = useState<{ locality: Place; phone: string; expires_at: string } | null>(null)
   const [failed, setFailed] = useState('')
   const [step, setStep] = useState<Step>('details')
@@ -62,11 +62,11 @@ export function RegisterOfficialPage() {
       <header className="bg-navy px-5 pt-6 pb-16 text-white">
         <div className="mx-auto max-w-md">
           <p className="text-[13px] font-semibold tracking-[0.18em] text-gold uppercase">Oweru</p>
-          <h1 className="mt-3 text-[24px] leading-tight font-semibold">{t('register.title')}</h1>
+          <h1 className="mt-3 text-[24px] leading-tight font-semibold">{t('officialRegister.title')}</h1>
           {invite && (
             <p className="mt-2 flex items-start gap-2 text-[14px] text-white/75">
               <MapPinIcon className="mt-0.5 size-4 shrink-0 text-gold" />
-              {t('register.for', { place: invite.locality.name, ward: invite.locality.ward, district: invite.locality.district })}
+              {t('officialRegister.for', { place: invite.locality.name, ward: invite.locality.ward, district: invite.locality.district })}
             </p>
           )}
         </div>
@@ -76,7 +76,7 @@ export function RegisterOfficialPage() {
         <div className="rounded-2xl bg-white p-5 shadow-lift">
           {failed ? (
             <div className="py-6 text-center">
-              <p className="text-[16px] font-semibold text-navy">{t('register.invalidTitle')}</p>
+              <p className="text-[16px] font-semibold text-navy">{t('officialRegister.invalidTitle')}</p>
               <p className="mt-2 text-[14px] text-muted">{failed}</p>
             </div>
           ) : !invite ? (
@@ -88,13 +88,13 @@ export function RegisterOfficialPage() {
           ) : (
             <>
               {step !== 'done' && (
-                <ol className="mb-5 flex items-center gap-2" aria-label={t('register.progress')}>
+                <ol className="mb-5 flex items-center gap-2" aria-label={t('officialRegister.progress')}>
                   {STEPS.map((item, position) => (
                     <li key={item} className="flex flex-1 flex-col gap-1.5">
                       <span className="h-1 overflow-hidden rounded-full bg-mist">
                         <motion.span className="block h-full bg-gold" initial={false} animate={{ width: position <= index ? '100%' : '0%' }} transition={{ duration: 0.35 }} />
                       </span>
-                      <span className={`text-[11px] ${position === index ? 'font-semibold text-navy' : 'text-muted'}`}>{t(`register.steps.${item}`)}</span>
+                      <span className={`text-[11px] ${position === index ? 'font-semibold text-navy' : 'text-muted'}`}>{t(`officialRegister.steps.${item}`)}</span>
                     </li>
                   ))}
                 </ol>
@@ -104,42 +104,42 @@ export function RegisterOfficialPage() {
                 <motion.div key={step} {...slide} transition={{ duration: 0.25 }}>
                   {step === 'details' && (
                     <div className="space-y-4">
-                      <p className="text-[13px] text-muted">{t('register.detailsNote', { phone: invite.phone, date: formatShortDate(invite.expires_at, i18n.language) })}</p>
+                      <p className="text-[13px] text-muted">{t('officialRegister.detailsNote', { phone: invite.phone, date: formatShortDate(invite.expires_at, i18n.language) })}</p>
                       <label className="block">
-                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('register.fullName')}</span>
+                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('officialRegister.fullName')}</span>
                         <input className={input} autoComplete="name" value={values.full_name} onChange={set('full_name')} />
                       </label>
                       <div>
-                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('register.position')}</span>
-                        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('register.position')}>
+                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('officialRegister.position')}</span>
+                        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('officialRegister.position')}>
                           {(['MWENYEKITI', 'MTENDAJI'] as Position[]).map((item) => (
                             <button key={item} type="button" role="radio" aria-checked={position === item} onClick={() => setPosition(item)} className={`rounded-xl border px-3 py-3 text-left transition-colors ${position === item ? 'border-gold bg-gold/10' : 'border-mist'}`}>
                               <span className="block text-[14px] font-semibold text-navy">{t(`partners.positions.${item}`)}</span>
-                              <span className="block text-[11px] text-muted">{t(`register.positionHint.${item}`)}</span>
+                              <span className="block text-[11px] text-muted">{t(`officialRegister.positionHint.${item}`)}</span>
                             </button>
                           ))}
                         </div>
                       </div>
                       <label className="block">
-                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('register.nationalId')}</span>
+                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('officialRegister.nationalId')}</span>
                         <input className={input} inputMode="numeric" autoComplete="off" placeholder="19800101-12345-00001-1" value={values.national_id_number} onChange={set('national_id_number')} />
                       </label>
                       <label className="block">
-                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('register.email')}</span>
+                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('officialRegister.email')}</span>
                         <input className={input} type="email" autoComplete="email" value={values.email} onChange={set('email')} />
                       </label>
                       <label className="block">
-                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('register.password')}</span>
+                        <span className="mb-1.5 block text-[13px] font-medium text-navy">{t('officialRegister.password')}</span>
                         <span className="relative block">
                           <input className={`${input} pr-12`} type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={values.password} onChange={set('password')} />
-                          <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={t(showPassword ? 'register.hidePassword' : 'register.showPassword')} className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">
+                          <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={t(showPassword ? 'officialRegister.hidePassword' : 'officialRegister.showPassword')} className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">
                             {showPassword ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
                           </button>
                         </span>
-                        <span className="mt-1 block text-[12px] text-muted">{t('register.passwordHint')}</span>
+                        <span className="mt-1 block text-[12px] text-muted">{t('officialRegister.passwordHint')}</span>
                       </label>
                       <button type="button" disabled={!detailsReady} onClick={() => setStep('photo')} className="h-12 w-full rounded-full bg-gold text-[15px] font-semibold text-navy disabled:opacity-50">
-                        {t('register.next')}
+                        {t('officialRegister.next')}
                       </button>
                     </div>
                   )}
@@ -148,8 +148,8 @@ export function RegisterOfficialPage() {
                     <Camera
                       key="photo"
                       facing="user"
-                      title={t('register.photoTitle')}
-                      hint={t('register.photoHint')}
+                      title={t('officialRegister.photoTitle')}
+                      hint={t('officialRegister.photoHint')}
                       file={photo}
                       fileName="photo.jpg"
                       onFile={setPhoto}
@@ -162,8 +162,8 @@ export function RegisterOfficialPage() {
                     <Camera
                       key="stamp"
                       facing="environment"
-                      title={t('register.stampTitle')}
-                      hint={t('register.stampHint')}
+                      title={t('officialRegister.stampTitle')}
+                      hint={t('officialRegister.stampHint')}
                       file={stamp}
                       fileName="stamp.jpg"
                       onFile={setStamp}
@@ -176,16 +176,16 @@ export function RegisterOfficialPage() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         {[photo, stamp].map((file, position) => (
-                          <Preview key={position} file={file} label={position === 0 ? t('register.steps.photo') : t('register.steps.stamp')} round={position === 0} />
+                          <Preview key={position} file={file} label={position === 0 ? t('officialRegister.steps.photo') : t('officialRegister.steps.stamp')} round={position === 0} />
                         ))}
                       </div>
                       <dl className="divide-y divide-mist/70 rounded-xl border border-mist px-4 text-[14px]">
                         {[
-                          [t('register.fullName'), values.full_name],
-                          [t('register.position'), position ? t(`partners.positions.${position}`) : ''],
-                          [t('register.nationalId'), values.national_id_number],
-                          [t('register.email'), values.email],
-                          [t('register.place'), `${invite.locality.name}, ${invite.locality.ward}`],
+                          [t('officialRegister.fullName'), values.full_name],
+                          [t('officialRegister.position'), position ? t(`partners.positions.${position}`) : ''],
+                          [t('officialRegister.nationalId'), values.national_id_number],
+                          [t('officialRegister.email'), values.email],
+                          [t('officialRegister.place'), `${invite.locality.name}, ${invite.locality.ward}`],
                         ].map(([label, value]) => (
                           <div key={label} className="flex justify-between gap-4 py-3">
                             <dt className="shrink-0 text-muted">{label}</dt>
@@ -193,12 +193,12 @@ export function RegisterOfficialPage() {
                           </div>
                         ))}
                       </dl>
-                      <p className="rounded-xl bg-paper px-4 py-3 text-[13px] text-navy-soft">{t('register.reviewNote')}</p>
+                      <p className="rounded-xl bg-paper px-4 py-3 text-[13px] text-navy-soft">{t('officialRegister.reviewNote')}</p>
                       {error && <Alert tone="error">{error}</Alert>}
                       <div className="grid grid-cols-[auto_1fr] gap-2">
-                        <button type="button" onClick={() => setStep('stamp')} className="h-12 rounded-full border border-mist px-5 text-[14px] font-medium text-navy">{t('register.back')}</button>
+                        <button type="button" onClick={() => setStep('stamp')} className="h-12 rounded-full border border-mist px-5 text-[14px] font-medium text-navy">{t('officialRegister.back')}</button>
                         <button type="button" disabled={busy} onClick={() => void submit()} className="h-12 rounded-full bg-gold text-[15px] font-semibold text-navy disabled:opacity-60">
-                          {busy ? t('register.sending') : t('register.submit')}
+                          {busy ? t('officialRegister.sending') : t('officialRegister.submit')}
                         </button>
                       </div>
                     </div>
@@ -209,8 +209,8 @@ export function RegisterOfficialPage() {
                       <motion.span initial={reduce ? false : { scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }} className="mx-auto grid size-16 place-items-center rounded-full bg-success-soft text-success">
                         <CheckIcon className="size-8" />
                       </motion.span>
-                      <p className="mt-4 text-[18px] font-semibold text-navy">{t('register.doneTitle')}</p>
-                      <p className="mt-2 text-[14px] text-muted">{t('register.doneBody')}</p>
+                      <p className="mt-4 text-[18px] font-semibold text-navy">{t('officialRegister.doneTitle')}</p>
+                      <p className="mt-2 text-[14px] text-muted">{t('officialRegister.doneBody')}</p>
                     </div>
                   )}
                 </motion.div>
@@ -218,7 +218,7 @@ export function RegisterOfficialPage() {
             </>
           )}
         </div>
-        <p className="mt-4 text-center text-[12px] text-muted">{t('register.privacy')}</p>
+        <p className="mt-4 text-center text-[12px] text-muted">{t('officialRegister.privacy')}</p>
       </main>
     </div>
   )
@@ -339,27 +339,27 @@ function Camera({ facing, title, hint, file, fileName, onFile, onBack, onNext }:
               ))}
             </svg>
             <span className="absolute inset-x-0 bottom-4 mx-auto w-max rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-navy">
-              {state === 'live' ? t('register.camera.ready') : state === 'denied' ? t('register.camera.denied') : t('register.camera.starting')}
+              {state === 'live' ? t('officialRegister.camera.ready') : state === 'denied' ? t('officialRegister.camera.denied') : t('officialRegister.camera.starting')}
             </span>
           </>
         )}
         <AnimatePresence>{flash && <motion.span initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white" />}</AnimatePresence>
       </div>
 
-      {state === 'denied' && !file && <p className="mt-3 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">{t('register.camera.deniedBody')}</p>}
+      {state === 'denied' && !file && <p className="mt-3 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">{t('officialRegister.camera.deniedBody')}</p>}
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <button type="button" onClick={onBack} className="h-12 rounded-full border border-mist px-5 text-[14px] font-medium text-navy">{t('register.back')}</button>
+        <button type="button" onClick={onBack} className="h-12 rounded-full border border-mist px-5 text-[14px] font-medium text-navy">{t('officialRegister.back')}</button>
         {file ? (
           <>
             <button type="button" onClick={() => { onFile(null); setState('starting') }} className="inline-flex h-12 items-center gap-2 rounded-full border border-mist px-4 text-[14px] font-medium text-navy">
               <ResetIcon className="size-4" />
-              {t('register.camera.retake')}
+              {t('officialRegister.camera.retake')}
             </button>
-            <button type="button" onClick={onNext} className="h-12 flex-1 rounded-full bg-gold text-[15px] font-semibold text-navy">{t('register.camera.use')}</button>
+            <button type="button" onClick={onNext} className="h-12 flex-1 rounded-full bg-gold text-[15px] font-semibold text-navy">{t('officialRegister.camera.use')}</button>
           </>
         ) : (
-          <button type="button" disabled={state !== 'live'} onClick={capture} aria-label={t('register.camera.capture')} className="grid size-16 place-items-center rounded-full border-4 border-gold/40 bg-gold text-navy shadow-lift transition-transform active:scale-95 disabled:opacity-40">
+          <button type="button" disabled={state !== 'live'} onClick={capture} aria-label={t('officialRegister.camera.capture')} className="grid size-16 place-items-center rounded-full border-4 border-gold/40 bg-gold text-navy shadow-lift transition-transform active:scale-95 disabled:opacity-40">
             <CameraIcon className="size-7" />
           </button>
         )}

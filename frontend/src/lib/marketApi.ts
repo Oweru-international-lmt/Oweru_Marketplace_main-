@@ -62,6 +62,8 @@ export type PublicListing = {
     lister_kind: 'OWNER' | 'AGENT'
     verification: PublicVerification
     member_since: string
+    // IDV-06: set only when the lister has a public, verified profile.
+    profile_id?: string | null
   }
   photos: { position: number; url: string }[]
 }

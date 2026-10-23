@@ -172,6 +172,8 @@ class DuplicatePropertySummarySerializer(serializers.ModelSerializer):
     ward = serializers.CharField(source="ward.name", read_only=True)
     locality = serializers.CharField(source="locality.name", read_only=True)
     locality_kind = serializers.CharField(source="locality.kind", read_only=True)
+    created_by = serializers.SerializerMethodField()
+    listings = serializers.SerializerMethodField()
 
     class Meta:
         model = PropertyRecord
@@ -186,8 +188,29 @@ class DuplicatePropertySummarySerializer(serializers.ModelSerializer):
             "stated_size",
             "size_unit",
             "title_type",
+            "created_at",
+            "created_by",
+            "listings",
         )
         read_only_fields = fields
+
+    def get_created_by(self, obj):
+        return obj.created_by.full_name if obj.created_by_id else ""
+
+    def get_listings(self, obj):
+        """R20: what Management compares side by side; up to three signed photo links per listing."""
+        from apps.media.storage import get_private_media_storage
+        storage = get_private_media_storage()
+        rows = []
+        for listing in obj.listings.select_related("lister").prefetch_related("photos__media").order_by("created_at"):
+            photos = []
+            for photo in list(listing.photos.all())[:3]:
+                try:
+                    photos.append(storage.generate_signed_read_url(key=photo.media.file_key))
+                except Exception:
+                    continue
+            rows.append({"listing_id": listing.listing_id, "status": listing.status, "lister": listing.lister.full_name, "lister_kind": listing.lister_kind, "created_at": listing.created_at, "photos": photos})
+        return rows
 
 
 class PossibleDuplicateReviewSerializer(serializers.ModelSerializer):

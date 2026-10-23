@@ -55,3 +55,15 @@ class PublishView(APIView):
         data.is_valid(raise_exception=True)
         get_object_or_404(RateTable, pk=pk)
         return Response(table_data(publish_rate_table(actor=request.user, table_id=pk, request=request)))
+
+
+class RateTableVersionsView(APIView):
+    """PAY-01: every version, newest first, so Management sees drafts and what was in force."""
+
+    def get(self, request):
+        actor = authorize(request.user, "commission.manage")
+        if not management(actor):
+            raise PermissionDenied("Management required.")
+        current = current_rate_table()
+        rows = RateTable.objects.select_related("published_by").prefetch_related("bands").order_by("-version")
+        return Response([{**table_data(table), "current": current is not None and table.pk == current.pk, "published_by": table.published_by.full_name if table.published_by_id else ""} for table in rows])

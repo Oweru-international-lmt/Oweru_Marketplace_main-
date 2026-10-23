@@ -76,12 +76,34 @@ class CustomersView(APIView):
     def get(self, request):
         actor = authorize(request.user, "lead.view")
         # This endpoint is always a lister's own private customer list.
-        leads = Lead.objects.filter(lister=actor).prefetch_related("notes").order_by("buyer_whatsapp", "created_at")
+        leads = Lead.objects.filter(lister=actor).select_related("listing__property__district").prefetch_related("notes").order_by("buyer_whatsapp", "created_at")
         customers = {}
         for lead in leads:
-            item = customers.setdefault(lead.buyer_whatsapp, {"name": lead.buyer_name, "whatsapp": lead.buyer_whatsapp, "leads": []})
-            item["leads"].append({"id": str(lead.pk), "stage": lead.stage, "notes": NoteSerializer(lead.notes.all(), many=True).data})
-        return Response(list(customers.values()))
+            item = customers.setdefault(lead.buyer_whatsapp, {"name": lead.buyer_name, "whatsapp": lead.buyer_whatsapp, "leads": [], "last_activity": lead.updated_at})
+            # LEAD-02, LEAD-06 (R23, R24): each enquiry with its property, source and dates, notes newest first.
+            prop = lead.listing.property
+            item["leads"].append({
+                "id": str(lead.pk), "stage": lead.stage, "source": lead.source, "listing_id": lead.listing.listing_id,
+                "category": prop.category, "area": prop.district.name if prop.district_id else "",
+                "created_at": lead.created_at, "follow_up_at": lead.follow_up_at,
+                "notes": NoteSerializer(sorted(lead.notes.all(), key=lambda note: note.created_at, reverse=True), many=True).data,
+            })
+            item["last_activity"] = max(item["last_activity"], lead.updated_at)
+        return Response(sorted(customers.values(), key=lambda row: row["last_activity"], reverse=True))
+
+
+class MyEnquiriesView(APIView):
+    """SRD 24: a buyer's own enquiries. The lister's pipeline stage stays private."""
+
+    def get(self, request):
+        actor = authorize(request.user, "account.view")
+        leads = Lead.objects.filter(buyer=actor).select_related("listing__property__district").order_by("-created_at")
+        return Response([
+            {"id": str(lead.pk), "listing_id": lead.listing.listing_id, "category": lead.listing.property.category,
+             "area": lead.listing.property.district.name if lead.listing.property.district_id else "", "source": lead.source,
+             "created_at": lead.created_at, "deal_id": str(lead.deal.pk) if hasattr(lead, "deal") else None}
+            for lead in leads
+        ])
 
 
 class MetricsView(APIView):

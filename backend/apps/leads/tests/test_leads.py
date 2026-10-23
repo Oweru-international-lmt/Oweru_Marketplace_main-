@@ -89,3 +89,22 @@ def test_transition_audit_failure_rolls_back(pipeline, monkeypatch):
         LeadTransitionService.transition(actor=lister, lead_id=lead.pk, stage="CONTACTED")
     lead.refresh_from_db()
     assert lead.stage == "NEW" and lead.transitions.count() == 0
+
+
+def test_customer_list_shows_each_enquiry_with_property_and_newest_note_first(pipeline):
+    """LEAD-02, LEAD-06: the lister's private customer page."""
+    buyer, lister, listing, lead = pipeline
+    add_note(actor=lister, lead_id=lead.pk, text="First call")
+    add_note(actor=lister, lead_id=lead.pk, text="Viewing on Saturday")
+    customer = client_for(lister).get("/api/v1/leads/customers/").data[0]
+    row = customer["leads"][0]
+    assert customer["whatsapp"] == buyer.phone and row["listing_id"] == listing.listing_id and row["source"] == "ENQUIRY"
+    assert [note["text"] for note in row["notes"]] == ["Viewing on Saturday", "First call"]
+
+
+def test_buyer_sees_own_enquiries_without_the_listers_stage(pipeline):
+    """SRD 24."""
+    buyer, lister, listing, lead = pipeline
+    rows = client_for(buyer).get("/api/v1/leads/mine/").data
+    assert [row["id"] for row in rows] == [str(lead.pk)] and "stage" not in rows[0] and rows[0]["deal_id"] is None
+    assert client_for(lister).get("/api/v1/leads/mine/").data == []

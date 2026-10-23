@@ -560,7 +560,7 @@ def test_management_reject_denies_unauthorized_self_and_repeated_review():
 
 
 def assert_public_profile_response_is_safe(data):
-    assert set(data) == {"id", "name", "is_verified", "lister_roles", "member_since"}
+    assert set(data) == {"id", "name", "is_verified", "lister_roles", "member_since", "areas", "property_types", "listings"}
     rendered = repr(data).lower()
     forbidden = [
         "national_id_number",
@@ -601,6 +601,8 @@ def test_public_lister_profile_is_public_for_verified_owner_and_authenticated_us
         assert response.data["is_verified"] is True
         assert response.data["lister_roles"] == [ROLE_OWNER]
         assert response.data["member_since"] is not None
+        # IDV-06: areas, property types and listings come only from public listings.
+        assert response.data["areas"] == [] and response.data["property_types"] == [] and response.data["listings"] == []
         assert_public_profile_response_is_safe(response.data)
 
 
@@ -698,8 +700,9 @@ def test_public_lister_profile_does_not_invent_photo_areas_or_property_types():
     assert response.status_code == 200
     assert "photo" not in response.data
     assert "profile_photo" not in response.data
+    # IDV-06: areas and property types are derived from public listings only, never stored or guessed.
     assert "areas_covered" not in response.data
-    assert "property_types" not in response.data
+    assert response.data["areas"] == [] and response.data["property_types"] == []
     assert identity.national_id_photo_ref != response.data.get("photo")
     assert identity.live_selfie_ref != response.data.get("photo")
 

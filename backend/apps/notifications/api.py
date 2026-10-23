@@ -9,9 +9,9 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from apps.audit.services import create_audit_log
 from apps.leads.policies import authorize, management
 from apps.properties.serializers import RejectUnknownFieldsMixin
-from .models import Notification, MessageTemplate
+from .models import Notification, MessageTemplate, TemplateHistory
 from . import services
-from .catalog import DEFAULTS
+from .catalog import CATALOG, DEFAULTS
 
 
 class ContactSelfServiceView(APIView):
@@ -95,7 +95,11 @@ class TemplateView(APIView):
         if not management(actor):
             raise PermissionDenied()
         rows = {row.key: row for row in MessageTemplate.objects.all()}
-        return Response([{"key": key, "version": rows[key].version if key in rows else 0, "en": rows[key].en if key in rows else values["en"], "sw": rows[key].sw if key in rows else values["sw"]} for key, values in DEFAULTS.items()])
+        history = {}
+        for item in TemplateHistory.objects.select_related("template", "actor").order_by("-version"):
+            history.setdefault(item.template.key, []).append({"version": item.version, "en": item.en, "sw": item.sw, "actor": item.actor.full_name, "created_at": item.created_at})
+        # NTF-04: each template with its title, the default text and every saved version.
+        return Response([{"key": key, "title": {"en": CATALOG[key][0], "sw": CATALOG[key][1]}, "version": rows[key].version if key in rows else 0, "en": rows[key].en if key in rows else values["en"], "sw": rows[key].sw if key in rows else values["sw"], "default": values, "history": history.get(key, [])} for key, values in DEFAULTS.items()])
 
     def put(self, request, template_key):
         serializer = TemplateInput(data=request.data)

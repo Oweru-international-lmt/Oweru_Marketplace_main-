@@ -21,7 +21,7 @@ from .serializers import (
     WardFilterSerializer,
     WardSerializer,
 )
-from .services import approve_locality, create_locality
+from .services import approve_locality, create_locality, merge_locality
 
 
 def _validated_query(serializer_class, request):
@@ -180,3 +180,31 @@ class LocalityApproveView(generics.GenericAPIView):
         locality = get_object_or_404(Locality, pk=pk)
         locality = approve_locality(locality=locality, approved_by=request.user, request=request)
         return Response(LocalitySerializer(locality).data)
+
+
+class PendingLocalityView(generics.GenericAPIView):
+    """ADM-03: typed street and village names waiting for Management, oldest first."""
+    permission_classes = [IsAuthenticated, IsManagement]
+
+    def get(self, request):
+        from django.db.models import Count
+        rows = Locality.objects.filter(approved=False, merged_into__isnull=True).select_related("ward__district__region", "created_by").annotate(property_count=Count("property_records", distinct=True)).order_by("created_at")
+        def approved_in(ward_id):
+            return [{"id": str(item.pk), "name": item.name, "kind": item.kind} for item in Locality.objects.filter(ward_id=ward_id, approved=True).order_by(Lower("name"))]
+        return Response([
+            {"id": str(row.pk), "name": row.name, "kind": row.kind, "ward": row.ward.name, "district": row.ward.district.name, "region": row.ward.district.region.name,
+             "created_at": row.created_at, "created_by": row.created_by.full_name if row.created_by_id else "", "properties": row.property_count, "approved_in_ward": approved_in(row.ward_id)}
+            for row in rows
+        ])
+
+
+class LocalityMergeView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated, IsManagement]
+
+    def post(self, request, pk):
+        into = request.data.get("into") if isinstance(request.data, dict) else None
+        if not into or set(request.data) - {"into"}:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"into": "Choose the approved street or village to merge into."})
+        source, moved = merge_locality(locality=pk, into=into, actor=request.user, request=request)
+        return Response({"id": str(source.pk), "merged_into": str(source.merged_into_id), "properties_moved": moved})

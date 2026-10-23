@@ -6,6 +6,8 @@ from .views import (
     LocalityApproveView,
     LocalityCollectionView,
     LocalityDetailView,
+    LocalityMergeView,
+    PendingLocalityView,
     RegionDetailView,
     RegionListView,
     WardDetailView,
@@ -21,6 +23,8 @@ urlpatterns = [
     path("wards/", WardListView.as_view(), name="ward-list"),
     path("wards/<uuid:pk>/", WardDetailView.as_view(), name="ward-detail"),
     path("", LocalityCollectionView.as_view(), name="locality-list"),
+    path("review-queue/", PendingLocalityView.as_view(), name="locality-review-queue"),
+    path("<uuid:pk>/merge/", LocalityMergeView.as_view(), name="locality-merge"),
     path("<uuid:pk>/approve/", LocalityApproveView.as_view(), name="locality-approve"),
     path("<uuid:pk>/", LocalityDetailView.as_view(), name="locality-detail"),
 ]

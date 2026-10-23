@@ -216,7 +216,7 @@ def test_public_lister_serializer_exposes_only_display_role_verification_and_mem
 
     data = ListingPublicSerializer(listing).data["lister"]
 
-    assert set(data) == {"display_name", "lister_kind", "verification", "member_since"}
+    assert set(data) == {"display_name", "lister_kind", "verification", "member_since", "profile_id"}
     assert data["display_name"] == lister.full_name
     assert data["lister_kind"] == Listing.ListerKind.OWNER
     assert data["verification"] == {"level": 1, "label": "Identity verified", "is_verified": True}
@@ -313,4 +313,4 @@ def test_public_serializer_exact_allowlists_guard_against_unrelated_private_mode
     assert set(data) == set(ListingPublicSerializer.Meta.fields)
     assert set(data["property"]) == set(PropertyRecordPublicSerializer.Meta.fields)
     assert set(data["property"]["location"]) == {"region", "district", "ward", "locality", "locality_kind"}
-    assert set(data["lister"]) == {"display_name", "lister_kind", "verification", "member_since"}
+    assert set(data["lister"]) == {"display_name", "lister_kind", "verification", "member_since", "profile_id"}

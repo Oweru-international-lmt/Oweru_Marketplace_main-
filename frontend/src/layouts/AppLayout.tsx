@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { OwnerRequestsBanner } from '../pages/account/OwnerRequestsPage'
+import { NotificationBell } from './NotificationBell'
 import { MenuIcon, SidebarIcon } from '../components/icons'
 import { LanguageSwitch } from '../components/LanguageSwitch'
 import { Logo } from '../components/Logo'
@@ -100,6 +101,7 @@ function TopBar({ onOpenMenu, onToggleCollapse, onSignOut }: { onOpenMenu: () =>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <LanguageSwitch />
+          <NotificationBell />
           <UserMenu onSignOut={onSignOut} />
         </div>
       </div>

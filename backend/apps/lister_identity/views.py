@@ -203,4 +203,19 @@ class PublicListerProfileView(generics.GenericAPIView):
     def get(self, request, identity_id, *args, **kwargs):
         identity, lister_roles = get_public_lister_identity(identity_id=identity_id)
         serializer = self.get_serializer(identity, context={"lister_roles": lister_roles})
-        return Response(serializer.data)
+        # IDV-06: areas covered, property types and the lister's public listings,
+        # built only from what the public listing pages already show.
+        from apps.listings import services as listing_services
+        from apps.listings.serializers import ListingPublicSerializer
+        listings = list(listing_services.get_public_listings().filter(lister=identity.user).order_by("-created_at", "-id")[:24])
+        areas = []
+        for listing in listings:
+            area = {"district": listing.property.district.name if listing.property.district_id else "", "region": listing.property.region.name if listing.property.region_id else ""}
+            if area["district"] and area not in areas:
+                areas.append(area)
+        return Response({
+            **serializer.data,
+            "areas": areas,
+            "property_types": sorted({listing.property.category for listing in listings}),
+            "listings": ListingPublicSerializer(listings, many=True, context={"request": request}).data,
+        })

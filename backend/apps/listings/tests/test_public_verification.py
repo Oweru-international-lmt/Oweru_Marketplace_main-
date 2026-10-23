@@ -172,7 +172,7 @@ def test_public_lister_response_privacy():
     data = ListingPublicSerializer(listing(user)).data["lister"]
     rendered = repr(data).lower()
 
-    assert set(data) == {"display_name", "lister_kind", "verification", "member_since"}
+    assert set(data) == {"display_name", "lister_kind", "verification", "member_since", "profile_id"}
     for forbidden in [
         "email",
         "phone",

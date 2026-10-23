@@ -474,3 +474,21 @@ export function BankIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function BellIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </Icon>
+  )
+}
+
+export function NoteIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 4h14v11l-5 5H5z" />
+      <path d="M14 20v-5h5M8.5 9h7M8.5 12.5h4" />
+    </Icon>
+  )
+}

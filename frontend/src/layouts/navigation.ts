@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { can } from '../auth/access'
-import { BankIcon, BanknoteIcon, BarsIcon, ChatIcon, DashboardIcon, DocumentIcon, MailIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
+import { BankIcon, BanknoteIcon, BarsIcon, ChatIcon, DashboardIcon, DocumentIcon, MailIcon, HomeIcon, IdCardIcon, InboxIcon, ListIcon, MapPinIcon, PlusCircleIcon, SearchIcon, ShieldIcon, TickIcon, UserIcon, UsersIcon, WhatsAppIcon } from '../components/icons'
 import type { User } from '../lib/authApi'
 
 export type NavItem = {
@@ -63,10 +63,21 @@ const NAV_GROUPS: NavGroup[] = [
       },
       { to: '/lister/listings/new', labelKey: 'nav.addListing', icon: PlusCircleIcon, permission: 'lister.area' },
       { to: '/lister/enquiries', labelKey: 'nav.enquiries', icon: InboxIcon, permission: 'lister.area' },
+      { to: '/lister/customers', labelKey: 'nav.customers', icon: UsersIcon, permission: 'lister.area' },
       { to: '/lister/deals', labelKey: 'nav.deals', icon: BanknoteIcon, permission: 'lister.area' },
       { to: '/lister/payouts', labelKey: 'nav.payouts', icon: BankIcon, permission: 'lister.area' },
       { to: '/lister/identity', labelKey: 'nav.identity', icon: IdCardIcon, permission: 'lister.area' },
       { to: '/lister/checks', labelKey: 'nav.locationRequest', icon: MapPinIcon, permission: 'lister.area' },
+    ],
+  },
+  {
+    // Phase 5: management runs the system: queues, approvals, settings, log.
+    titleKey: 'nav.groupAdmin',
+    items: [
+      { to: '/staff/admin', labelKey: 'nav.adminDashboard', icon: DashboardIcon, permission: 'settings.manage' },
+      { to: '/staff/approvals', labelKey: 'nav.approvals', icon: TickIcon, permission: 'settings.manage' },
+      { to: '/staff/settings', labelKey: 'nav.settings', icon: ShieldIcon, permission: 'settings.manage' },
+      { to: '/staff/audit', labelKey: 'nav.audit', icon: ListIcon, permission: 'audit.view' },
     ],
   },
   {
@@ -87,6 +98,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/account', labelKey: 'nav.account', icon: UserIcon },
       { to: '/purchases', labelKey: 'nav.purchases', icon: HomeIcon, hiddenWith: ['complaint.handle', 'authorization.view'] },
+      { to: '/enquiries', labelKey: 'nav.myEnquiries', icon: ChatIcon, hiddenWith: ['complaint.handle', 'authorization.view'] },
+      { to: '/account/marketing', labelKey: 'nav.marketing', icon: MailIcon },
       { to: '/listings', labelKey: 'site.browse', icon: SearchIcon },
       { to: '/sell', labelKey: 'nav.sell', icon: HomeIcon, hiddenWith: ['lister.area', 'complaint.handle', 'authorization.view'] },
     ],

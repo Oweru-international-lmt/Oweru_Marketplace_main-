@@ -97,6 +97,9 @@ class Locality(TimeStampedModel, CreatedByModel):
     name = models.CharField(max_length=150)
     kind = models.CharField(max_length=16, choices=Kind.choices)
     approved = models.BooleanField(default=False)
+    # LST-03: a typed name that duplicates an approved street is merged into it
+    # instead of being deleted; its properties move to the approved one.
+    merged_into = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="merged_names")
 
     class Meta:
         ordering = ["ward__name", "kind", "name"]

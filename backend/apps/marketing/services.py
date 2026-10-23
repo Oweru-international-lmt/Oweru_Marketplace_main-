@@ -120,7 +120,8 @@ def deliver(delivery_id):
     campaign = row.campaign
     root = settings.MARKETPLACE_PUBLIC_URL.rstrip("/")
     link = root + "/api/v1/marketing/click/?" + urlencode({"token": delivery_token(row)})
-    preferences = root + "/api/v1/marketing/consent/"
+    # MAR-03: people manage consent on a page in their account, not on the API.
+    preferences = root + "/account/marketing"
     message = getattr(campaign, "body_" + language) + "\n\n" + link + "\n\n" + ("Manage marketing consent: " if language == "en" else "Dhibiti ruhusa ya masoko: ") + preferences
     row.attempts += 1
     try:

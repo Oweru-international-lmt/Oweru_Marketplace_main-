@@ -6,7 +6,7 @@ from apps.audit.services import create_audit_log
 from apps.roles.catalog import ROLE_MANAGEMENT
 from apps.roles.services import user_has_role
 
-from .audit_events import LOCALITY_APPROVED, LOCALITY_CREATED
+from .audit_events import LOCALITY_APPROVED, LOCALITY_CREATED, LOCALITY_MERGED
 from .models import District, Locality, Region, Ward
 
 
@@ -263,3 +263,31 @@ def approve_locality(*, locality, approved_by, request=None):
             request=request,
         )
         return locality
+
+
+def merge_locality(*, locality, into, actor, request=None):
+    """LST-03 and ADM-03: fold a pending typed name into an approved street or village of the same ward."""
+    actor = _require_management(actor)
+    from apps.properties.models import PropertyRecord
+    import uuid
+    try:
+        source_id, target_id = (uuid.UUID(str(getattr(item, "pk", item))) for item in (locality, into))
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise ValidationError({"into": "Choose a different approved street or village."}) from exc
+    with transaction.atomic():
+        rows = {row.pk: row for row in Locality.objects.select_for_update().filter(pk__in=[source_id, target_id])}
+        source, target = rows.get(source_id), rows.get(target_id)
+        if source is None or target is None or source.pk == target.pk:
+            raise ValidationError({"into": "Choose a different approved street or village."})
+        if source.approved or source.merged_into_id:
+            raise ValidationError({"locality": "Only a pending name can be merged."})
+        if not target.approved or target.ward_id != source.ward_id:
+            raise ValidationError({"into": "The target must be approved and in the same ward."})
+        moved = list(PropertyRecord.objects.select_for_update().filter(locality=source).values_list("pk", flat=True))
+        PropertyRecord.objects.filter(pk__in=moved).update(locality=target)
+        for property_pk in moved:
+            create_audit_log(actor=actor, action="property.locality_merged", entity_type="PropertyRecord", entity_id=property_pk, before={"locality_id": str(source.pk)}, after={"locality_id": str(target.pk)}, request=request)
+        source.merged_into = target
+        source.save(update_fields=["merged_into", "updated_at"])
+        create_audit_log(actor=actor, action=LOCALITY_MERGED, entity_type="Locality", entity_id=source.pk, before=_locality_audit_state(source), after={"merged_into": str(target.pk), "properties_moved": len(moved)}, request=request)
+        return source, len(moved)

@@ -2,18 +2,18 @@
 
 What is left to build for the Phase 1 launch, in order, with the user flow, screens, endpoints and finish line of each phase. Requirements are in [srd.md](srd.md); what already exists is in [architecture.md section 10](architecture.md#10-status-by-module).
 
-Last updated: 22 October 2026.
+Last updated: 23 October 2026.
 
 | Phase | Area | Status |
 |---|---|---|
-| 1 | Deals and money | Done (21 October 2026), except the rate table editor and Oweru's bank account form, moved to Phase 5 |
-| 2 | Partner work: site capture and verification tasks | **Next: step 1 (contract check)** |
-| 3 | Partner management: local officials and professionals | Not started |
-| 4 | Rest of the full check | Not started |
-| 5 | Management administration | Not started |
-| 6 | Smaller public and lister screens | Not started |
-| 7 | Backend gaps | Not started (bulk import dropped, see decision D1) |
-| 8 | Launch readiness | Not started |
+| 1 | Deals and money | Done (21 October 2026); the rate table editor and Oweru's bank account form were finished in Phase 5 |
+| 2 | Partner work: site capture and verification tasks | Done (22 October 2026) |
+| 3 | Partner management: local officials and professionals | Done (22 October 2026). Officials now register through a one-time link (new backend) |
+| 4 | Rest of the full check | Done (22 October 2026), with decision D3 (tax receipt optional) |
+| 5 | Management administration | Done (23 October 2026), with the D5 examples (`manage.py seed_example_values`) |
+| 6 | Smaller public and lister screens | Done (23 October 2026) |
+| 7 | Backend gaps | D2 and D4 done; `/auth/me/` roles, face matching, VFD receipts and historical imagery remain |
+| 8 | Launch readiness | **Next** |
 
 Why this order: a sale cannot reach Won without Phase 1, and a full check cannot finish without Phases 2 to 4. Management administration (Phase 5) is needed before launch but nothing else depends on it.
 
@@ -281,8 +281,8 @@ Picks: D1, D2, D3, D6, D7, D8, D12, D13, D14, D16, D18, D19, D20, D21.
 | Face matching to assist identity review | IDV-05 (Should) | After launch unless promoted |
 | Automatic tax receipts through a VFD provider | PAY-14 (Should) | Deferred with TRA (decision D3) |
 | Historical imagery | MAP-07 (Should) | Not in the free Esri layer; Esri's World Imagery Wayback is a possible free source to check later |
-| New Property ID format | Decision D4 | Generate `OWR-<region postcode>-<number>` for new Property Records, keep existing IDs |
-| Free satellite key | Decision D2 | Move the staff map from the keyless Esri URL to the ArcGIS Location Platform key, with attribution |
+| New Property ID format | Decision D4 | Done: new records get `OWR-<TCRA region postcode>-<number>` (Zanzibar and unknown regions use 00); existing IDs kept |
+| Free satellite key | Decision D2 | Done in the frontend: maps use `VITE_ESRI_API_KEY` when set, with Esri attribution |
 
 ---
 

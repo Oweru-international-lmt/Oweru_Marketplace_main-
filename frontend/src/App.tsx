@@ -21,7 +21,16 @@ import { DealPage } from './pages/deals/DealPage'
 import { DealReviewPage } from './pages/deals/DealReviewPage'
 import { DealsDeskPage } from './pages/deals/DealsDeskPage'
 import { RegisterOfficialPage } from './pages/official/RegisterOfficialPage'
+import { AdminDashboardPage } from './pages/staff/admin/AdminDashboardPage'
+import { ApprovalsPage } from './pages/staff/admin/ApprovalsPage'
+import { AuditPage } from './pages/staff/admin/AuditPage'
+import { DuplicateComparePage } from './pages/staff/admin/DuplicateComparePage'
+import { SettingsPage } from './pages/staff/admin/SettingsPage'
 import { OwnerRequestsPage } from './pages/account/OwnerRequestsPage'
+import { MarketingConsentPage } from './pages/account/MarketingConsentPage'
+import { MyEnquiriesPage } from './pages/account/MyEnquiriesPage'
+import { CustomersPage } from './pages/lister/CustomersPage'
+import { ListerProfilePage } from './pages/public/ListerProfilePage'
 import { CoveragePage } from './pages/staff/partners/CoveragePage'
 import { PartnersPage } from './pages/staff/partners/PartnersPage'
 import { DealsListPage } from './pages/deals/DealsListPage'
@@ -88,6 +97,8 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/listings" element={<SearchPage />} />
               <Route path="/listings/:listingId" element={<ListingPage />} />
+              {/* IDV-06: a verified lister's public profile. */}
+              <Route path="/listers/:listerId" element={<ListerProfilePage />} />
               {/* SRD 21 to 23 public services. Free checks and complaints need no account. */}
               <Route
                 path="/free-check"
@@ -119,12 +130,16 @@ export default function App() {
               <Route path="/sell" element={<BecomeListerPage />} />
               {/* FUL-02: full checks waiting on this Owner's consent or this Agent's owner contact. */}
               <Route path="/full-checks/requests" element={<OwnerRequestsPage />} />
+              {/* Phase 6: a buyer's enquiries (SRD 24) and marketing consent (MAR-03). */}
+              <Route path="/enquiries" element={<MyEnquiriesPage />} />
+              <Route path="/account/marketing" element={<MarketingConsentPage />} />
               {/* SRD 15 to 18: the lister's listings, enquiries and identity. */}
               <Route path="/lister" element={<Lister><ListerHomePage /></Lister>} />
               <Route path="/lister/listings" element={<Lister><MyListingsPage /></Lister>} />
               <Route path="/lister/listings/new" element={<Lister><ListingEditorPage /></Lister>} />
               <Route path="/lister/listings/:listingId" element={<Lister><ListingEditorPage /></Lister>} />
               <Route path="/lister/enquiries" element={<Lister><EnquiriesPage /></Lister>} />
+              <Route path="/lister/customers" element={<Lister><CustomersPage /></Lister>} />
               <Route path="/lister/identity" element={<Lister><IdentityPage /></Lister>} />
               <Route path="/lister/checks" element={<Lister><ListerLocationCheckPage /></Lister>} />
               {/* Phase 2: verification tasks for officials, professionals and listers. */}
@@ -160,6 +175,12 @@ export default function App() {
               {/* Phase 3: officials, professionals and coverage (LOC-01, LOC-06, LOC-07, PRO-01). */}
               <Route path="/staff/partners" element={<RequirePermission permission="partner.manage"><PartnersPage /></RequirePermission>} />
               <Route path="/staff/coverage" element={<RequirePermission permission="partner.manage"><CoveragePage /></RequirePermission>} />
+              {/* Phase 5: management administration (ADM-01 to ADM-05, LST-03, LST-12, NTF-04, PAY-01). */}
+              <Route path="/staff/admin" element={<RequirePermission permission="settings.manage"><AdminDashboardPage /></RequirePermission>} />
+              <Route path="/staff/approvals" element={<RequirePermission permission="settings.manage"><ApprovalsPage /></RequirePermission>} />
+              <Route path="/staff/duplicates/:duplicateId" element={<RequirePermission permission="settings.manage"><DuplicateComparePage /></RequirePermission>} />
+              <Route path="/staff/settings" element={<RequirePermission permission="settings.manage"><SettingsPage /></RequirePermission>} />
+              <Route path="/staff/audit" element={<RequirePermission permission="audit.view"><AuditPage /></RequirePermission>} />
               {/* IDV-03: Management reviews lister identities. */}
               <Route path="/staff/identities" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />
               <Route path="/staff/identities/:identityId" element={<RequirePermission permission="identity.review"><IdentityReviewPage /></RequirePermission>} />

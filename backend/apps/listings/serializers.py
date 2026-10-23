@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -94,6 +95,17 @@ class ListingPublicListerSerializer(serializers.Serializer):
     lister_kind = serializers.CharField(read_only=True)
     verification = serializers.SerializerMethodField()
     member_since = serializers.DateTimeField(source="lister.date_joined", read_only=True)
+    profile_id = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.UUID)
+    def get_profile_id(self, obj):
+        """IDV-06: the public profile exists only for a verified lister identity."""
+        from apps.lister_identity.services import is_lister_identity_verified
+        try:
+            identity = obj.lister.lister_identity
+        except ListerIdentity.DoesNotExist:
+            return None
+        return str(identity.pk) if is_lister_identity_verified(identity) else None
 
     @extend_schema_field(ListingPublicVerificationSerializer)
     def get_verification(self, obj):

@@ -226,7 +226,7 @@ Signed-in users: 1,200 requests per hour. Sign-in 10 per minute, registration 5 
 |---|---|---|---|
 | Development (native Windows) | PostgreSQL 18 + PostGIS, Memurai (Redis) | [NON_DOCKER_LOCAL_DEVELOPMENT.md](NON_DOCKER_LOCAL_DEVELOPMENT.md) | `config.settings.development`; Django on 127.0.0.1:8000, Vite on 5173 (fixed, other URLs point to it) |
 | Tests | Disposable PostgreSQL/PostGIS | `pytest` from `backend/` | Default `config.settings.test_postgresql`, eager Celery, in-memory cache |
-| Local preview (one machine only) | SpatiaLite file | `config.settings.local_preview` | Not in git (excluded in `.git/info/exclude`). In-memory uploads, preview photos served from outside the repo. PostgreSQL-only features (advisory locks, geography area, triggers) fail here, so tests that need them fail too |
+| Local preview (one machine only) | SpatiaLite file | `config.settings.local_preview` | Not in git (excluded in `.git/info/exclude`). In-memory uploads, preview photos served from outside the repo. PostgreSQL-only features (geography area, triggers, row-level concurrency) fail here, so tests that need them fail too. Advisory locks are skipped on other databases |
 | Production | PostgreSQL + PostGIS, Redis, S3 | `docker-compose.production.yml` (`web`, `worker`, `beat`, `release`) | [M26_PRODUCTION_RUNBOOK.md](M26_PRODUCTION_RUNBOOK.md); `production_preflight` validates settings; HTTPS only |
 
 Key settings: `MARKETPLACE_PUBLIC_URL`, `PASSWORD_RESET_URL`, `EMAIL_VERIFICATION_URL`, `OWNER_CONFIRMATION_URL` (all frontend URLs), `CORS_ALLOWED_ORIGINS`, `MEDIA_STORAGE_*`, `EMAIL_*`, `REDIS_URL`, `CELERY_*`.
@@ -238,23 +238,23 @@ What the backend provides and what the frontend uses, as of the date at the top.
 | SRD module | Backend | Frontend screens | Status |
 |---|---|---|---|
 | 5 Accounts (ACC) | Done | Sign up, sign in, reset, email confirmation, account page, staff accounts and roles | Done. `/auth/me/` still lacks roles (8.3) |
-| 5.2 Lister identity (IDV) | Done | Identity submission with live selfie; management review | Done, except the public lister profile (IDV-06): API only |
-| 6 Listings (LST) | Done | Listing editor with owner price, photos and payout preview, my listings, lister home | Bulk import (LST-11) dropped by decision D1; duplicates queue (LST-12) and locality approval (LST-03) API only |
+| 5.2 Lister identity (IDV) | Done | Identity submission with live selfie; management review; public lister profile with areas, property types and listings, linked from each listing | Done. The profile shows initials, not a photo: no public photo is stored |
+| 6 Listings (LST) | Done | Listing editor with owner price, photos and payout preview, my listings, lister home; management approvals (streets and villages, duplicates queue and side-by-side compare); suspend and restore | Done. Bulk import (LST-11) dropped by decision D1. New Property IDs use `OWR-<region postcode>-<number>` (D4) |
 | 7 Search (SRC) | Done | Home, search with filters, property page, featured area | Done |
-| 8 Leads and deals (LEAD) | Done | Lister enquiries pipeline and metrics; deal pages for lister, buyer and management | Lead notes and customer list (LEAD-06) API only |
-| 9 Payments (PAY) | Done | Buyer purchase page with slips, lister deal page, agent payouts, bank account, payout preview on the listing form, management deals desk, deal review and payouts desk, owner confirmation links | Rate table editor and Oweru's receiving bank account (PAY-01, management): API only |
+| 8 Leads and deals (LEAD) | Done | Lister enquiries pipeline and metrics; customers page with enquiries by property and notes; buyer's own enquiries; deal pages for lister, buyer and management | Done |
+| 9 Payments (PAY) | Done | Buyer purchase page with slips, lister deal page, agent payouts, bank account, payout preview on the listing form, management deals desk, deal review and payouts desk, owner confirmation links; commission rate table editor (drafts, publish, history) and Oweru's receiving bank account in Settings | Done. The TRA tax receipt is optional and never blocks a sale (D3) |
 | 10 Levels (LVL) | Done | Verification badge and panel on public pages | Done |
-| 11 Verification jobs (VER) | Done | Location check: lister request with title documents, staff desk with map and checklist | Field verification review and task endpoints: API only |
-| 12 Full check (FUL) | Done | Buyer order, payment and report; staff payment, verifier and result; owner consent link | In-app owner consent, owner contact, start, refresh, professional assignment: API only |
-| 13 Site capture (MAP) | Done | None | API only |
-| 14 Local officials (LOC) | Done | None | Registration, dashboard, task detail, management and coverage map: API only |
-| 15 Professionals (PRO) | Done | None | API only |
+| 11 Verification jobs (VER) | Done | Location check: lister request with title documents, staff desk with map and checklist; task list and task page for officials, professionals and listers | Done |
+| 12 Full check (FUL) | Done | Buyer order, payment and report; staff payment (tax receipt optional, D3), verifier, task start and assignment, result and refresh; owner consent link and in-account consent; agent owner contact | Done |
+| 13 Site capture (MAP) | Done | Phone boundary capture with GPS corners, undo, offline queue, photos and video on Esri imagery (D2) | Done |
+| 14 Local officials (LOC) | Done | One-time WhatsApp registration link with live photo and stamp, approval, switch off and replacement, officials and professionals table, coverage map by region, district, ward and street | Done |
+| 15 Professionals (PRO) | Done | Registration and coverage by management, accept or decline, findings and report submission | Done |
 | 16 Free check (FRC) | Done | Free check and result with PDF | Done |
 | 17 Complaints (CMP) | Done | Lodge, status page with reply and final review; staff desk and detail | Done |
 | 18 Market panel (MON) | Done | Market panel with filters, charts, regions map, Excel export | Done |
-| 19 Marketing (MAR) | Done | Campaigns, composer, featured, content pages | Marketing emails link to an API consent address; check it opens a usable page |
-| 20 Notifications (NTF) | Done | WhatsApp outbox; notifications list | Message template editor (NTF-04) and mark-as-read: API only. Message links open frontend pages; verification task links still point at the API until Phase 2 |
-| 21 Administration (ADM) | Done | Overview (complaints and full checks only) | Dashboard queues (ADM-01), settings (ADM-04), audit log, listing suspend and restore (ADM-02): API only |
+| 19 Marketing (MAR) | Done | Campaigns, composer, featured, content pages; marketing consent page that campaign emails link to | Done |
+| 20 Notifications (NTF) | Done | WhatsApp outbox; notification bell with mark as read; message template editor in both languages with version history | Done |
+| 21 Administration (ADM) | Done | Management dashboard with every queue and the oldest items; settings (money, time limits, checks, messages, listings) with change history, the full check fee locked to the Director; activity log with filters and before and after | Done. Example values for D5 come from `manage.py seed_example_values` |
 
 The remaining work, its order, flows and finish lines are in [roadmap.md](roadmap.md).
 
@@ -265,6 +265,7 @@ The remaining work, its order, flows and finish lines are in [roadmap.md](roadma
 - Permissions are still stored by the `legacy_authorization` app while roles have moved to `apps.roles`.
 - Older full check jobs have an English-only `scope_snapshot`; the UI falls back to English for them.
 - The frontend README describes only the early screens; this document is the current map.
+- Some preview accounts hold lister roles only in the legacy permission tables, so their public profile returns 404 until roles are moved to `apps.roles`.
 
 ## 12. Further reading
 

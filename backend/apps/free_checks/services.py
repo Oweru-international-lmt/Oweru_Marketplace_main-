@@ -35,6 +35,10 @@ def normalize_phone(value):
 
 
 def lock_phone(phone):
+    # PostgreSQL advisory lock; other databases (local SQLite previews) rely on
+    # their own write locking, as commissions.lock_rate_publication does.
+    if connection.vendor != "postgresql":
+        return
     value = int.from_bytes(hashlib.sha256(phone.encode()).digest()[:8], "big", signed=True)
     with connection.cursor() as cursor:
         cursor.execute("SELECT pg_advisory_xact_lock(%s)", [value])

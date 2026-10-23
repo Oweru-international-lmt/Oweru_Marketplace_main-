@@ -35,8 +35,10 @@ def test_empty_dashboard_and_audit_are_management_only():
     dashboard = client.get("/api/v1/management/dashboard/")
     assert dashboard.status_code == 200
     assert dashboard.data["identities_to_approve"] == 0 and dashboard.data["outbox_waiting"] == 0
-    assert "limitation" in dashboard.data["partner_approvals"]
-    assert client.get("/api/v1/management/audit/").status_code == 200
+    assert dashboard.data["partner_approvals"] == {"count": 0, "available": True}
+    assert dashboard.data["localities_to_approve"] == 0 and dashboard.data["oldest"] == []
+    audit = client.get("/api/v1/management/audit/")
+    assert audit.status_code == 200 and audit.data["page"] == 1
 
 
 def test_account_suspend_restore_reason_version_and_persisted_access():

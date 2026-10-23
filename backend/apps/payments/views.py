@@ -160,6 +160,14 @@ class ManagementBankView(APIView):
 
 
 class OweruBankView(APIView):
+    def get(self, request):
+        actor = authorize(request.user, "payment.confirm")
+        if not management(actor):
+            raise PermissionDenied("Management required.")
+        bank = BankAccount.objects.filter(is_oweru=True).first()
+        audit(actor, "sensitive_data.accessed", bank or actor, after={"purpose": "oweru_bank_account"}, request=request)
+        return Response({**services.bank_data(bank), "updated_at": bank.updated_at} if bank else None)
+
     @transaction.atomic
     def put(self, request):
         actor = authorize(request.user, "payment.confirm")

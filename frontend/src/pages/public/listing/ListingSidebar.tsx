@@ -129,6 +129,11 @@ export function ListerCard({ listing }: { listing: PublicListing }) {
       </div>
       <p className="mt-4 text-sm text-muted">{t('listing.memberSince', { date: formatDate(since, i18n.language) })}</p>
       {kind === 'AGENT' && <p className="mt-3 rounded-md bg-paper px-4 py-3 text-sm leading-relaxed text-navy">{t('levels.agentNote')}</p>}
+      {listing.lister.profile_id && (
+        <Link to={`/listers/${listing.lister.profile_id}`} className="mt-4 inline-flex text-sm font-medium text-[#9a6c12] underline-offset-4 hover:underline">
+          {t('listerProfile.view')}
+        </Link>
+      )}
     </section>
   )
 }
